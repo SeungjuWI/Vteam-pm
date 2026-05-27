@@ -33,7 +33,7 @@ export default async function MembersPage() {
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 
-  const pendingMembers = members?.filter((m) => m.status === "pending") || [];
+  const pendingMembers = members?.filter((m) => m.status === "pending" || m.status === "setup") || [];
   const activeMembers = members?.filter((m) => m.status === "active") || [];
   const isManager = profile.role === "manager" || profile.role === "admin";
 
@@ -62,12 +62,12 @@ export default async function MembersPage() {
         </div>
       )}
 
-      {/* 승인 대기 */}
+      {/* 온보딩 진행 중 / 승인 대기 */}
       {isManager && pendingMembers.length > 0 && (
         <div className="rounded-xl bg-white">
           <div className="border-b border-gray-100 px-6 py-4">
             <h2 className="text-sm font-medium text-gray-900">
-              가입 승인 대기 <span className="ml-1 text-blue-500">{pendingMembers.length}</span>
+              가입 진행 중 <span className="ml-1 text-blue-500">{pendingMembers.length}</span>
             </h2>
           </div>
           <div className="divide-y divide-gray-50">
@@ -82,7 +82,12 @@ export default async function MembersPage() {
                     <p className="text-xs text-gray-500">{member.email}</p>
                   </div>
                 </div>
-                <MemberActions memberId={member.id} />
+                <div className="flex items-center gap-2">
+                  {member.status === "setup" && (
+                    <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-[11px] text-yellow-600">프로필 설정 중</span>
+                  )}
+                  <MemberActions memberId={member.id} />
+                </div>
               </div>
             ))}
           </div>

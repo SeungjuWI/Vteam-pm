@@ -14,17 +14,20 @@ interface NavItem {
   managerOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
+const mainNavItems: NavItem[] = [
   { href: "/dashboard", label: "대시보드", icon: "home" },
   { href: "/attendance", label: "출퇴근", icon: "clock" },
-  { href: "/attendance-dashboard", label: "근태 대시보드", icon: "chart", managerOnly: true },
   { href: "/leaves", label: "휴가", icon: "calendar" },
   { href: "/projects", label: "프로젝트", icon: "folder" },
   { href: "/members", label: "멤버", icon: "users" },
   { href: "/org-chart", label: "조직도", icon: "orgchart" },
-  { href: "/export", label: "데이터 내보내기", icon: "download", managerOnly: true },
   { href: "/settings/company", label: "회사정보", icon: "building" },
   { href: "/settings/account", label: "설정", icon: "settings" },
+];
+
+const managerNavItems: NavItem[] = [
+  { href: "/attendance-dashboard", label: "근태 대시보드", icon: "chart", managerOnly: true },
+  { href: "/export", label: "데이터 내보내기", icon: "download", managerOnly: true },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -91,7 +94,23 @@ export default function DashboardShell({
   const pathname = usePathname();
   const isManager = role === "manager" || role === "admin";
 
-  const visibleItems = navItems.filter((item) => !item.managerOnly || isManager);
+  function renderNavItem(item: NavItem) {
+    const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+          isActive
+            ? "bg-blue-50 font-medium text-blue-500"
+            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+        }`}
+      >
+        {iconMap[item.icon]}
+        {item.label}
+      </Link>
+    );
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -101,23 +120,16 @@ export default function DashboardShell({
           <CompanyChip />
         </div>
         <nav className="flex-1 px-3 py-2">
-          {visibleItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                  isActive
-                    ? "bg-blue-50 font-medium text-blue-500"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
-              >
-                {iconMap[item.icon]}
-                {item.label}
-              </Link>
-            );
-          })}
+          {mainNavItems.map(renderNavItem)}
+
+          {isManager && (
+            <>
+              <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
+                관리자
+              </div>
+              {managerNavItems.map(renderNavItem)}
+            </>
+          )}
         </nav>
       </aside>
 

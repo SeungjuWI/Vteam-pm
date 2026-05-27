@@ -75,7 +75,8 @@ type DayInfo = {
 export default function AttendanceCalendar({ records, leaves, requiredHours }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [baseDate, setBaseDate] = useState(new Date());
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(0);
+  const mounted = now > 0;
 
   const today = useMemo(() => {
     const d = new Date();
@@ -83,9 +84,10 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
     return d;
   }, []);
 
-  // 근무 중인 기록이 있으면 1분마다 갱신
+  // 마운트 후 현재 시간 설정 + 근무 중이면 1분마다 갱신
   const hasActiveRecord = records.some((r) => !r.clock_out);
   useEffect(() => {
+    setNow(Date.now());
     if (!hasActiveRecord) return;
     const id = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(id);
@@ -100,7 +102,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
     for (const r of records) {
       const clockIn = new Date(r.clock_in);
       const key = `${clockIn.getFullYear()}-${clockIn.getMonth()}-${clockIn.getDate()}`;
-      const end = r.clock_out ? new Date(r.clock_out).getTime() : now;
+      const end = r.clock_out ? new Date(r.clock_out).getTime() : (now || clockIn.getTime());
       const ms = end - clockIn.getTime();
       const existing = map.get(key);
       if (existing) {

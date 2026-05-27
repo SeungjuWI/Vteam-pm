@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// 연차에서 차감되는 타입
+const DEDUCTS_BALANCE = new Set(["annual", "half_am", "half_pm", "family_care"]);
+
 export async function requestLeave(formData: FormData) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -30,7 +33,6 @@ export async function requestLeave(formData: FormData) {
     return { error: "날짜와 시간을 모두 입력해주세요" };
   }
 
-  // 시간 계산
   const start = new Date(`${startDate}T${startTime}`);
   const end = new Date(`${endDate}T${endTime}`);
   const diffMs = end.getTime() - start.getTime();
@@ -39,20 +41,22 @@ export async function requestLeave(formData: FormData) {
 
   const durationHours = Math.round((diffMs / 3600000) * 10) / 10;
 
-  // 잔여 연차 확인
-  const year = new Date().getFullYear();
-  const { data: balance } = await adminClient
-    .from("leave_balances")
-    .select("total, used")
-    .eq("employee_id", user.id)
-    .eq("year", year)
-    .single();
+  // 연차 차감 대상일 경우 잔여 확인
+  if (DEDUCTS_BALANCE.has(type)) {
+    const year = new Date().getFullYear();
+    const { data: balance } = await adminClient
+      .from("leave_balances")
+      .select("total, used")
+      .eq("employee_id", user.id)
+      .eq("year", year)
+      .single();
 
-  if (balance) {
-    const remaining = Number(balance.total) - Number(balance.used);
-    const daysNeeded = durationHours / 8;
-    if (daysNeeded > remaining) {
-      return { error: `잔여 연차가 부족합니다 (잔여: ${remaining}일)` };
+    if (balance) {
+      const remaining = Number(balance.total) - Number(balance.used);
+      const daysNeeded = durationHours / 8;
+      if (daysNeeded > remaining) {
+        return { error: `잔여 연차가 부족합니다 (잔여: ${remaining}일)` };
+      }
     }
   }
 
@@ -87,39 +91,39 @@ export async function approveLeave(leaveId: string) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager") return { error: "권한이 없습니다" };
+  if (profile?.role !== "manager" && profile?.role !== "admin") return { error: "권한이 없습니다" };
 
-  // 연차 정보 조회
   const { data: leave } = await adminClient
     .from("leaves")
-    .select("employee_id, duration_hours, company_id")
+    .select("employee_id, duration_hours, company_id, type")
     .eq("id", leaveId)
     .single();
 
   if (!leave || leave.company_id !== profile.company_id) return { error: "권한이 없습니다" };
 
-  // 승인 처리
   await adminClient
     .from("leaves")
     .update({ status: "approved", reviewed_by: user.id })
     .eq("id", leaveId);
 
-  // 사용일수 차감
-  const year = new Date().getFullYear();
-  const daysUsed = Number(leave.duration_hours) / 8;
+  // 연차 차감 대상만 사용일수 차감
+  if (DEDUCTS_BALANCE.has(leave.type)) {
+    const year = new Date().getFullYear();
+    const daysUsed = Number(leave.duration_hours) / 8;
 
-  const { data: balance } = await adminClient
-    .from("leave_balances")
-    .select("id, used")
-    .eq("employee_id", leave.employee_id)
-    .eq("year", year)
-    .single();
-
-  if (balance) {
-    await adminClient
+    const { data: balance } = await adminClient
       .from("leave_balances")
-      .update({ used: Number(balance.used) + daysUsed })
-      .eq("id", balance.id);
+      .select("id, used")
+      .eq("employee_id", leave.employee_id)
+      .eq("year", year)
+      .single();
+
+    if (balance) {
+      await adminClient
+        .from("leave_balances")
+        .update({ used: Number(balance.used) + daysUsed })
+        .eq("id", balance.id);
+    }
   }
 
   revalidatePath("/leaves");
@@ -138,7 +142,7 @@ export async function rejectLeave(leaveId: string) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager") return { error: "권한이 없습니다" };
+  if (profile?.role !== "manager" && profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   await adminClient
     .from("leaves")
@@ -161,7 +165,7 @@ export async function adjustBalance(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager") return { error: "권한이 없습니다" };
+  if (profile?.role !== "manager" && profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   const employeeId = formData.get("employeeId") as string;
   const total = Number(formData.get("total"));
@@ -199,6 +203,43 @@ export async function adjustBalance(formData: FormData) {
   return { success: true };
 }
 
+// 근로기준법 기반 연차 일수 계산
+function calculateAnnualDays(
+  joinDate: string,
+  year: number,
+  defaultDays: number,
+  longevityBonus: boolean,
+  maxDays: number
+): number {
+  const join = new Date(joinDate);
+  const joinYear = join.getFullYear();
+  const joinMonth = join.getMonth();
+  const joinDay = join.getDate();
+
+  // 입사 연도의 경우 (1년 미만)
+  const firstAnniversary = new Date(joinYear + 1, joinMonth, joinDay);
+  const yearStart = new Date(year, 0, 1);
+
+  if (firstAnniversary > yearStart && joinYear === year) {
+    // 1년 미만: 매월 개근 시 1일씩 (최대 11일)
+    const monthsWorked = 12 - joinMonth;
+    return Math.min(monthsWorked, 11);
+  }
+
+  const yearsWorked = year - joinYear;
+
+  if (yearsWorked < 1) return 0;
+
+  let days = defaultDays;
+
+  // 근속연수 가산: 3년 이상 근무 시 2년마다 1일 추가
+  if (longevityBonus && yearsWorked >= 3) {
+    days += Math.floor((yearsWorked - 1) / 2);
+  }
+
+  return Math.min(days, maxDays);
+}
+
 export async function saveLeaveSettings(formData: FormData) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -212,11 +253,40 @@ export async function saveLeaveSettings(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager") return { error: "권한이 없습니다" };
+  if (profile?.role !== "manager" && profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   const autoGrant = formData.get("autoGrant") === "true";
   const defaultDays = Number(formData.get("defaultDays"));
   const grantBasis = formData.get("grantBasis") as string;
+  const firstYearMonthly = formData.get("firstYearMonthly") === "true";
+  const longevityBonus = formData.get("longevityBonus") === "true";
+  const maxAnnualDays = Number(formData.get("maxAnnualDays") || 25);
+  const carryOver = formData.get("carryOver") === "true";
+  const carryOverMaxDays = Number(formData.get("carryOverMaxDays") || 0);
+  const annualPromotion = formData.get("annualPromotion") === "true";
+  const sickLeaveDays = Number(formData.get("sickLeaveDays") || 0);
+  const condolenceLeave = formData.get("condolenceLeave") !== "false";
+  const maternityLeave = formData.get("maternityLeave") !== "false";
+  const paternityLeave = formData.get("paternityLeave") !== "false";
+  const familyCareDays = Number(formData.get("familyCareDays") || 10);
+
+  const payload = {
+    company_id: profile.company_id,
+    auto_grant: autoGrant,
+    default_annual_days: defaultDays,
+    grant_basis: grantBasis,
+    first_year_monthly: firstYearMonthly,
+    longevity_bonus: longevityBonus,
+    max_annual_days: maxAnnualDays,
+    carry_over: carryOver,
+    carry_over_max_days: carryOverMaxDays,
+    annual_promotion: annualPromotion,
+    sick_leave_days: sickLeaveDays,
+    condolence_leave: condolenceLeave,
+    maternity_leave: maternityLeave,
+    paternity_leave: paternityLeave,
+    family_care_days: familyCareDays,
+  };
 
   const { data: existing } = await adminClient
     .from("company_leave_settings")
@@ -227,18 +297,13 @@ export async function saveLeaveSettings(formData: FormData) {
   if (existing) {
     await adminClient
       .from("company_leave_settings")
-      .update({ auto_grant: autoGrant, default_annual_days: defaultDays, grant_basis: grantBasis })
+      .update(payload)
       .eq("id", existing.id);
   } else {
-    await adminClient.from("company_leave_settings").insert({
-      company_id: profile.company_id,
-      auto_grant: autoGrant,
-      default_annual_days: defaultDays,
-      grant_basis: grantBasis,
-    });
+    await adminClient.from("company_leave_settings").insert(payload);
   }
 
-  // 자동 부여: 모든 active 멤버에게 올해 연차 생성
+  // 자동 부여
   if (autoGrant) {
     const year = new Date().getFullYear();
     const { data: members } = await adminClient
@@ -257,14 +322,17 @@ export async function saveLeaveSettings(formData: FormData) {
 
       if (!bal) {
         let days = defaultDays;
-        // 입사일 기반: 근속년수에 따라 추가
+
         if (grantBasis === "join_date" && member.join_date) {
-          const joinYear = new Date(member.join_date).getFullYear();
-          const yearsWorked = year - joinYear;
-          if (yearsWorked >= 3) {
-            days = defaultDays + Math.floor((yearsWorked - 1) / 2);
-          }
+          days = calculateAnnualDays(
+            member.join_date,
+            year,
+            defaultDays,
+            longevityBonus,
+            maxAnnualDays
+          );
         }
+
         await adminClient.from("leave_balances").insert({
           employee_id: member.id,
           company_id: profile.company_id,
@@ -277,5 +345,6 @@ export async function saveLeaveSettings(formData: FormData) {
   }
 
   revalidatePath("/leaves");
+  revalidatePath("/settings/leave");
   return { success: true };
 }

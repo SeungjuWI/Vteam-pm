@@ -2,9 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import LeaveRequestForm from "./leave-request-form";
 import LeaveActions from "./leave-actions";
+import Avatar from "@/components/avatar";
 
 const TYPE_LABELS: Record<string, string> = {
-  annual: "연차", half_am: "오전 반차", half_pm: "오후 반차", sick: "병가", other: "기타",
+  annual: "연차", half_am: "오전 반차", half_pm: "오후 반차", sick: "병가",
+  condolence: "경조사", maternity: "출산", paternity: "배우자출산",
+  family_care: "가족돌봄", public_duty: "공가", menstrual: "생리",
+  compensatory: "대체휴가", other: "기타",
 };
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   pending: { label: "대기", className: "bg-yellow-50 text-yellow-700" },
@@ -54,13 +58,13 @@ export default async function LeavesPage() {
   type PendingLeave = {
     id: string; type: string; start_date: string; start_time: string;
     end_date: string; end_time: string; duration_hours: number; reason: string | null;
-    profiles: { name: string; email: string };
+    profiles: { name: string; email: string; avatar_url: string | null };
   };
   let pendingLeaves: PendingLeave[] = [];
   if (isManager) {
     const { data } = await adminClient
       .from("leaves")
-      .select("id, type, start_date, start_time, end_date, end_time, duration_hours, reason, profiles(name, email)")
+      .select("id, type, start_date, start_time, end_date, end_time, duration_hours, reason, profiles(name, email, avatar_url)")
       .eq("company_id", profile.company_id)
       .eq("status", "pending")
       .order("created_at", { ascending: true });
@@ -98,7 +102,9 @@ export default async function LeavesPage() {
           <div className="divide-y divide-gray-50">
             {pendingLeaves.map((leave) => (
               <div key={leave.id} className="flex items-center justify-between px-6 py-4">
-                <div>
+                <div className="flex items-center gap-3">
+                  <Avatar url={leave.profiles.avatar_url} name={leave.profiles.name} size={36} />
+                  <div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-gray-900">{leave.profiles.name}</p>
                     <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
@@ -110,6 +116,7 @@ export default async function LeavesPage() {
                     {" · "}{leave.duration_hours}시간
                   </p>
                   {leave.reason && <p className="mt-0.5 text-xs text-gray-400">{leave.reason}</p>}
+                  </div>
                 </div>
                 <LeaveActions leaveId={leave.id} />
               </div>

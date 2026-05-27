@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import CompanyInfoView from "./company-info-view";
 
 export default async function CompanySettingsPage() {
   const supabase = await createClient();
@@ -18,7 +19,7 @@ export default async function CompanySettingsPage() {
 
   const { data: company } = await adminClient
     .from("companies")
-    .select("name, invite_code, created_at")
+    .select("name, created_at, founded_at, business_number, corp_number, phone, address, logo_url")
     .eq("id", profile.company_id)
     .single();
 
@@ -28,27 +29,24 @@ export default async function CompanySettingsPage() {
     .eq("company_id", profile.company_id)
     .eq("status", "active");
 
+  if (!company) return null;
+
+  const isEditable = profile.role === "admin" || profile.role === "manager";
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-sm font-medium text-gray-900">회사 정보</h2>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">회사명</span>
-            <span className="text-sm text-gray-900">{company?.name}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">전체 멤버</span>
-            <span className="text-sm text-gray-900">{count || 0}명</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">생성일</span>
-            <span className="text-sm text-gray-900">
-              {company?.created_at ? new Date(company.created_at).toLocaleDateString("ko-KR") : "-"}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <CompanyInfoView
+      data={{
+        name: company.name,
+        foundedAt: company.founded_at ?? "",
+        businessNumber: company.business_number ?? "",
+        corpNumber: company.corp_number ?? "",
+        phone: company.phone ?? "",
+        address: company.address ?? "",
+        logoUrl: company.logo_url ?? "",
+        createdAt: company.created_at,
+        memberCount: count || 0,
+      }}
+      isEditable={isEditable}
+    />
   );
 }

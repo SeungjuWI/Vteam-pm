@@ -73,18 +73,20 @@ export default async function AttendancePage() {
 
   const { data: teamTodayRaw } = await adminClient
     .from("attendances")
-    .select("id, clock_in, clock_out, profiles(name, email)")
+    .select("id, clock_in, clock_out, profiles(name, email, avatar_url, position)")
     .eq("company_id", profile.company_id)
     .gte("clock_in", todayStart.toISOString())
     .lte("clock_in", todayEnd.toISOString())
     .order("clock_in", { ascending: true });
 
-  type TeamRecord = { id: string; clock_in: string; clock_out: string | null; profiles: { name: string; email: string } };
+  type TeamRecord = { id: string; clock_in: string; clock_out: string | null; profiles: { name: string; email: string; avatar_url: string | null; position: string | null } };
   const teamToday = ((teamTodayRaw || []) as unknown as TeamRecord[]);
 
   const timelineRecords = teamToday.map((r) => ({
     name: r.profiles.name,
     email: r.profiles.email,
+    avatarUrl: r.profiles.avatar_url,
+    position: r.profiles.position,
     clockIn: r.clock_in,
     clockOut: r.clock_out,
   }));

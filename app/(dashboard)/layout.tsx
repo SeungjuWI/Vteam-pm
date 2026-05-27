@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "../(auth)/actions";
+import CompanyChip from "@/components/company-chip";
 
 const navItems = [
   { href: "/", label: "대시보드", icon: "home" },
@@ -59,9 +59,8 @@ export default function DashboardLayout({
     <div className="flex min-h-screen">
       {/* Sidebar */}
       <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
-        <div className="flex h-14 items-center gap-2.5 px-5">
-          <Image src="/logo.png" alt="Vteam" width={28} height={28} />
-          <span className="text-base font-semibold text-gray-900">Vteam</span>
+        <div className="flex h-14 items-center px-3">
+          <CompanyChip />
         </div>
         <nav className="flex-1 px-3 py-2">
           {navItems.map((item) => {
@@ -91,15 +90,12 @@ export default function DashboardLayout({
           <h2 className="text-sm font-medium text-gray-900">
             {navItems.find((i) => i.href === pathname || (i.href !== "/" && pathname.startsWith(i.href)))?.label ?? "대시보드"}
           </h2>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => logout()}
-              className="rounded-lg px-3 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
-            >
-              로그아웃
-            </button>
-            <div className="h-8 w-8 rounded-full bg-gray-200" />
-          </div>
+          <button
+            onClick={() => logout()}
+            className="rounded-lg px-3 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
+          >
+            로그아웃
+          </button>
         </header>
         {/* Content */}
         <main className="flex-1 overflow-auto bg-gray-50 p-6">{children}</main>

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import InviteForm from "./invite-form";
 import MemberActions from "./member-actions";
 import InvitationItem from "./invitation-item";
+import MemberList from "./member-list";
 
 export default async function MembersPage() {
   const supabase = await createClient();
@@ -21,7 +22,7 @@ export default async function MembersPage() {
 
   const { data: members } = await adminClient
     .from("profiles")
-    .select("id, name, email, role, status, created_at")
+    .select("id, name, email, role, status, position, avatar_url, created_at")
     .eq("company_id", profile.company_id)
     .order("created_at", { ascending: true });
 
@@ -34,7 +35,7 @@ export default async function MembersPage() {
 
   const pendingMembers = members?.filter((m) => m.status === "pending") || [];
   const activeMembers = members?.filter((m) => m.status === "active") || [];
-  const isManager = profile.role === "manager";
+  const isManager = profile.role === "manager" || profile.role === "admin";
 
   return (
     <div className="flex flex-col gap-6">
@@ -89,37 +90,10 @@ export default async function MembersPage() {
       )}
 
       {/* 활성 멤버 */}
-      <div className="rounded-xl bg-white">
-        <div className="border-b border-gray-100 px-6 py-4">
-          <h2 className="text-sm font-medium text-gray-900">
-            멤버 <span className="ml-1 text-gray-400">{activeMembers.length}</span>
-          </h2>
-        </div>
-        {activeMembers.length === 0 ? (
-          <div className="flex h-48 items-center justify-center">
-            <p className="text-sm text-gray-400">아직 멤버가 없습니다. 이메일로 초대해보세요.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {activeMembers.map((member) => (
-              <div key={member.id} className="flex items-center justify-between px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600">
-                    {member.name?.[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{member.name}</p>
-                    <p className="text-xs text-gray-500">{member.email}</p>
-                  </div>
-                </div>
-                <span className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                  {member.role === "manager" ? "관리자" : "직원"}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <MemberList
+        members={activeMembers.map((m) => ({ id: m.id, name: m.name, email: m.email, role: m.role, position: m.position ?? "", avatarUrl: m.avatar_url ?? "" }))}
+        isManager={isManager}
+      />
     </div>
   );
 }

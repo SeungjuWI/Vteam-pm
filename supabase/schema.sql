@@ -6,6 +6,12 @@ create table companies (
   name text not null,
   created_by uuid references auth.users(id),
   invite_code text unique,
+  business_number text,
+  corp_number text,
+  phone text,
+  address text,
+  founded_at date,
+  logo_url text,
   created_at timestamptz default now()
 );
 
@@ -17,6 +23,7 @@ create table profiles (
   role text not null check (role in ('admin', 'manager', 'employee')),
   company_id uuid references companies(id),
   avatar_url text,
+  position text,
   status text default 'active' check (status in ('pending', 'active', 'inactive')),
   join_date date,
   created_at timestamptz default now()
@@ -69,6 +76,17 @@ create table company_leave_settings (
   default_annual_days integer default 15,
   grant_basis text default 'join_date' check (grant_basis in ('join_date', 'fiscal_year')),
   fiscal_year_start integer default 1,
+  first_year_monthly boolean default true,
+  longevity_bonus boolean default true,
+  max_annual_days integer default 25,
+  carry_over boolean default false,
+  carry_over_max_days integer default 0,
+  annual_promotion boolean default false,
+  sick_leave_days integer default 0,
+  condolence_leave boolean default true,
+  maternity_leave boolean default true,
+  paternity_leave boolean default true,
+  family_care_days integer default 10,
   created_at timestamptz default now()
 );
 
@@ -89,7 +107,7 @@ create table leaves (
   id uuid primary key default gen_random_uuid(),
   employee_id uuid references profiles(id) not null,
   company_id uuid references companies(id) not null,
-  type text not null check (type in ('annual', 'half_am', 'half_pm', 'sick', 'other')),
+  type text not null check (type in ('annual', 'half_am', 'half_pm', 'sick', 'condolence', 'maternity', 'paternity', 'family_care', 'public_duty', 'menstrual', 'compensatory', 'other')),
   start_date date not null,
   start_time time not null,
   end_date date not null,

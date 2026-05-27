@@ -1,8 +1,12 @@
 "use client";
 
+import Avatar from "@/components/avatar";
+
 type TeamRecord = {
   name: string;
   email: string;
+  avatarUrl: string | null;
+  position: string | null;
   clockIn: string;
   clockOut: string | null;
 };
@@ -77,9 +81,7 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
                 <div key={i} className="flex min-w-[800px] items-center">
                   {/* 프로필 */}
                   <div className="flex w-48 shrink-0 items-center gap-3 px-6 py-4">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-600">
-                      {record.name[0]}
-                    </div>
+                    <Avatar url={record.avatarUrl} name={record.name} size={32} />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-gray-900">{record.name}</p>
                       <p className="text-xs text-blue-500">{getDuration(record.clockIn, record.clockOut)}</p>
@@ -89,7 +91,6 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
                   {/* 타임라인 바 */}
                   <div className="relative flex-1 py-4 pr-4">
                     <div className="relative h-10 rounded-lg bg-gray-50">
-                      {/* 시간 구분선 */}
                       {hours.map((h) => (
                         <div
                           key={h}
@@ -97,7 +98,6 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
                           style={{ left: `${((h - HOUR_START) / TOTAL_HOURS) * 100}%` }}
                         />
                       ))}
-                      {/* 근무 바 */}
                       <div
                         className={`absolute top-1 h-8 rounded-md px-2.5 py-1 ${
                           isWorking ? "bg-emerald-100" : "bg-blue-50"

@@ -46,6 +46,34 @@ export async function clockIn() {
   revalidatePath("/attendance");
 }
 
+export async function getAttendanceStatus() {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { data: record } = await adminClient
+    .from("attendances")
+    .select("id, clock_in, clock_out")
+    .eq("employee_id", user.id)
+    .gte("clock_in", today.toISOString())
+    .order("clock_in", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!record) return { status: "idle" as const, clockIn: null, clockOut: null };
+
+  if (record.clock_out) {
+    return { status: "done" as const, clockIn: record.clock_in, clockOut: record.clock_out };
+  }
+
+  return { status: "working" as const, clockIn: record.clock_in, clockOut: null };
+}
+
 export async function clockOut() {
   const supabase = await createClient();
   const adminClient = createAdminClient();

@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       if (!existing) {
         // 신규 유저
         if (invitation) {
-          await adminClient.from("profiles").insert({
+          const { error: insertError } = await adminClient.from("profiles").insert({
             id: data.user.id,
             email: userEmail,
             name: data.user.user_metadata.full_name || userEmail.split("@")[0],
@@ -42,6 +42,11 @@ export async function GET(request: Request) {
             avatar_url: data.user.user_metadata.avatar_url || null,
             status: "setup",
           });
+
+          if (insertError) {
+            console.error("Profile insert failed:", insertError);
+            return NextResponse.redirect(`${origin}/onboarding`);
+          }
 
           return NextResponse.redirect(`${origin}/welcome`);
         }

@@ -37,15 +37,22 @@ export default async function OnboardingPage() {
     .single();
 
   if (invitation) {
-    await adminClient
-      .from("profiles")
-      .update({ company_id: invitation.company_id, role: "employee", status: "setup" })
-      .eq("id", user.id);
-
-    await adminClient
-      .from("invitations")
-      .update({ status: "accepted" })
-      .eq("id", invitation.id);
+    if (profile) {
+      await adminClient
+        .from("profiles")
+        .update({ company_id: invitation.company_id, role: "employee", status: "setup" })
+        .eq("id", user.id);
+    } else {
+      await adminClient.from("profiles").insert({
+        id: user.id,
+        email: userEmail,
+        name: user.user_metadata.full_name || userEmail.split("@")[0],
+        role: "employee",
+        company_id: invitation.company_id,
+        avatar_url: user.user_metadata.avatar_url || null,
+        status: "setup",
+      });
+    }
 
     redirect("/welcome");
   }

@@ -18,7 +18,8 @@ export default async function WelcomePage() {
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.status !== "setup") redirect("/attendance");
+  if (!profile?.company_id) redirect("/onboarding");
+  if (profile.status !== "setup") redirect("/attendance");
 
   const { data: company } = await adminClient
     .from("companies")

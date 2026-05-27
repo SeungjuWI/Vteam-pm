@@ -8,7 +8,7 @@ import NotificationButton from "@/components/notification-button";
 import ProfileMenu from "@/components/profile-menu";
 
 const navItems = [
-  { href: "/", label: "대시보드", icon: "home" },
+  { href: "/dashboard", label: "대시보드", icon: "home" },
   { href: "/attendance", label: "출퇴근", icon: "clock" },
   { href: "/leaves", label: "휴가", icon: "calendar" },
   { href: "/projects", label: "프로젝트", icon: "folder" },

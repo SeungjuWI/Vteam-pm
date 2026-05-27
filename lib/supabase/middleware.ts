@@ -31,30 +31,26 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // 비로그인 사용자 → 로그인/홈/콜백만 허용
-  if (
-    !user &&
-    pathname !== "/" &&
-    !pathname.startsWith("/login") &&
-    !pathname.startsWith("/auth/callback")
-  ) {
+  // 공개 페이지
+  const isPublic =
+    pathname === "/" ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/invite");
+
+  // 비로그인 → 공개 페이지만
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // 로그인된 사용자가 auth 페이지 접근 시 대시보드로
-  if (
-    user &&
-    (pathname === "/" || pathname.startsWith("/login"))
-  ) {
+  // 로그인 → auth 페이지 접근 차단
+  if (user && (pathname === "/" || pathname.startsWith("/login"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/attendance";
     return NextResponse.redirect(url);
   }
-
-  // admin 페이지 보호 (추후 profiles 테이블 role 체크)
-  // TODO: admin 역할 확인 로직
 
   return supabaseResponse;
 }

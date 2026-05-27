@@ -5,6 +5,7 @@ create table companies (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   created_by uuid references auth.users(id),
+  invite_code text unique,
   created_at timestamptz default now()
 );
 
@@ -16,6 +17,17 @@ create table profiles (
   role text not null check (role in ('admin', 'manager', 'employee')),
   company_id uuid references companies(id),
   avatar_url text,
+  status text default 'active' check (status in ('pending', 'active', 'inactive')),
+  created_at timestamptz default now()
+);
+
+-- 초대
+create table invitations (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid references companies(id) not null,
+  email text not null,
+  invited_by uuid references profiles(id) not null,
+  status text default 'pending' check (status in ('pending', 'accepted', 'expired')),
   created_at timestamptz default now()
 );
 

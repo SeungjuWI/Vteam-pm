@@ -1,0 +1,48 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+function generateInviteCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+export async function createCompany(formData: FormData) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  const companyName = formData.get("companyName") as string;
+  if (!companyName?.trim()) return { error: "회사명을 입력해주세요" };
+
+  const { data: company, error: companyError } = await adminClient
+    .from("companies")
+    .insert({
+      name: companyName.trim(),
+      created_by: user.id,
+      invite_code: generateInviteCode(),
+    })
+    .select()
+    .single();
+
+  if (companyError) return { error: companyError.message };
+
+  const { error: profileError } = await adminClient
+    .from("profiles")
+    .update({ role: "manager", company_id: company.id, status: "active" })
+    .eq("id", user.id);
+
+  if (profileError) return { error: profileError.message };
+
+  redirect("/attendance");
+}

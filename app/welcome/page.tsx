@@ -1,13 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import DashboardShell from "./dashboard-shell";
+import WelcomeForm from "./welcome-form";
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function WelcomePage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -15,15 +11,25 @@ export default async function DashboardLayout({
   if (!user) redirect("/login");
 
   const adminClient = createAdminClient();
+
   const { data: profile } = await adminClient
     .from("profiles")
     .select("company_id, status")
     .eq("id", user.id)
     .single();
 
-  if (!profile?.company_id) redirect("/onboarding");
-  if (profile.status === "setup") redirect("/welcome");
-  if (profile.status === "pending") redirect("/pending");
+  if (!profile || profile.status !== "setup") redirect("/attendance");
 
-  return <DashboardShell>{children}</DashboardShell>;
+  const { data: company } = await adminClient
+    .from("companies")
+    .select("name, logo_url")
+    .eq("id", profile.company_id)
+    .single();
+
+  return (
+    <WelcomeForm
+      companyName={company?.name ?? ""}
+      companyLogoUrl={company?.logo_url ?? ""}
+    />
+  );
 }

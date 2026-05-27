@@ -1,9 +1,8 @@
-import heic2any from "heic2any";
-
 /**
  * HEIC/HEIF 파일을 JPEG Blob으로 변환
  */
 async function convertHeic(file: File): Promise<Blob> {
+  const { default: heic2any } = await import("heic2any");
   const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
   return Array.isArray(result) ? result[0] : result;
 }

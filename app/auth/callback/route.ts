@@ -20,18 +20,19 @@ export async function GET(request: Request) {
         .eq("id", data.user.id)
         .single();
 
-      // 초대 확인 (이메일 매칭)
+      // 초대 확인 (pending 또는 이미 accepted 됐지만 setup 미완료인 경우 대응)
       const { data: invitation } = await adminClient
         .from("invitations")
-        .select("id, company_id")
+        .select("id, company_id, status")
         .eq("email", userEmail)
-        .eq("status", "pending")
+        .in("status", ["pending", "accepted"])
+        .order("created_at", { ascending: false })
+        .limit(1)
         .single();
 
       if (!existing) {
         // 신규 유저
         if (invitation) {
-          // 초대받은 유저 → 바로 회사 연결 (active)
           await adminClient.from("profiles").insert({
             id: data.user.id,
             email: userEmail,
@@ -39,16 +40,10 @@ export async function GET(request: Request) {
             role: "employee",
             company_id: invitation.company_id,
             avatar_url: data.user.user_metadata.avatar_url || null,
-            status: "active",
+            status: "setup",
           });
 
-          // 초대 상태 업데이트
-          await adminClient
-            .from("invitations")
-            .update({ status: "accepted" })
-            .eq("id", invitation.id);
-
-          return NextResponse.redirect(`${origin}/attendance`);
+          return NextResponse.redirect(`${origin}/welcome`);
         }
 
         // 초대 없이 가입 → 온보딩
@@ -66,20 +61,20 @@ export async function GET(request: Request) {
       if (!existing.company_id && invitation) {
         await adminClient
           .from("profiles")
-          .update({ company_id: invitation.company_id, role: "employee", status: "active" })
+          .update({ company_id: invitation.company_id, role: "employee", status: "setup" })
           .eq("id", data.user.id);
 
-        await adminClient
-          .from("invitations")
-          .update({ status: "accepted" })
-          .eq("id", invitation.id);
-
-        return NextResponse.redirect(`${origin}/attendance`);
+        return NextResponse.redirect(`${origin}/welcome`);
       }
 
       // 기존 유저, 회사 없음, 초대 없음
       if (!existing.company_id) {
         return NextResponse.redirect(`${origin}/onboarding`);
+      }
+
+      // setup 상태면 웰컴 페이지로
+      if (existing.status === "setup") {
+        return NextResponse.redirect(`${origin}/welcome`);
       }
 
       // pending 상태면 대기 페이지로

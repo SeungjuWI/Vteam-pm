@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 type AttendanceRecord = {
   clock_in: string;
@@ -75,12 +75,21 @@ type DayInfo = {
 export default function AttendanceCalendar({ records, leaves, requiredHours }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [baseDate, setBaseDate] = useState(new Date());
+  const [now, setNow] = useState(() => Date.now());
 
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
+
+  // 근무 중인 기록이 있으면 1분마다 갱신
+  const hasActiveRecord = records.some((r) => !r.clock_out);
+  useEffect(() => {
+    if (!hasActiveRecord) return;
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, [hasActiveRecord]);
 
   const requiredMs = requiredHours * 3600000;
 
@@ -91,7 +100,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
     for (const r of records) {
       const clockIn = new Date(r.clock_in);
       const key = `${clockIn.getFullYear()}-${clockIn.getMonth()}-${clockIn.getDate()}`;
-      const end = r.clock_out ? new Date(r.clock_out).getTime() : Date.now();
+      const end = r.clock_out ? new Date(r.clock_out).getTime() : now;
       const ms = end - clockIn.getTime();
       const existing = map.get(key);
       if (existing) {
@@ -102,7 +111,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
       }
     }
     return map;
-  }, [records]);
+  }, [records, now]);
 
   // Build leave map
   const leaveMap = useMemo(() => {

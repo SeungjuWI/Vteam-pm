@@ -22,6 +22,9 @@ export async function createCompany(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다" };
 
+  const name = formData.get("name") as string;
+  if (!name?.trim()) return { error: "이름을 입력해주세요" };
+
   const companyName = formData.get("companyName") as string;
   if (!companyName?.trim()) return { error: "회사명을 입력해주세요" };
 
@@ -39,7 +42,7 @@ export async function createCompany(formData: FormData) {
 
   const { error: profileError } = await adminClient
     .from("profiles")
-    .update({ role: "manager", company_id: company.id, status: "active" })
+    .update({ name: name.trim(), role: "manager", company_id: company.id, status: "active" })
     .eq("id", user.id);
 
   if (profileError) return { error: profileError.message };

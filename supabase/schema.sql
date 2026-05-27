@@ -24,6 +24,7 @@ create table profiles (
   company_id uuid references companies(id),
   avatar_url text,
   position text,
+  reports_to uuid references profiles(id),
   status text default 'active' check (status in ('pending', 'active', 'inactive')),
   join_date date,
   created_at timestamptz default now()

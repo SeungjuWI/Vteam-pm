@@ -2,14 +2,22 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Avatar from "@/components/avatar";
-import { getMessages, sendMessage, markAsRead } from "@/app/(dashboard)/dm/actions";
+import {
+  getMessages,
+  sendMessage,
+  markAsRead,
+  translateSingleMessage,
+} from "@/app/(dashboard)/dm/actions";
 import { createClient } from "@/lib/supabase/client";
+import { LANGUAGES } from "@/lib/languages";
 
 interface Message {
   id: string;
   sender_id: string;
   receiver_id: string;
   content: string;
+  sender_language?: string | null;
+  translated_content?: string | null;
   is_read: boolean;
   created_at: string;
 }
@@ -20,6 +28,7 @@ interface ChatMember {
   avatar_url: string | null;
   position: string | null;
   presence: string | null;
+  language?: string | null;
 }
 
 const presenceLabel: Record<string, string> = {
@@ -33,9 +42,83 @@ const MAX_W = 520;
 const MIN_H = 320;
 const MAX_H = 640;
 
+// 우클릭 컨텍스트 메뉴
+function ContextMenu({
+  x,
+  y,
+  onViewOriginal,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  onViewOriginal: () => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="fixed z-[9999] min-w-32 rounded-lg border border-gray-200 bg-white py-1"
+      style={{ top: y, left: x }}
+    >
+      <button
+        onClick={() => {
+          onViewOriginal();
+          onClose();
+        }}
+        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+      >
+        <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
+        </svg>
+        원문 보기
+      </button>
+    </div>
+  );
+}
+
+// 원문 보기 팝업
+function OriginalPopup({
+  original,
+  senderLang,
+  onClose,
+}: {
+  original: string;
+  senderLang: string;
+  onClose: () => void;
+}) {
+  const lang = LANGUAGES.find((l) => l.code === senderLang);
+
+  return (
+    <div className="mt-1 rounded-lg border border-gray-200 bg-white px-3 py-2">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-[10px] text-gray-400">
+          원문 {lang ? `${lang.flag} ${lang.label}` : ""}
+        </span>
+        <button onClick={onClose} className="text-gray-300 hover:text-gray-500">
+          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <p className="text-xs text-gray-600">{original}</p>
+    </div>
+  );
+}
+
 export default function DmChat({
   member,
   currentUserId,
+  currentUserLang,
   onClose,
   onMinimize,
   isMinimized,
@@ -43,6 +126,7 @@ export default function DmChat({
 }: {
   member: ChatMember;
   currentUserId: string;
+  currentUserLang: string;
   onClose: () => void;
   onMinimize: () => void;
   isMinimized: boolean;
@@ -53,11 +137,13 @@ export default function DmChat({
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [size, setSize] = useState({ w: 320, h: 420 });
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msgId: string } | null>(null);
+  const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resizingRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
-  const ASPECT = 420 / 320; // h/w 비율 고정
+  const ASPECT = 420 / 320;
 
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
@@ -108,19 +194,31 @@ export default function DmChat({
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "direct_messages" },
-        (payload) => {
+        async (payload) => {
           const msg = payload.new as Message;
-          // 이 채팅방에 해당하는 메시지만
           const isRelevant =
             (msg.sender_id === member.id && msg.receiver_id === currentUserId) ||
             (msg.sender_id === currentUserId && msg.receiver_id === member.id);
-          if (isRelevant) {
-            setMessages((prev) => [...prev, msg]);
-            setTimeout(scrollToBottom, 50);
-            // 상대방이 보낸 메시지면 읽음 처리
-            if (msg.sender_id === member.id) {
-              markAsRead(member.id);
-            }
+          if (!isRelevant) return;
+
+          // 상대방 메시지이고 언어가 다르면 번역
+          if (
+            msg.sender_id === member.id &&
+            msg.sender_language &&
+            msg.sender_language !== currentUserLang
+          ) {
+            const result = await translateSingleMessage(
+              msg.id,
+              msg.content,
+              msg.sender_language
+            );
+            msg.translated_content = result.translated ?? null;
+          }
+
+          setMessages((prev) => [...prev, msg]);
+          setTimeout(scrollToBottom, 50);
+          if (msg.sender_id === member.id) {
+            markAsRead(member.id);
           }
         }
       )
@@ -129,7 +227,7 @@ export default function DmChat({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [member.id, currentUserId, scrollToBottom]);
+  }, [member.id, currentUserId, currentUserLang, scrollToBottom]);
 
   // 포커스 시 읽음 처리
   useEffect(() => {
@@ -145,12 +243,13 @@ export default function DmChat({
     setInput("");
     setSending(true);
 
-    // 낙관적 업데이트
     const optimistic: Message = {
       id: `temp-${Date.now()}`,
       sender_id: currentUserId,
       receiver_id: member.id,
       content: text,
+      sender_language: currentUserLang,
+      translated_content: null,
       is_read: false,
       created_at: new Date().toISOString(),
     };
@@ -160,7 +259,6 @@ export default function DmChat({
     const result = await sendMessage(member.id, text);
     setSending(false);
     if (result.error) {
-      // 실패시 낙관적 메시지 제거
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
     }
   };
@@ -169,6 +267,24 @@ export default function DmChat({
     const d = new Date(dateStr);
     return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
   };
+
+  const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
+    // 번역된 메시지에만 우클릭 메뉴
+    if (!msg.translated_content) return;
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, msgId: msg.id });
+  };
+
+  const toggleOriginal = (msgId: string) => {
+    setShowOriginal((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) next.delete(msgId);
+      else next.add(msgId);
+      return next;
+    });
+  };
+
+  const isTranslated = member.language && member.language !== currentUserLang;
 
   if (isMinimized) {
     return (
@@ -199,7 +315,7 @@ export default function DmChat({
       className="relative flex flex-col overflow-hidden rounded-t-xl border border-b-0 border-gray-200 bg-white"
       style={{ width: size.w, height: size.h, ...style }}
     >
-      {/* 리사이즈 핸들 - 좌상단 모서리만 */}
+      {/* 리사이즈 핸들 */}
       <div
         onMouseDown={handleResizeStart}
         className="absolute left-0 top-0 z-10 h-4 w-4 cursor-nw-resize"
@@ -221,8 +337,19 @@ export default function DmChat({
           </div>
           <div>
             <div className="text-sm font-medium text-gray-900">{member.name}</div>
-            <div className="text-[11px] text-gray-400">
-              {presenceLabel[member.presence ?? "offline"] ?? "오프라인"}
+            <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+              <span>{presenceLabel[member.presence ?? "offline"] ?? "오프라인"}</span>
+              {isTranslated && (
+                <>
+                  <span className="text-gray-200">·</span>
+                  <span className="flex items-center gap-0.5">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
+                    </svg>
+                    자동 번역
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -262,6 +389,10 @@ export default function DmChat({
         ) : (
           messages.map((msg) => {
             const isMine = msg.sender_id === currentUserId;
+            const hasTranslation = !!msg.translated_content;
+            const displayText = hasTranslation ? msg.translated_content! : msg.content;
+            const isShowingOriginal = showOriginal.has(msg.id);
+
             return (
               <div
                 key={msg.id}
@@ -269,17 +400,31 @@ export default function DmChat({
               >
                 <div className={`flex max-w-[75%] flex-col ${isMine ? "items-end" : "items-start"}`}>
                   <div
+                    onContextMenu={(e) => handleContextMenu(e, msg)}
                     className={`rounded-2xl px-3 py-2 text-sm ${
                       isMine
                         ? "bg-blue-500 text-white"
                         : "bg-gray-100 text-gray-900"
-                    }`}
+                    } ${hasTranslation ? "cursor-context-menu" : ""}`}
                   >
-                    {msg.content}
+                    {displayText}
                   </div>
-                  <span className="mt-0.5 text-[10px] text-gray-300">
-                    {formatTime(msg.created_at)}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="mt-0.5 text-[10px] text-gray-300">
+                      {formatTime(msg.created_at)}
+                    </span>
+                    {hasTranslation && (
+                      <span className="mt-0.5 text-[10px] text-blue-300">번역됨</span>
+                    )}
+                  </div>
+                  {/* 원문 보기 */}
+                  {isShowingOriginal && hasTranslation && (
+                    <OriginalPopup
+                      original={msg.content}
+                      senderLang={msg.sender_language ?? ""}
+                      onClose={() => toggleOriginal(msg.id)}
+                    />
+                  )}
                 </div>
               </div>
             );
@@ -315,6 +460,16 @@ export default function DmChat({
           </button>
         </form>
       </div>
+
+      {/* 컨텍스트 메뉴 */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onViewOriginal={() => toggleOriginal(contextMenu.msgId)}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }

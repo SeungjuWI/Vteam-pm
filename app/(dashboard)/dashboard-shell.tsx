@@ -89,10 +89,12 @@ export default function DashboardShell({
   children,
   role,
   userId,
+  userLang,
 }: {
   children: React.ReactNode;
   role: string;
   userId: string;
+  userLang: string;
 }) {
   const pathname = usePathname();
   const isManager = role === "manager" || role === "admin";
@@ -135,7 +137,7 @@ export default function DashboardShell({
               </>
             )}
           </nav>
-          <DmChatManager currentUserId={userId} />
+          <DmChatManager currentUserId={userId} currentUserLang={userLang} />
         </div>
       </aside>
 

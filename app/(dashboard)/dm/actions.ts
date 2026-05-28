@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { translateText } from "@/lib/translate";
 
 export async function getTeamMembers() {
   const supabase = await createClient();
@@ -21,7 +22,7 @@ export async function getTeamMembers() {
 
   const { data: members } = await adminClient
     .from("profiles")
-    .select("id, name, email, avatar_url, position, presence, last_seen_at")
+    .select("id, name, email, avatar_url, position, presence, last_seen_at, language")
     .eq("company_id", profile.company_id)
     .eq("status", "active")
     .neq("id", user.id)
@@ -38,16 +39,78 @@ export async function getMessages(otherUserId: string) {
   if (!user) return [];
 
   const adminClient = createAdminClient();
+
+  // 내 언어 가져오기
+  const { data: myProfile } = await adminClient
+    .from("profiles")
+    .select("language")
+    .eq("id", user.id)
+    .single();
+  const myLang = myProfile?.language ?? "ko";
+
+  // 메시지 로드
   const { data } = await adminClient
     .from("direct_messages")
-    .select("id, sender_id, receiver_id, content, is_read, created_at")
+    .select("id, sender_id, receiver_id, content, sender_language, is_read, created_at")
     .or(
       `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
     )
     .order("created_at", { ascending: true })
     .limit(100);
 
-  return data ?? [];
+  if (!data) return [];
+
+  // 번역이 필요한 메시지 찾기 (상대방이 보낸 것 중 언어가 다른 것)
+  const needsTranslation = data.filter(
+    (m) => m.sender_id !== user.id && m.sender_language && m.sender_language !== myLang
+  );
+
+  if (needsTranslation.length === 0) {
+    return data.map((m) => ({ ...m, translated_content: null }));
+  }
+
+  // 캐시된 번역 조회
+  const msgIds = needsTranslation.map((m) => m.id);
+  const { data: cached } = await adminClient
+    .from("message_translations")
+    .select("message_id, translated_content")
+    .in("message_id", msgIds)
+    .eq("target_language", myLang);
+
+  const cacheMap = new Map(
+    (cached ?? []).map((t) => [t.message_id, t.translated_content])
+  );
+
+  // 캐시에 없는 것만 번역
+  const uncached = needsTranslation.filter((m) => !cacheMap.has(m.id));
+
+  if (uncached.length > 0) {
+    const translations = await Promise.all(
+      uncached.map(async (m) => {
+        const translated = await translateText(m.content, m.sender_language!, myLang);
+        return { message_id: m.id, target_language: myLang, translated_content: translated };
+      })
+    );
+
+    // 캐시에 저장
+    if (translations.length > 0) {
+      await adminClient.from("message_translations").upsert(translations, {
+        onConflict: "message_id,target_language",
+      });
+    }
+
+    for (const t of translations) {
+      cacheMap.set(t.message_id, t.translated_content);
+    }
+  }
+
+  return data.map((m) => ({
+    ...m,
+    translated_content:
+      m.sender_id !== user.id && m.sender_language !== myLang
+        ? cacheMap.get(m.id) ?? null
+        : null,
+  }));
 }
 
 export async function sendMessage(receiverId: string, content: string) {
@@ -60,7 +123,7 @@ export async function sendMessage(receiverId: string, content: string) {
   const adminClient = createAdminClient();
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("company_id")
+    .select("company_id, language")
     .eq("id", user.id)
     .single();
 
@@ -71,10 +134,54 @@ export async function sendMessage(receiverId: string, content: string) {
     sender_id: user.id,
     receiver_id: receiverId,
     content: content.trim(),
+    sender_language: profile.language ?? "ko",
   });
 
   if (error) return { error: "메시지 전송에 실패했습니다" };
   return { success: true };
+}
+
+export async function translateSingleMessage(
+  messageId: string,
+  content: string,
+  fromLang: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  const adminClient = createAdminClient();
+  const { data: myProfile } = await adminClient
+    .from("profiles")
+    .select("language")
+    .eq("id", user.id)
+    .single();
+  const myLang = myProfile?.language ?? "ko";
+
+  if (fromLang === myLang) return { translated: content };
+
+  // 캐시 확인
+  const { data: cached } = await adminClient
+    .from("message_translations")
+    .select("translated_content")
+    .eq("message_id", messageId)
+    .eq("target_language", myLang)
+    .single();
+
+  if (cached) return { translated: cached.translated_content };
+
+  // 번역
+  const translated = await translateText(content, fromLang, myLang);
+
+  // 캐시 저장
+  await adminClient.from("message_translations").upsert(
+    { message_id: messageId, target_language: myLang, translated_content: translated },
+    { onConflict: "message_id,target_language" }
+  );
+
+  return { translated };
 }
 
 export async function markAsRead(otherUserId: string) {

@@ -17,7 +17,7 @@ export default async function DashboardLayout({
   const adminClient = createAdminClient();
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("company_id, status")
+    .select("company_id, status, role, language")
     .eq("id", user.id)
     .single();
 
@@ -25,14 +25,12 @@ export default async function DashboardLayout({
   if (profile.status === "setup") redirect("/welcome");
   if (profile.status === "pending") redirect("/pending");
 
-  const { data: roleData } = await adminClient
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
   return (
-    <DashboardShell role={roleData?.role ?? "employee"} userId={user.id}>
+    <DashboardShell
+      role={profile.role ?? "employee"}
+      userId={user.id}
+      userLang={profile.language ?? "ko"}
+    >
       {children}
     </DashboardShell>
   );

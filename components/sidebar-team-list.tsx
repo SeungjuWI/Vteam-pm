@@ -13,6 +13,7 @@ interface TeamMember {
   position: string | null;
   presence: string | null;
   last_seen_at: string | null;
+  language?: string | null;
 }
 
 const presenceConfig = {

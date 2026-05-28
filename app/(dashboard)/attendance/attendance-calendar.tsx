@@ -73,7 +73,7 @@ type DayInfo = {
 };
 
 export default function AttendanceCalendar({ records, leaves, requiredHours }: Props) {
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [baseDate, setBaseDate] = useState(new Date());
   const [now, setNow] = useState(0);
   const mounted = now > 0;
@@ -396,9 +396,11 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
                     </div>
                   ) : day.totalMs > 0 ? (
                     <div className="mt-1.5">
-                      <p className={`text-xs font-medium ${day.isOvertime ? "text-blue-500" : "text-gray-600"}`}>
+                      <span className={`inline-block rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+                        day.isOvertime ? "bg-red-50 text-red-400" : "bg-green-50 text-green-600"
+                      }`}>
                         {formatHMShort(day.totalMs)}
-                      </p>
+                      </span>
                     </div>
                   ) : null}
                 </div>

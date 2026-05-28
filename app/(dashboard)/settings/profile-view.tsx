@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveProfile } from "./profile-actions";
 import { compressImage } from "@/lib/compress-image";
+import LanguageSelect from "@/components/language-select";
+import { LANGUAGES } from "@/lib/languages";
 
 interface ProfileData {
   name: string;
@@ -11,6 +13,7 @@ interface ProfileData {
   role: string;
   position: string;
   avatarUrl: string;
+  language: string;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -148,6 +151,10 @@ export default function ProfileView({ data }: { data: ProfileData }) {
             />
           </div>
           <div className="flex flex-col gap-1.5">
+            <label className="text-sm text-gray-500">모국어</label>
+            <LanguageSelect name="language" defaultValue={data.language} />
+          </div>
+          <div className="flex flex-col gap-1.5">
             <label className="text-sm text-gray-500">이메일</label>
             <p className="px-3 py-2 text-sm text-gray-400">{data.email}</p>
           </div>
@@ -197,6 +204,12 @@ export default function ProfileView({ data }: { data: ProfileData }) {
         <Row label="이메일" value={data.email} />
         <Row label="역할" value={ROLE_LABELS[data.role] ?? data.role} />
         {data.position && <Row label="포지션" value={data.position} />}
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-500">모국어</span>
+          <span className="text-sm text-gray-900">
+            {(() => { const l = LANGUAGES.find((l) => l.code === data.language); return l ? `${l.flag} ${l.label}` : data.language; })()}
+          </span>
+        </div>
       </div>
 
       {message && (

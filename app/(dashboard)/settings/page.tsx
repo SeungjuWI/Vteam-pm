@@ -11,7 +11,7 @@ export default async function ProfileSettingsPage() {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("name, email, role, position, avatar_url")
+    .select("name, email, role, position, avatar_url, language")
     .eq("id", user.id)
     .single();
 
@@ -25,6 +25,7 @@ export default async function ProfileSettingsPage() {
         role: profile.role,
         position: profile.position ?? "",
         avatarUrl: profile.avatar_url ?? "",
+        language: profile.language ?? "ko",
       }}
     />
   );

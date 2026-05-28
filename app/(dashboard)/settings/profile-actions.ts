@@ -15,6 +15,7 @@ export async function saveProfile(formData: FormData) {
   if (!name) return { error: "이름은 필수입니다" };
 
   const position = (formData.get("position") as string)?.trim() || null;
+  const language = (formData.get("language") as string) || "ko";
 
   // 아바타 업로드
   let avatarUrl: string | null | undefined;
@@ -61,7 +62,7 @@ export async function saveProfile(formData: FormData) {
     avatarUrl = null;
   }
 
-  const payload: Record<string, unknown> = { name, position };
+  const payload: Record<string, unknown> = { name, position, language };
   if (avatarUrl !== undefined) {
     payload.avatar_url = avatarUrl;
   }

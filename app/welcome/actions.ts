@@ -18,6 +18,7 @@ export async function saveWelcomeProfile(formData: FormData) {
 
   const position = (formData.get("position") as string)?.trim() || null;
   const joinDate = (formData.get("joinDate") as string) || null;
+  const language = (formData.get("language") as string) || "ko";
 
   // 아바타 업로드
   let avatarUrl: string | null = null;
@@ -48,6 +49,7 @@ export async function saveWelcomeProfile(formData: FormData) {
     name,
     position,
     join_date: joinDate,
+    language,
     status: "active",
   };
   if (avatarUrl) {

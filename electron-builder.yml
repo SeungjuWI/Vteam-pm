@@ -5,11 +5,8 @@ directories:
 
 files:
   - "electron/**/*"
-  - ".next/**/*"
-  - "public/**/*"
-  - "node_modules/**/*"
+  - "public/icon.png"
   - "package.json"
-  - "next.config.ts"
 
 mac:
   category: public.app-category.business

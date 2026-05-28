@@ -1,12 +1,12 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, shell } = require("electron");
 const path = require("path");
-const { spawn } = require("child_process");
 
 let mainWindow;
 let tray;
-let nextServer;
-const PORT = 3000;
-const isDev = process.env.NODE_ENV !== "production";
+
+const APP_URL = process.env.NODE_ENV !== "production"
+  ? "http://localhost:3000"
+  : "https://vteam-pm.vercel.app";
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -23,18 +23,19 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadURL(`http://localhost:${PORT}`);
+  mainWindow.loadURL(APP_URL);
 
   // 외부 링크는 기본 브라우저에서 열기
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("http")) {
+    if (url.startsWith("http") && !url.startsWith(APP_URL)) {
       shell.openExternal(url);
+      return { action: "deny" };
     }
-    return { action: "deny" };
+    return { action: "allow" };
   });
 
   mainWindow.on("close", (e) => {
-    if (process.platform === "darwin") {
+    if (process.platform === "darwin" && !app.isQuitting) {
       e.preventDefault();
       mainWindow.hide();
     }
@@ -82,40 +83,7 @@ function createTray() {
   });
 }
 
-function startNextServer() {
-  return new Promise((resolve) => {
-    if (isDev) {
-      // 개발 모드: Next.js dev 서버가 이미 실행 중이라고 가정
-      resolve();
-      return;
-    }
-
-    // 프로덕션: 빌드된 Next.js 서버 실행
-    nextServer = spawn("node_modules/.bin/next", ["start", "-p", String(PORT)], {
-      cwd: path.join(__dirname, ".."),
-      env: { ...process.env, NODE_ENV: "production" },
-      stdio: "pipe",
-    });
-
-    nextServer.stdout.on("data", (data) => {
-      const output = data.toString();
-      console.log("[Next.js]", output);
-      if (output.includes("Ready") || output.includes("started")) {
-        resolve();
-      }
-    });
-
-    nextServer.stderr.on("data", (data) => {
-      console.error("[Next.js]", data.toString());
-    });
-
-    // 서버 시작 타임아웃 (10초 후 강제 진행)
-    setTimeout(resolve, 10000);
-  });
-}
-
-app.whenReady().then(async () => {
-  await startNextServer();
+app.whenReady().then(() => {
   createWindow();
   createTray();
 
@@ -131,9 +99,6 @@ app.whenReady().then(async () => {
 
 app.on("before-quit", () => {
   app.isQuitting = true;
-  if (nextServer) {
-    nextServer.kill();
-  }
 });
 
 app.on("window-all-closed", () => {

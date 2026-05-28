@@ -25,13 +25,12 @@ type ViewMode = "week" | "month";
 
 const LEGAL_WEEKLY_HOURS = 40;
 const MAX_WEEKLY_HOURS = 52;
-const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
+const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
-function getMonday(date: Date): Date {
+function getSunday(date: Date): Date {
   const d = new Date(date);
   const day = d.getDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  d.setDate(d.getDate() + diff);
+  d.setDate(d.getDate() - day);
   d.setHours(0, 0, 0, 0);
   return d;
 }
@@ -152,7 +151,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
   // Get calendar days
   const calendarDays = useMemo((): DayInfo[][] => {
     if (viewMode === "week") {
-      const monday = getMonday(baseDate);
+      const monday = getSunday(baseDate);
       const week: DayInfo[] = [];
       for (let i = 0; i < 7; i++) {
         const d = new Date(monday);
@@ -163,18 +162,18 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
     } else {
       const monthStart = getMonthStart(baseDate);
       const monthEnd = getMonthEnd(baseDate);
-      const calStart = getMonday(monthStart);
+      const calStart = getSunday(monthStart);
       const weeks: DayInfo[][] = [];
       let current = new Date(calStart);
 
-      while (current <= monthEnd || current.getDay() !== 1) {
+      while (current <= monthEnd || current.getDay() !== 0) {
         const week: DayInfo[] = [];
         for (let i = 0; i < 7; i++) {
           week.push(getDayInfo(current));
           current.setDate(current.getDate() + 1);
         }
         weeks.push(week);
-        if (current > monthEnd && current.getDay() === 1) break;
+        if (current > monthEnd && current.getDay() === 0) break;
       }
       return weeks;
     }
@@ -183,7 +182,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
 
   // Weekly stats (for the week containing baseDate)
   const weekStats = useMemo(() => {
-    const monday = getMonday(baseDate);
+    const monday = getSunday(baseDate);
     let totalMs = 0;
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday);
@@ -216,10 +215,10 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
 
   const headerLabel = viewMode === "week"
     ? (() => {
-        const mon = getMonday(baseDate);
-        const sun = new Date(mon);
-        sun.setDate(mon.getDate() + 6);
-        return `${mon.getMonth() + 1}/${mon.getDate()} ~ ${sun.getMonth() + 1}/${sun.getDate()}`;
+        const sun = getSunday(baseDate);
+        const sat = new Date(sun);
+        sat.setDate(sun.getDate() + 6);
+        return `${sun.getMonth() + 1}/${sun.getDate()} ~ ${sat.getMonth() + 1}/${sat.getDate()}`;
       })()
     : `${baseDate.getFullYear()}년 ${baseDate.getMonth() + 1}월`;
 
@@ -333,14 +332,14 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
       </div>
 
       {/* Calendar Grid */}
-      <div className="rounded-xl bg-white">
+      <div className="overflow-hidden rounded-xl border border-gray-100 bg-white">
         {/* Day headers */}
         <div className="grid grid-cols-7 border-b border-gray-100">
           {DAY_NAMES.map((name, i) => (
             <div
               key={name}
               className={`py-2.5 text-center text-xs font-medium ${
-                i === 5 ? "text-blue-400" : i === 6 ? "text-red-400" : "text-gray-500"
+                i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-gray-500"
               }`}
             >
               {name}
@@ -352,7 +351,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
         {calendarDays.map((week, wi) => (
           <div key={wi} className="grid grid-cols-7 border-b border-gray-50 last:border-b-0">
             {week.map((day, di) => {
-              const isWeekend = di >= 5;
+              const isWeekend = di === 0 || di === 6;
               const dimmed = !day.isCurrentMonth && viewMode === "month";
 
               return (
@@ -369,7 +368,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
                         day.isToday
                           ? "flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white"
                           : isWeekend
-                            ? di === 5 ? "text-blue-400" : "text-red-400"
+                            ? di === 0 ? "text-red-400" : "text-blue-400"
                             : dimmed ? "text-gray-300" : "text-gray-600"
                       }`}
                     >

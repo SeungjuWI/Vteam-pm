@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "electron:dev": "concurrently \"next dev\" \"wait-on http://localhost:3000 && NODE_ENV=development electron .\"",
-    "electron:build": "next build && electron-builder",
+    "electron:build": "electron-builder",
     "electron:start": "electron ."
   },
   "dependencies": {

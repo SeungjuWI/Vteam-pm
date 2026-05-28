@@ -45,10 +45,17 @@ body {
   background: #F7F8FA;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text !important;
+  user-select: text !important;
 }
 
 /* Scrollbar */

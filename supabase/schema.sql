@@ -126,7 +126,30 @@ create table projects (
   company_id uuid references companies(id) not null,
   name text not null,
   description text,
+  image_url text,
   status text default 'active' check (status in ('active', 'completed', 'on_hold')),
+  created_at timestamptz default now()
+);
+
+-- 프로젝트 멤버 (복수 담당자)
+create table project_members (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid references projects(id) on delete cascade not null,
+  member_id uuid references profiles(id) not null,
+  created_at timestamptz default now(),
+  unique(project_id, member_id)
+);
+
+-- 알림
+create table notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id) not null,
+  company_id uuid references companies(id) not null,
+  type text not null check (type in ('project_invite', 'task_assign', 'general')),
+  title text not null,
+  message text,
+  link text,
+  is_read boolean default false,
   created_at timestamptz default now()
 );
 
@@ -134,11 +157,28 @@ create table projects (
 create table tasks (
   id uuid primary key default gen_random_uuid(),
   project_id uuid references projects(id) not null,
-  assignee_id uuid references profiles(id),
   title text not null,
   description text,
   status text default 'todo' check (status in ('todo', 'in_progress', 'done')),
   priority text default 'medium' check (priority in ('low', 'medium', 'high')),
   due_date date,
+  created_at timestamptz default now()
+);
+
+-- 태스크 담당자 (복수)
+create table task_assignees (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid references tasks(id) on delete cascade not null,
+  member_id uuid references profiles(id) not null,
+  created_at timestamptz default now(),
+  unique(task_id, member_id)
+);
+
+-- 태스크 댓글
+create table task_comments (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid references tasks(id) on delete cascade not null,
+  author_id uuid references profiles(id) not null,
+  content text not null,
   created_at timestamptz default now()
 );

@@ -31,5 +31,9 @@ export default async function DashboardLayout({
     .eq("id", user.id)
     .single();
 
-  return <DashboardShell role={roleData?.role ?? "employee"}>{children}</DashboardShell>;
+  return (
+    <DashboardShell role={roleData?.role ?? "employee"} userId={user.id}>
+      {children}
+    </DashboardShell>
+  );
 }

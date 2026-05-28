@@ -6,6 +6,7 @@ import CompanyChip from "@/components/company-chip";
 import WorkTimer from "@/components/work-timer";
 import NotificationButton from "@/components/notification-button";
 import ProfileMenu from "@/components/profile-menu";
+import DmChatManager from "@/components/dm-chat-manager";
 
 interface NavItem {
   href: string;
@@ -87,9 +88,11 @@ const iconMap: Record<string, React.ReactNode> = {
 export default function DashboardShell({
   children,
   role,
+  userId,
 }: {
   children: React.ReactNode;
   role: string;
+  userId: string;
 }) {
   const pathname = usePathname();
   const isManager = role === "manager" || role === "admin";
@@ -119,18 +122,21 @@ export default function DashboardShell({
         <div className="flex h-14 items-center px-3">
           <CompanyChip />
         </div>
-        <nav className="flex-1 px-3 py-2">
-          {mainNavItems.map(renderNavItem)}
+        <div className="flex-1 overflow-y-auto">
+          <nav className="px-3 py-2">
+            {mainNavItems.map(renderNavItem)}
 
-          {isManager && (
-            <>
-              <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
-                관리자
-              </div>
-              {managerNavItems.map(renderNavItem)}
-            </>
-          )}
-        </nav>
+            {isManager && (
+              <>
+                <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
+                  관리자
+                </div>
+                {managerNavItems.map(renderNavItem)}
+              </>
+            )}
+          </nav>
+          <DmChatManager currentUserId={userId} />
+        </div>
       </aside>
 
       {/* Main */}

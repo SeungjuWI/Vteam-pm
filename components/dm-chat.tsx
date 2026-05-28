@@ -196,17 +196,27 @@ export default function DmChat({
         { event: "INSERT", schema: "public", table: "direct_messages" },
         async (payload) => {
           const msg = payload.new as Message;
+
+          // 내가 보낸 메시지는 낙관적 업데이트로 이미 표시됨 → temp를 실제 ID로 교체만
+          if (msg.sender_id === currentUserId) {
+            setMessages((prev) => {
+              const tempIdx = prev.findIndex((m) => m.id.startsWith("temp-") && m.content === msg.content);
+              if (tempIdx !== -1) {
+                const next = [...prev];
+                next[tempIdx] = { ...msg, translated_content: null };
+                return next;
+              }
+              return prev;
+            });
+            return;
+          }
+
+          // 상대방 메시지
           const isRelevant =
-            (msg.sender_id === member.id && msg.receiver_id === currentUserId) ||
-            (msg.sender_id === currentUserId && msg.receiver_id === member.id);
+            msg.sender_id === member.id && msg.receiver_id === currentUserId;
           if (!isRelevant) return;
 
-          // 상대방 메시지이고 언어가 다르면 번역
-          if (
-            msg.sender_id === member.id &&
-            msg.sender_language &&
-            msg.sender_language !== currentUserLang
-          ) {
+          if (msg.sender_language && msg.sender_language !== currentUserLang) {
             const result = await translateSingleMessage(
               msg.id,
               msg.content,
@@ -217,9 +227,7 @@ export default function DmChat({
 
           setMessages((prev) => [...prev, msg]);
           setTimeout(scrollToBottom, 50);
-          if (msg.sender_id === member.id) {
-            markAsRead(member.id);
-          }
+          markAsRead(member.id);
         }
       )
       .subscribe();

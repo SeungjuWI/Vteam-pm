@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { loginWithGoogle } from "../actions";
+import DesktopDownload from "@/components/desktop-download";
 
 export default function LoginPage() {
   return (
@@ -26,6 +27,9 @@ export default function LoginPage() {
             Google로 시작하기
           </button>
         </form>
+        <div className="mt-6 flex justify-center">
+          <DesktopDownload variant="compact" />
+        </div>
       </div>
     </div>
   );

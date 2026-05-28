@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import DesktopDownload from "@/components/desktop-download";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "최고관리자",
@@ -71,6 +72,9 @@ export default async function AccountSettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* 데스크탑 앱 */}
+      <DesktopDownload />
     </div>
   );
 }

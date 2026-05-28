@@ -7,6 +7,7 @@ import {
   sendMessage,
   markAsRead,
   translateSingleMessage,
+  requestBotReply,
 } from "@/app/(dashboard)/dm/actions";
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
@@ -29,6 +30,7 @@ interface ChatMember {
   position: string | null;
   presence: string | null;
   language?: string | null;
+  is_bot?: boolean | null;
 }
 
 const presenceLabel: Record<string, string> = {
@@ -36,6 +38,96 @@ const presenceLabel: Record<string, string> = {
   away: "자리비움",
   offline: "오프라인",
 };
+
+// 봇 메시지용 간단한 마크다운 렌더러
+function ChatMarkdown({ text, isMine }: { text: string; isMine: boolean }) {
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+  let listItems: string[] = [];
+  let listOrdered = false;
+  let key = 0;
+
+  const flushList = () => {
+    if (listItems.length === 0) return;
+    const Tag = listOrdered ? "ol" : "ul";
+    elements.push(
+      <Tag key={key++} className={`my-1 space-y-0.5 pl-4 ${listOrdered ? "list-decimal" : "list-disc"}`}>
+        {listItems.map((item, i) => (
+          <li key={i}>{renderInline(item)}</li>
+        ))}
+      </Tag>
+    );
+    listItems = [];
+  };
+
+  const renderInline = (line: string): React.ReactNode[] => {
+    const parts: React.ReactNode[] = [];
+    // **bold** 과 일반 텍스트 분리
+    const regex = /\*\*(.+?)\*\*/g;
+    let lastIdx = 0;
+    let match;
+    let i = 0;
+    while ((match = regex.exec(line)) !== null) {
+      if (match.index > lastIdx) {
+        parts.push(<span key={i++}>{line.slice(lastIdx, match.index)}</span>);
+      }
+      parts.push(
+        <span key={i++} className="font-semibold">{match[1]}</span>
+      );
+      lastIdx = regex.lastIndex;
+    }
+    if (lastIdx < line.length) {
+      parts.push(<span key={i++}>{line.slice(lastIdx)}</span>);
+    }
+    return parts.length > 0 ? parts : [line];
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trimStart();
+
+    // 번호 리스트: 1. 2. 3. ...
+    const orderedMatch = trimmed.match(/^(\d+)\.\s+(.+)/);
+    if (orderedMatch) {
+      if (listItems.length > 0 && !listOrdered) flushList();
+      listOrdered = true;
+      listItems.push(orderedMatch[2]);
+      continue;
+    }
+
+    // 불릿 리스트: - ...
+    const unorderedMatch = trimmed.match(/^[-*]\s+(.+)/);
+    if (unorderedMatch) {
+      if (listItems.length > 0 && listOrdered) flushList();
+      listOrdered = false;
+      listItems.push(unorderedMatch[1]);
+      continue;
+    }
+
+    flushList();
+
+    // 빈 줄
+    if (trimmed === "") {
+      elements.push(<div key={key++} className="h-1.5" />);
+      continue;
+    }
+
+    // ### 헤더 (h3 이하만 지원)
+    const headerMatch = trimmed.match(/^#{1,3}\s+(.+)/);
+    if (headerMatch) {
+      elements.push(
+        <div key={key++} className="font-semibold">{renderInline(headerMatch[1])}</div>
+      );
+      continue;
+    }
+
+    // 일반 텍스트
+    elements.push(<div key={key++}>{renderInline(trimmed)}</div>);
+  }
+
+  flushList();
+
+  return <div className="space-y-0.5">{elements}</div>;
+}
 
 const MIN_W = 280;
 const MAX_W = 520;
@@ -135,6 +227,7 @@ export default function DmChat({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [botTyping, setBotTyping] = useState(false);
   const [loading, setLoading] = useState(true);
   const [size, setSize] = useState({ w: 320, h: 420 });
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msgId: string } | null>(null);
@@ -226,6 +319,7 @@ export default function DmChat({
           }
 
           setMessages((prev) => [...prev, msg]);
+          if (member.is_bot) setBotTyping(false);
           setTimeout(scrollToBottom, 50);
           markAsRead(member.id);
         }
@@ -268,6 +362,13 @@ export default function DmChat({
     setSending(false);
     if (result.error) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+    } else if (member.is_bot) {
+      setBotTyping(true);
+      setTimeout(scrollToBottom, 50);
+      // 별도 서버 액션으로 봇 응답 요청 (Realtime으로 수신됨)
+      requestBotReply(member.id, text).finally(() => {
+        setBotTyping(false);
+      });
     }
   };
 
@@ -344,9 +445,16 @@ export default function DmChat({
             />
           </div>
           <div>
-            <div className="text-sm font-medium text-gray-900">{member.name}</div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-medium text-gray-900">{member.name}</span>
+              {member.is_bot && (
+                <span className="flex h-4 items-center rounded-full bg-violet-100 px-1.5 text-[10px] font-medium text-violet-600">
+                  AI
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-              <span>{presenceLabel[member.presence ?? "offline"] ?? "오프라인"}</span>
+              <span>{member.is_bot ? "항상 온라인" : (presenceLabel[member.presence ?? "offline"] ?? "오프라인")}</span>
               {isTranslated && (
                 <>
                   <span className="text-gray-200">·</span>
@@ -391,11 +499,14 @@ export default function DmChat({
           <div className="flex h-full flex-col items-center justify-center gap-2">
             <Avatar url={member.avatar_url} name={member.name} size={48} />
             <p className="text-xs text-gray-400">
-              {member.name}님과의 대화를 시작하세요
+              {member.is_bot
+                ? "Vteam에 대해 무엇이든 물어보세요!"
+                : `${member.name}님과의 대화를 시작하세요`}
             </p>
           </div>
         ) : (
-          messages.map((msg) => {
+          <>
+          {messages.map((msg) => {
             const isMine = msg.sender_id === currentUserId;
             const hasTranslation = !!msg.translated_content;
             const displayText = hasTranslation ? msg.translated_content! : msg.content;
@@ -409,13 +520,17 @@ export default function DmChat({
                 <div className={`flex max-w-[75%] flex-col ${isMine ? "items-end" : "items-start"}`}>
                   <div
                     onContextMenu={(e) => handleContextMenu(e, msg)}
-                    className={`rounded-2xl px-3 py-2 text-sm ${
+                    className={`select-text rounded-2xl px-3 py-2 text-sm ${
                       isMine
                         ? "bg-blue-500 text-white"
                         : "bg-gray-100 text-gray-900"
                     } ${hasTranslation ? "cursor-context-menu" : ""}`}
                   >
-                    {displayText}
+                    {!isMine && member.is_bot ? (
+                      <ChatMarkdown text={displayText} isMine={isMine} />
+                    ) : (
+                      displayText
+                    )}
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="mt-0.5 text-[10px] text-gray-300">
@@ -436,7 +551,17 @@ export default function DmChat({
                 </div>
               </div>
             );
-          })
+          })}
+          {botTyping && (
+            <div className="flex justify-start">
+              <div className="flex items-center gap-1.5 rounded-2xl bg-gray-100 px-4 py-2.5">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:0ms]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:300ms]" />
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
 
@@ -454,7 +579,7 @@ export default function DmChat({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="메시지를 입력하세요..."
+            placeholder={member.is_bot ? "Sean에게 질문하세요..." : "메시지를 입력하세요..."}
             className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
           />
           <button

@@ -27,6 +27,7 @@ create table profiles (
   reports_to uuid references profiles(id),
   status text default 'active' check (status in ('pending', 'active', 'inactive')),
   join_date date,
+  is_bot boolean default false,
   created_at timestamptz default now()
 );
 

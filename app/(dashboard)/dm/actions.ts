@@ -3,6 +3,69 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { translateText } from "@/lib/translate";
+import { generateBotResponse } from "@/lib/ai-chat";
+
+// Sean 봇을 회사에 등록 (없으면 생성)
+export async function ensureBotExists(companyId: string) {
+  const adminClient = createAdminClient();
+
+  // 이미 봇이 있는지 확인
+  const { data: existing } = await adminClient
+    .from("profiles")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("is_bot", true)
+    .single();
+
+  if (existing) return existing.id as string;
+
+  // 봇용 auth user 생성
+  const botEmail = `sean-bot-${companyId.slice(0, 8)}@vteam.internal`;
+  const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
+    email: botEmail,
+    password: crypto.randomUUID(),
+    email_confirm: true,
+  });
+
+  if (authError || !authUser.user) {
+    // 이미 생성된 이메일이면 기존 유저 조회
+    const { data: users } = await adminClient.auth.admin.listUsers();
+    const found = users?.users?.find((u) => u.email === botEmail);
+    if (found) {
+      // 프로필만 생성
+      await adminClient.from("profiles").upsert({
+        id: found.id,
+        email: botEmail,
+        name: "Sean",
+        role: "employee",
+        company_id: companyId,
+        position: "AI 어시스턴트",
+        status: "active",
+        is_bot: true,
+        presence: "online",
+        language: "ko",
+      });
+      return found.id;
+    }
+    throw new Error("봇 생성 실패");
+  }
+
+  // 프로필 생성
+  await adminClient.from("profiles").insert({
+    id: authUser.user.id,
+    email: botEmail,
+    name: "Sean",
+    role: "employee",
+    company_id: companyId,
+    position: "AI 어시스턴트",
+    status: "active",
+    is_bot: true,
+    presence: "online",
+    language: "ko",
+  });
+
+  return authUser.user.id;
+}
 
 export async function getTeamMembers() {
   const supabase = await createClient();
@@ -20,9 +83,12 @@ export async function getTeamMembers() {
 
   if (!profile?.company_id) return [];
 
+  // 봇이 없으면 자동 생성
+  await ensureBotExists(profile.company_id);
+
   const { data: members } = await adminClient
     .from("profiles")
-    .select("id, name, email, avatar_url, position, presence, last_seen_at, language")
+    .select("id, name, email, avatar_url, position, presence, last_seen_at, language, is_bot")
     .eq("company_id", profile.company_id)
     .eq("status", "active")
     .neq("id", user.id)
@@ -138,6 +204,53 @@ export async function sendMessage(receiverId: string, content: string) {
   });
 
   if (error) return { error: "메시지 전송에 실패했습니다" };
+  return { success: true };
+}
+
+// 클라이언트에서 봇에게 메시지를 보낸 뒤 호출 → AI 응답 생성 후 DM으로 저장
+export async function requestBotReply(botId: string, content: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  const adminClient = createAdminClient();
+  const { data: userProfile } = await adminClient
+    .from("profiles")
+    .select("company_id, language")
+    .eq("id", user.id)
+    .single();
+
+  if (!userProfile?.company_id) return { error: "회사 정보 없음" };
+
+  // 최근 대화 이력
+  const { data: history } = await adminClient
+    .from("direct_messages")
+    .select("sender_id, content")
+    .or(
+      `and(sender_id.eq.${user.id},receiver_id.eq.${botId}),and(sender_id.eq.${botId},receiver_id.eq.${user.id})`
+    )
+    .order("created_at", { ascending: true })
+    .limit(20);
+
+  const conversationHistory = (history ?? []).map((m) => ({
+    role: (m.sender_id === user.id ? "user" : "assistant") as "user" | "assistant",
+    content: m.content,
+  }));
+
+  // AI 응답 생성
+  const botReply = await generateBotResponse(content, conversationHistory);
+
+  // 봇 메시지를 DM으로 저장 → Realtime으로 클라이언트에 전달됨
+  await adminClient.from("direct_messages").insert({
+    company_id: userProfile.company_id,
+    sender_id: botId,
+    receiver_id: user.id,
+    content: botReply,
+    sender_language: userProfile.language ?? "ko",
+  });
+
   return { success: true };
 }
 

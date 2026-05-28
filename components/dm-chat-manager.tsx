@@ -12,6 +12,7 @@ interface ChatMember {
   position: string | null;
   presence: string | null;
   language?: string | null;
+  is_bot?: boolean | null;
 }
 
 interface ChatWindow {

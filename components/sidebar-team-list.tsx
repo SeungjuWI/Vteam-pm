@@ -14,6 +14,7 @@ interface TeamMember {
   presence: string | null;
   last_seen_at: string | null;
   language?: string | null;
+  is_bot?: boolean | null;
 }
 
 const presenceConfig = {
@@ -55,6 +56,11 @@ function MemberRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-sm text-gray-700">{member.name}</span>
+          {member.is_bot && (
+            <span className="flex h-4 items-center rounded-full bg-violet-100 px-1.5 text-[10px] font-medium text-violet-600">
+              AI
+            </span>
+          )}
           {unreadCount ? (
             <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] text-white">
               {unreadCount}
@@ -126,6 +132,9 @@ export default function SidebarTeamList({
 
   const { activeMembers, offlineMembers, onlineCount } = useMemo(() => {
     const sorted = [...members].sort((a, b) => {
+      // 봇은 항상 최상단
+      if (a.is_bot && !b.is_bot) return -1;
+      if (!a.is_bot && b.is_bot) return 1;
       const order = { online: 0, away: 1, offline: 2 };
       const aOrder = order[(a.presence as keyof typeof order) ?? "offline"] ?? 2;
       const bOrder = order[(b.presence as keyof typeof order) ?? "offline"] ?? 2;

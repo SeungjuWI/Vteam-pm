@@ -17,7 +17,14 @@ export async function ensureBotExists(companyId: string) {
     .eq("is_bot", true)
     .single();
 
-  if (existing) return existing.id as string;
+  if (existing) {
+    // avatar 최신화
+    await adminClient
+      .from("profiles")
+      .update({ avatar_url: "/sean-avatar.png" })
+      .eq("id", existing.id);
+    return existing.id as string;
+  }
 
   // 봇용 auth user 생성
   const botEmail = `sean-bot-${companyId.slice(0, 8)}@vteam.internal`;
@@ -40,6 +47,7 @@ export async function ensureBotExists(companyId: string) {
         role: "employee",
         company_id: companyId,
         position: "AI 어시스턴트",
+        avatar_url: "/sean-avatar.png",
         status: "active",
         is_bot: true,
         presence: "online",
@@ -58,6 +66,7 @@ export async function ensureBotExists(companyId: string) {
     role: "employee",
     company_id: companyId,
     position: "AI 어시스턴트",
+    avatar_url: "/sean-avatar.png",
     status: "active",
     is_bot: true,
     presence: "online",

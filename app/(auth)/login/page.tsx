@@ -6,17 +6,64 @@ import { loginWithGoogle } from "../actions";
 import DesktopDownload from "@/components/desktop-download";
 import { makeT } from "@/lib/i18n";
 
+const UI_LANGUAGES = [
+  { code: "ko", label: "한국어", flag: "🇰🇷" },
+  { code: "en", label: "English", flag: "🇺🇸" },
+] as const;
+
+function getCookie(name: string) {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? match[1] : null;
+}
+
+function setCookie(name: string, value: string) {
+  document.cookie = `${name}=${value};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+}
+
 export default function LoginPage() {
   const [lang, setLang] = useState("ko");
+
   useEffect(() => {
-    const browserLang = navigator.language.startsWith("en") ? "en" : "ko";
-    setLang(browserLang);
+    const saved = getCookie("vteam-ui-lang");
+    if (saved) {
+      setLang(saved);
+    } else {
+      const browserLang = navigator.language.startsWith("en") ? "en" : "ko";
+      setLang(browserLang);
+      setCookie("vteam-ui-lang", browserLang);
+    }
   }, []);
+
+  function handleLangChange(code: string) {
+    setLang(code);
+    setCookie("vteam-ui-lang", code);
+  }
+
   const t = makeT(lang);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8">
+        {/* Language Toggle */}
+        <div className="mb-6 flex justify-center">
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
+            {UI_LANGUAGES.map((l) => (
+              <button
+                key={l.code}
+                onClick={() => handleLangChange(l.code)}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  lang === l.code
+                    ? "bg-white text-gray-900"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <span>{l.flag}</span>
+                {l.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="mb-8 flex flex-col items-center gap-2">
           <Image src="/logo.png" alt="Vteam" width={36} height={36} />
           <h1 className="text-xl font-semibold text-gray-900">Vteam</h1>

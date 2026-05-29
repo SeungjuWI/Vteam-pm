@@ -18,12 +18,18 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
   const compressedRef = useRef<Blob | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [lang, setLang] = useState("ko");
+  const [uiLang, setUiLang] = useState("ko");
   useEffect(() => {
-    const browserLang = navigator.language.startsWith("en") ? "en" : "ko";
-    setLang(browserLang);
+    const match = document.cookie.match(/(?:^|; )vteam-ui-lang=([^;]*)/);
+    const saved = match ? match[1] : null;
+    if (saved) {
+      setUiLang(saved);
+    } else {
+      const browserLang = navigator.language.startsWith("en") ? "en" : "ko";
+      setUiLang(browserLang);
+    }
   }, []);
-  const t = makeT(lang);
+  const t = makeT(uiLang);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

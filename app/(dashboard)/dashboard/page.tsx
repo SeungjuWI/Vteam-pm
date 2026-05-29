@@ -50,7 +50,8 @@ export default async function DashboardPage() {
     .from("profiles")
     .select("id", { count: "exact", head: true })
     .eq("company_id", profile.company_id)
-    .eq("status", "active");
+    .eq("status", "active")
+    .neq("is_bot", true);
   const totalMembers = count || 0;
 
   const { count: activeProjectCount } = await adminClient

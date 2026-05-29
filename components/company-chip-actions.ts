@@ -20,7 +20,7 @@ export async function getCompanyChipData() {
 
   const [companyRes, countRes] = await Promise.all([
     adminClient.from("companies").select("*").eq("id", profile.company_id).single(),
-    adminClient.from("profiles").select("id", { count: "exact", head: true }).eq("company_id", profile.company_id).eq("status", "active"),
+    adminClient.from("profiles").select("id", { count: "exact", head: true }).eq("company_id", profile.company_id).eq("status", "active").neq("is_bot", true),
   ]);
 
   if (!companyRes.data) return null;

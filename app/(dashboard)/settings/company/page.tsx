@@ -27,7 +27,8 @@ export default async function CompanySettingsPage() {
     .from("profiles")
     .select("id", { count: "exact", head: true })
     .eq("company_id", profile.company_id)
-    .eq("status", "active");
+    .eq("status", "active")
+    .neq("is_bot", true);
 
   if (!company) return null;
 

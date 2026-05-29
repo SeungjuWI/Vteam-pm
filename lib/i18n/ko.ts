@@ -236,6 +236,13 @@ const ko = {
   "leaveSettings.paternityLeaveDesc": "배우자 출산 시 10일 유급 (남녀고용평등법)",
   "leaveSettings.familyCareDays": "가족돌봄 휴가 일수",
   "leaveSettings.familyCareDaysDesc": "남녀고용평등법 기준 연 10일 (연차 차감)",
+  "leaveSettings.noSettings": "아직 연차 제도가 설정되지 않았습니다",
+  "leaveSettings.enabled": "사용",
+  "leaveSettings.disabled": "미사용",
+  "leaveSettings.defaultAnnual": "기본 연차",
+  "leaveSettings.maxDays": "최대",
+  "leaveSettings.fullCarryOver": "전체 이월",
+  "leaveSettings.paidSickLeave": "유급 병가",
   "leaveSettings.balanceTitle": "멤버별 연차 현황",
   "leaveSettings.balanceEmpty": "연차 설정을 먼저 저장해주세요",
   "leaveSettings.balanceNotGranted": "연차가 아직 부여되지 않았습니다",
@@ -360,6 +367,17 @@ const ko = {
   "clock.offWork": "퇴근",
   "clock.clockedIn": "출근",
   "clock.elapsed": "경과",
+
+  // Profile Menu
+  "profileMenu.myProfile": "내 프로필",
+  "profileMenu.logout": "로그아웃",
+
+  // Company Chip
+  "companyChip.representative": "대표",
+  "companyChip.employees": "임직원",
+  "companyChip.founded": "설립",
+  "companyChip.daysRunning": "일째",
+  "companyChip.copy": "복사",
 
   // Notifications
   "notification.title": "알림",

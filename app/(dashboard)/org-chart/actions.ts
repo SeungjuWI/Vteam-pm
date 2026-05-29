@@ -35,6 +35,7 @@ export async function getOrgChartData(): Promise<OrgMember[] | null> {
     .select("id, name, position, role, avatar_url, reports_to")
     .eq("company_id", profile.company_id)
     .eq("status", "active")
+    .neq("is_bot", true)
     .order("name");
 
   return (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import LeaveSettings from "../../leaves/leave-settings";
+import { useT } from "@/lib/i18n";
 
 type Settings = {
   auto_grant: boolean;
@@ -21,11 +22,6 @@ type Settings = {
   family_care_days: number;
 } | null;
 
-const GRANT_BASIS_LABEL: Record<string, string> = {
-  join_date: "입사일 기준",
-  fiscal_year: "회계연도 기준",
-};
-
 export default function LeaveSettingsView({
   current,
   isManager,
@@ -33,8 +29,13 @@ export default function LeaveSettingsView({
   current: Settings;
   isManager: boolean;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const router = useRouter();
+
+  const enabled = t("leaveSettings.enabled");
+  const disabled = t("leaveSettings.disabled");
+  const days = t("common.days");
 
   function handleSaved() {
     setEditing(false);
@@ -44,7 +45,7 @@ export default function LeaveSettingsView({
   if (!current && !isManager) {
     return (
       <div className="flex h-48 items-center justify-center rounded-xl bg-white">
-        <p className="text-sm text-gray-400">아직 연차 제도가 설정되지 않았습니다</p>
+        <p className="text-sm text-gray-400">{t("leaveSettings.noSettings")}</p>
       </div>
     );
   }
@@ -55,56 +56,50 @@ export default function LeaveSettingsView({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 연차 부여 */}
       <div className="rounded-xl bg-white p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-gray-900">연차 부여</h2>
+          <h2 className="text-sm font-medium text-gray-900">{t("leaveSettings.grantTitle")}</h2>
           {isManager && (
-            <button
-              onClick={() => setEditing(true)}
-              className="text-xs text-blue-500 hover:text-blue-600"
-            >
-              수정
+            <button onClick={() => setEditing(true)} className="text-xs text-blue-500 hover:text-blue-600">
+              {t("common.edit")}
             </button>
           )}
         </div>
         {current && (
           <div className="flex flex-col gap-3">
-            <Row label="자동 부여" value={current.auto_grant ? "사용" : "미사용"} />
-            <Row label="기본 연차" value={`${current.default_annual_days}일`} />
-            <Row label="부여 기준" value={GRANT_BASIS_LABEL[current.grant_basis]} />
-            <Row label="1년 미만 월차" value={current.first_year_monthly ? "사용" : "미사용"} />
-            <Row label="근속 가산" value={current.longevity_bonus ? `사용 (최대 ${current.max_annual_days}일)` : "미사용"} />
+            <Row label={t("leaveSettings.autoGrant")} value={current.auto_grant ? enabled : disabled} />
+            <Row label={t("leaveSettings.defaultAnnual")} value={`${current.default_annual_days}${days}`} />
+            <Row label={t("leaveSettings.grantBasis")} value={current.grant_basis === "join_date" ? t("leaveSettings.joinDateBasis") : t("leaveSettings.fiscalYearBasis")} />
+            <Row label={t("leaveSettings.firstYearMonthly")} value={current.first_year_monthly ? enabled : disabled} />
+            <Row label={t("leaveSettings.longevityBonus")} value={current.longevity_bonus ? `${enabled} (${t("leaveSettings.maxDays")} ${current.max_annual_days}${days})` : disabled} />
           </div>
         )}
       </div>
 
-      {/* 연차 관리 */}
       <div className="rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-sm font-medium text-gray-900">연차 관리</h2>
+        <h2 className="mb-4 text-sm font-medium text-gray-900">{t("leaveSettings.manageTitle")}</h2>
         {current && (
           <div className="flex flex-col gap-3">
             <Row
-              label="연차 이월"
+              label={t("leaveSettings.carryOver")}
               value={current.carry_over
-                ? current.carry_over_max_days > 0 ? `최대 ${current.carry_over_max_days}일` : "전체 이월"
-                : "미사용"}
+                ? current.carry_over_max_days > 0 ? `${t("leaveSettings.maxDays")} ${current.carry_over_max_days}${days}` : t("leaveSettings.fullCarryOver")
+                : disabled}
             />
-            <Row label="연차촉진제" value={current.annual_promotion ? "사용" : "미사용"} />
+            <Row label={t("leaveSettings.annualPromotion")} value={current.annual_promotion ? enabled : disabled} />
           </div>
         )}
       </div>
 
-      {/* 특별휴가 */}
       <div className="rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-sm font-medium text-gray-900">특별휴가</h2>
+        <h2 className="mb-4 text-sm font-medium text-gray-900">{t("leaveSettings.specialTitle")}</h2>
         {current && (
           <div className="flex flex-col gap-3">
-            <Row label="유급 병가" value={current.sick_leave_days > 0 ? `${current.sick_leave_days}일` : "미사용"} />
-            <Row label="경조사 휴가" value={current.condolence_leave ? "사용" : "미사용"} />
-            <Row label="출산 휴가" value={current.maternity_leave ? "90일" : "미사용"} />
-            <Row label="배우자 출산 휴가" value={current.paternity_leave ? "10일" : "미사용"} />
-            <Row label="가족돌봄 휴가" value={`${current.family_care_days}일`} />
+            <Row label={t("leaveSettings.paidSickLeave")} value={current.sick_leave_days > 0 ? `${current.sick_leave_days}${days}` : disabled} />
+            <Row label={t("leaveSettings.condolenceLeave")} value={current.condolence_leave ? enabled : disabled} />
+            <Row label={t("leaveSettings.maternityLeave")} value={current.maternity_leave ? `90${days}` : disabled} />
+            <Row label={t("leaveSettings.paternityLeave")} value={current.paternity_leave ? `10${days}` : disabled} />
+            <Row label={t("leaveSettings.familyCareDays")} value={`${current.family_care_days}${days}`} />
           </div>
         )}
       </div>

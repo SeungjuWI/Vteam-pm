@@ -238,6 +238,13 @@ const en: Record<TranslationKey, string> = {
   "leaveSettings.paternityLeaveDesc": "10 paid days for spouse's childbirth",
   "leaveSettings.familyCareDays": "Family Care Leave Days",
   "leaveSettings.familyCareDaysDesc": "10 days per year (deducted from annual leave)",
+  "leaveSettings.noSettings": "No leave policy has been set yet",
+  "leaveSettings.enabled": "Enabled",
+  "leaveSettings.disabled": "Disabled",
+  "leaveSettings.defaultAnnual": "Default Annual",
+  "leaveSettings.maxDays": "Max",
+  "leaveSettings.fullCarryOver": "Full carry over",
+  "leaveSettings.paidSickLeave": "Paid Sick Leave",
   "leaveSettings.balanceTitle": "Leave Balance by Member",
   "leaveSettings.balanceEmpty": "Please save leave settings first",
   "leaveSettings.balanceNotGranted": "Leave not yet granted",
@@ -362,6 +369,17 @@ const en: Record<TranslationKey, string> = {
   "clock.offWork": "Off Work",
   "clock.clockedIn": "Clocked in",
   "clock.elapsed": "elapsed",
+
+  // Profile Menu
+  "profileMenu.myProfile": "My Profile",
+  "profileMenu.logout": "Logout",
+
+  // Company Chip
+  "companyChip.representative": "Rep.",
+  "companyChip.employees": "Employees",
+  "companyChip.founded": "Founded",
+  "companyChip.daysRunning": "days",
+  "companyChip.copy": "Copy",
 
   // Notifications
   "notification.title": "Notifications",

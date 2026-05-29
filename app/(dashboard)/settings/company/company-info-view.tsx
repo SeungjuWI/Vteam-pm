@@ -209,8 +209,8 @@ export default function CompanyInfoView({
 
       <div className="flex flex-col gap-3">
         <InfoRow label={t("company.name")} value={data.name} />
-        <InfoRow label={t("company.totalMembers")} value={`${data.memberCount}명`} />
-        <InfoRow label={t("company.joinDate")} value={new Date(data.createdAt).toLocaleDateString("ko-KR")} />
+        <InfoRow label={t("company.totalMembers")} value={`${data.memberCount}`} />
+        <InfoRow label={t("company.joinDate")} value={new Date(data.createdAt).toLocaleDateString(undefined)} />
         {data.foundedAt && <InfoRow label={t("company.foundedAt")} value={data.foundedAt} />}
         {data.businessNumber && <InfoRow label={t("company.businessNumber")} value={data.businessNumber} />}
         {data.corpNumber && <InfoRow label={t("company.corpNumber")} value={data.corpNumber} />}

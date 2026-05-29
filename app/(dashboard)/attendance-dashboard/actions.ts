@@ -33,6 +33,7 @@ export async function getAttendanceDashboardData() {
     .select("id, name, position, avatar_url, role")
     .eq("company_id", companyId)
     .eq("status", "active")
+    .neq("is_bot", true)
     .order("name");
 
   const totalMembers = members?.length ?? 0;

@@ -17,7 +17,7 @@ export default async function MyTasksPage() {
   todayStart.setHours(0, 0, 0, 0);
   const today = todayStart.toISOString().split("T")[0];
 
-  const [{ data: activeTasksRaw, error: activeErr }, { data: doneTasksRaw, error: doneErr }] = await Promise.all([
+  const [{ data: activeTasksRaw }, { data: doneTasksRaw }] = await Promise.all([
     adminClient
       .from("task_assignees")
       .select("tasks!inner(id, title, status, priority, due_date, projects!inner(id, name, company_id))")
@@ -29,14 +29,6 @@ export default async function MyTasksPage() {
       .eq("member_id", user.id)
       .eq("tasks.status", "done"),
   ]);
-
-  console.log("=== MY TASKS DEBUG ===");
-  console.log("user.id:", user.id);
-  console.log("company_id:", profile.company_id);
-  console.log("activeErr:", activeErr);
-  console.log("doneErr:", doneErr);
-  console.log("activeTasksRaw count:", activeTasksRaw?.length);
-  console.log("activeTasksRaw sample:", JSON.stringify(activeTasksRaw?.[0], null, 2));
 
   type TaskRow = {
     id: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -16,6 +16,7 @@ import {
   Position,
   type OnConnect,
   type OnEdgesDelete,
+  type NodeDragHandler,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { updateReportsTo, type OrgMember } from "./actions";
@@ -57,6 +58,29 @@ function MemberNode({ data }: NodeProps) {
 }
 
 const nodeTypes = { member: MemberNode };
+
+const STORAGE_KEY = "vteam-org-chart-positions";
+
+function loadSavedPositions(): Record<string, { x: number; y: number }> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePositions(nodes: Node[]) {
+  const positions: Record<string, { x: number; y: number }> = {};
+  nodes.forEach((n) => {
+    positions[n.id] = { x: n.position.x, y: n.position.y };
+  });
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
+  } catch {
+    // storage full or unavailable
+  }
+}
 
 function buildLayout(members: OrgMember[]) {
   // 루트 노드 (reports_to가 없는 멤버) 찾기
@@ -111,8 +135,9 @@ function buildLayout(members: OrgMember[]) {
     }
   });
 
-  // 노드 생성
+  // 노드 생성 (저장된 위치가 있으면 적용)
   const memberMap = new Map(members.map((m) => [m.id, m]));
+  const savedPositions = loadSavedPositions();
 
   depthMembers.forEach((ids, depth) => {
     const totalWidth = (ids.length - 1) * X_GAP;
@@ -121,10 +146,13 @@ function buildLayout(members: OrgMember[]) {
     ids.forEach((id, i) => {
       const m = memberMap.get(id);
       if (!m) return;
+      const saved = savedPositions[m.id];
       nodes.push({
         id: m.id,
         type: "member",
-        position: { x: startX + i * X_GAP, y: depth * Y_GAP },
+        position: saved
+          ? { x: saved.x, y: saved.y }
+          : { x: startX + i * X_GAP, y: depth * Y_GAP },
         data: {
           name: m.name,
           position: m.position,
@@ -196,6 +224,13 @@ export default function OrgChartView({
     [setEdges],
   );
 
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
+  const onNodeDragStop: NodeDragHandler = useCallback(() => {
+    savePositions(nodesRef.current);
+  }, []);
+
   const onEdgesDelete: OnEdgesDelete = useCallback(
     async (deletedEdges) => {
       setSaving(true);
@@ -245,6 +280,7 @@ export default function OrgChartView({
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onNodeDragStop={onNodeDragStop}
           onEdgesDelete={onEdgesDelete}
           nodeTypes={nodeTypes}
           fitView

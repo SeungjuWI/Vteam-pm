@@ -354,13 +354,13 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
         <AddMemberModal projectId={project.id} currentMemberIds={members.map((m) => m.id)} allMembers={allMembers} onClose={() => setShowAddMember(false)} />
       )}
       {showCreateTask && (
-        <CreateTaskModal projectId={project.id} initialStatus={showCreateTask} allMembers={allMembers} onClose={() => { setShowCreateTask(null); router.refresh(); }} />
+        <CreateTaskModal projectId={project.id} initialStatus={showCreateTask} allMembers={members} onClose={() => { setShowCreateTask(null); router.refresh(); }} />
       )}
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
           projectId={project.id}
-          allMembers={allMembers}
+          allMembers={members}
           projectMembers={members}
           canEdit={canEdit}
           currentUserId={currentUserId}

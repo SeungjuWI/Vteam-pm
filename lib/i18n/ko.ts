@@ -46,6 +46,7 @@ const ko = {
   "nav.settings": "설정",
   "nav.attendanceDashboard": "근태 대시보드",
   "nav.export": "데이터 내보내기",
+  "nav.myTasks": "내 태스크",
   "nav.adminSection": "관리자",
 
   // Login
@@ -361,6 +362,28 @@ const ko = {
   "dashboard.working": "명 근무중",
   "dashboard.persons": "명",
   "dashboard.items": "개",
+
+  // My Tasks
+  "myTasks.title": "내 태스크",
+  "myTasks.total": "전체",
+  "myTasks.inProgress": "진행 중",
+  "myTasks.todo": "할 일",
+  "myTasks.done": "완료",
+  "myTasks.empty": "할당된 태스크가 없습니다",
+  "myTasks.emptyDone": "완료된 태스크가 없습니다",
+  "myTasks.dueToday": "오늘 마감",
+  "myTasks.overdue": "기한 초과",
+  "myTasks.noDue": "마감일 없음",
+  "myTasks.allProjects": "전체 프로젝트",
+  "myTasks.allPriority": "전체 우선순위",
+  "myTasks.allStatus": "전체 상태",
+  "myTasks.sortDueDate": "마감일순",
+  "myTasks.sortPriority": "우선순위순",
+  "myTasks.sortProject": "프로젝트순",
+  "myTasks.statsTotal": "전체 태스크",
+  "myTasks.statsDueToday": "오늘 마감",
+  "myTasks.statsOverdue": "기한 초과",
+  "myTasks.statsDone": "완료",
 
   // Clock / Attendance Detail
   "clock.currentStatus": "현재 상태",

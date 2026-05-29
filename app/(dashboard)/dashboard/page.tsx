@@ -18,17 +18,12 @@ export default async function DashboardPage() {
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
   const today = todayStart.toISOString().split("T")[0];
-  const weekLater = new Date(todayStart);
-  weekLater.setDate(weekLater.getDate() + 7);
-  const weekLaterStr = weekLater.toISOString().split("T")[0];
 
   const [
     { data: teamTodayRaw, error: teamError },
     { count },
     { count: activeProjectCount },
     { count: todayTaskCount },
-    { data: myTasksRaw },
-    { data: upcomingTasksRaw },
   ] = await Promise.all([
     adminClient
       .from("attendances")
@@ -54,20 +49,6 @@ export default async function DashboardPage() {
       .eq("projects.company_id", profile.company_id)
       .eq("due_date", today)
       .neq("status", "done"),
-    adminClient
-      .from("task_assignees")
-      .select("tasks(id, title, status, priority, due_date, projects!inner(id, name, company_id))")
-      .eq("member_id", user.id)
-      .neq("tasks.status", "done"),
-    adminClient
-      .from("tasks")
-      .select("id, title, status, priority, due_date, projects!inner(id, name, company_id)")
-      .eq("projects.company_id", profile.company_id)
-      .neq("status", "done")
-      .gte("due_date", today)
-      .lte("due_date", weekLaterStr)
-      .order("due_date", { ascending: true })
-      .limit(10),
   ]);
 
   if (teamError) console.error("team query error:", teamError);
@@ -84,16 +65,6 @@ export default async function DashboardPage() {
     clockIn: r.clock_in,
     clockOut: r.clock_out,
   }));
-
-  type TaskRow = { id: string; title: string; status: string; priority: string; due_date: string | null; projects: { id: string; name: string; company_id: string } };
-  const myTasks = (myTasksRaw || [])
-    .map((r) => (r as unknown as { tasks: TaskRow }).tasks)
-    .filter((tk): tk is TaskRow => tk !== null && tk.projects?.company_id === profile.company_id);
-
-  const upcomingTasks = (upcomingTasksRaw || []) as unknown as TaskRow[];
-
-  const priorityLabel = (p: string) =>
-    p === "high" ? t("dashboard.priorityHigh") : p === "medium" ? t("dashboard.priorityMedium") : t("dashboard.priorityLow");
 
   return (
     <div className="flex flex-col gap-6">
@@ -123,76 +94,6 @@ export default async function DashboardPage() {
       </div>
 
       <TeamTimeline records={timelineRecords} />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-xl bg-white p-5">
-          <h2 className="text-sm font-medium text-gray-900 mb-4">{t("dashboard.myTasks")}</h2>
-          {myTasks.length === 0 ? (
-            <div className="flex h-32 items-center justify-center">
-              <p className="text-sm text-gray-400">{t("dashboard.noTasks")}</p>
-            </div>
-          ) : (
-            <div className="flex flex-col divide-y divide-gray-100">
-              {myTasks.map((task) => (
-                <div key={task.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                      task.status === "in_progress" ? "bg-blue-500" : "bg-gray-300"
-                    }`} />
-                    <div className="min-w-0">
-                      <p className="text-sm text-gray-900 truncate">{task.title}</p>
-                      <p className="text-xs text-gray-400">{task.projects.name}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0 ml-4">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      task.priority === "high" ? "bg-red-50 text-red-600" : task.priority === "medium" ? "bg-yellow-50 text-yellow-600" : "bg-gray-50 text-gray-500"
-                    }`}>
-                      {priorityLabel(task.priority)}
-                    </span>
-                    {task.due_date && (
-                      <span className="text-xs text-gray-400">{task.due_date}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-xl bg-white p-5">
-          <h2 className="text-sm font-medium text-gray-900 mb-4">{t("dashboard.upcoming")}</h2>
-          {upcomingTasks.length === 0 ? (
-            <div className="flex h-32 items-center justify-center">
-              <p className="text-sm text-gray-400">{t("dashboard.noUpcoming")}</p>
-            </div>
-          ) : (
-            <div className="flex flex-col divide-y divide-gray-100">
-              {upcomingTasks.map((task) => {
-                const dDay = Math.ceil((new Date(task.due_date!).getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
-                return (
-                  <div key={task.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                        dDay === 0 ? "bg-red-500" : dDay <= 2 ? "bg-yellow-500" : "bg-gray-300"
-                      }`} />
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-900 truncate">{task.title}</p>
-                        <p className="text-xs text-gray-400">{task.projects.name}</p>
-                      </div>
-                    </div>
-                    <span className={`text-xs shrink-0 ml-4 ${
-                      dDay === 0 ? "text-red-500 font-medium" : "text-gray-400"
-                    }`}>
-                      {dDay === 0 ? t("dashboard.dueToday") : `D-${dDay}`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

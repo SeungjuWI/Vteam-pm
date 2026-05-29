@@ -48,6 +48,7 @@ const en: Record<TranslationKey, string> = {
   "nav.settings": "Settings",
   "nav.attendanceDashboard": "Attendance Dashboard",
   "nav.export": "Export Data",
+  "nav.myTasks": "My Tasks",
   "nav.adminSection": "Admin",
 
   // Login
@@ -363,6 +364,28 @@ const en: Record<TranslationKey, string> = {
   "dashboard.working": " working",
   "dashboard.persons": "",
   "dashboard.items": "",
+
+  // My Tasks
+  "myTasks.title": "My Tasks",
+  "myTasks.total": "All",
+  "myTasks.inProgress": "In Progress",
+  "myTasks.todo": "To Do",
+  "myTasks.done": "Done",
+  "myTasks.empty": "No tasks assigned",
+  "myTasks.emptyDone": "No completed tasks",
+  "myTasks.dueToday": "Due today",
+  "myTasks.overdue": "Overdue",
+  "myTasks.noDue": "No due date",
+  "myTasks.allProjects": "All Projects",
+  "myTasks.allPriority": "All Priority",
+  "myTasks.allStatus": "All Status",
+  "myTasks.sortDueDate": "By due date",
+  "myTasks.sortPriority": "By priority",
+  "myTasks.sortProject": "By project",
+  "myTasks.statsTotal": "Total Tasks",
+  "myTasks.statsDueToday": "Due Today",
+  "myTasks.statsOverdue": "Overdue",
+  "myTasks.statsDone": "Done",
 
   // Clock / Attendance Detail
   "clock.currentStatus": "Current Status",

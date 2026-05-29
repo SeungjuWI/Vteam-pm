@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { saveProfile } from "./profile-actions";
 import { compressImage } from "@/lib/compress-image";
 import LanguageSelect from "@/components/language-select";
@@ -240,7 +241,7 @@ function Avatar({ url, name, size }: { url: string; name: string; size: number }
     return (
       <div className="relative flex-shrink-0 overflow-hidden rounded-full bg-gray-100" style={{ width: px, height: px }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={name} className="h-full w-full object-cover" onError={() => setError(true)} />
+        <Image src={url} alt={name} fill className="object-cover" onError={() => setError(true)} />
       </div>
     );
   }

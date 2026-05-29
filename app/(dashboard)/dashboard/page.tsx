@@ -1,41 +1,80 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import TeamTimeline from "../attendance/team-timeline";
 import { getT } from "@/lib/i18n/server";
 
 export default async function DashboardPage() {
   const t = await getT();
-  const supabase = await createClient();
-  const adminClient = createAdminClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
-  const { data: profile } = await adminClient
-    .from("profiles")
-    .select("company_id")
-    .eq("id", user.id)
-    .single();
-
+  const profile = await getProfile();
   if (!profile?.company_id) return null;
+
+  const adminClient = createAdminClient();
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
+  const today = todayStart.toISOString().split("T")[0];
+  const weekLater = new Date(todayStart);
+  weekLater.setDate(weekLater.getDate() + 7);
+  const weekLaterStr = weekLater.toISOString().split("T")[0];
 
-  const { data: teamTodayRaw, error: teamError } = await adminClient
-    .from("attendances")
-    .select("id, clock_in, clock_out, profiles!attendances_employee_id_fkey(name, email, avatar_url, position)")
-    .eq("company_id", profile.company_id)
-    .gte("clock_in", todayStart.toISOString())
-    .lte("clock_in", todayEnd.toISOString())
-    .order("clock_in", { ascending: true });
+  const [
+    { data: teamTodayRaw, error: teamError },
+    { count },
+    { count: activeProjectCount },
+    { count: todayTaskCount },
+    { data: myTasksRaw },
+    { data: upcomingTasksRaw },
+  ] = await Promise.all([
+    adminClient
+      .from("attendances")
+      .select("id, clock_in, clock_out, profiles!attendances_employee_id_fkey(name, email, avatar_url, position)")
+      .eq("company_id", profile.company_id)
+      .gte("clock_in", todayStart.toISOString())
+      .lte("clock_in", todayEnd.toISOString())
+      .order("clock_in", { ascending: true }),
+    adminClient
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", profile.company_id)
+      .eq("status", "active")
+      .neq("is_bot", true),
+    adminClient
+      .from("projects")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", profile.company_id)
+      .eq("status", "active"),
+    adminClient
+      .from("tasks")
+      .select("id, projects!inner(company_id)", { count: "exact", head: true })
+      .eq("projects.company_id", profile.company_id)
+      .eq("due_date", today)
+      .neq("status", "done"),
+    adminClient
+      .from("task_assignees")
+      .select("tasks(id, title, status, priority, due_date, projects!inner(id, name, company_id))")
+      .eq("member_id", user.id)
+      .neq("tasks.status", "done"),
+    adminClient
+      .from("tasks")
+      .select("id, title, status, priority, due_date, projects!inner(id, name, company_id)")
+      .eq("projects.company_id", profile.company_id)
+      .neq("status", "done")
+      .gte("due_date", today)
+      .lte("due_date", weekLaterStr)
+      .order("due_date", { ascending: true })
+      .limit(10),
+  ]);
 
   if (teamError) console.error("team query error:", teamError);
 
   type TeamRecord = { id: string; clock_in: string; clock_out: string | null; profiles: { name: string; email: string; avatar_url: string | null; position: string | null } };
   const teamToday = ((teamTodayRaw || []) as unknown as TeamRecord[]);
+  const totalMembers = count || 0;
 
   const timelineRecords = teamToday.map((r) => ({
     name: r.profiles.name,
@@ -46,52 +85,10 @@ export default async function DashboardPage() {
     clockOut: r.clock_out,
   }));
 
-  const { count } = await adminClient
-    .from("profiles")
-    .select("id", { count: "exact", head: true })
-    .eq("company_id", profile.company_id)
-    .eq("status", "active")
-    .neq("is_bot", true);
-  const totalMembers = count || 0;
-
-  const { count: activeProjectCount } = await adminClient
-    .from("projects")
-    .select("id", { count: "exact", head: true })
-    .eq("company_id", profile.company_id)
-    .eq("status", "active");
-
-  const today = todayStart.toISOString().split("T")[0];
-  const { count: todayTaskCount } = await adminClient
-    .from("tasks")
-    .select("id, projects!inner(company_id)", { count: "exact", head: true })
-    .eq("projects.company_id", profile.company_id)
-    .eq("due_date", today)
-    .neq("status", "done");
-
-  const { data: myTasksRaw } = await adminClient
-    .from("task_assignees")
-    .select("tasks(id, title, status, priority, due_date, projects!inner(id, name, company_id))")
-    .eq("member_id", user.id)
-    .neq("tasks.status", "done");
-
   type TaskRow = { id: string; title: string; status: string; priority: string; due_date: string | null; projects: { id: string; name: string; company_id: string } };
   const myTasks = (myTasksRaw || [])
     .map((r) => (r as unknown as { tasks: TaskRow }).tasks)
     .filter((tk): tk is TaskRow => tk !== null && tk.projects?.company_id === profile.company_id);
-
-  const weekLater = new Date(todayStart);
-  weekLater.setDate(weekLater.getDate() + 7);
-  const weekLaterStr = weekLater.toISOString().split("T")[0];
-
-  const { data: upcomingTasksRaw } = await adminClient
-    .from("tasks")
-    .select("id, title, status, priority, due_date, projects!inner(id, name, company_id)")
-    .eq("projects.company_id", profile.company_id)
-    .neq("status", "done")
-    .gte("due_date", today)
-    .lte("due_date", weekLaterStr)
-    .order("due_date", { ascending: true })
-    .limit(10);
 
   const upcomingTasks = (upcomingTasksRaw || []) as unknown as TaskRow[];
 

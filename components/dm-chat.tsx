@@ -295,7 +295,8 @@ export default function DmChat({
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "direct_messages" },
-        async (payload) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async (payload: any) => {
           const msg = payload.new as Message;
 
           // 내가 보낸 메시지는 낙관적 업데이트로 이미 표시됨 → temp를 실제 ID로 교체만

@@ -1,24 +1,16 @@
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { cookies } from "next/headers";
 import DesktopDownload from "@/components/desktop-download";
 import LanguageSetting from "./language-setting";
 import UiLanguageSetting from "./ui-language-setting";
 import { getT } from "@/lib/i18n/server";
+import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 
 export default async function AccountSettingsPage() {
   const t = await getT();
-  const supabase = await createClient();
-  const adminClient = createAdminClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
-  const { data: profile } = await adminClient
-    .from("profiles")
-    .select("name, role, language")
-    .eq("id", user.id)
-    .single();
+  const profile = await getProfile();
 
   const cookieStore = await cookies();
   const uiLang = cookieStore.get("vteam-ui-lang")?.value || "ko";

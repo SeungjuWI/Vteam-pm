@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import InviteForm from "./invite-form";
 import MemberActions from "./member-actions";
 import InvitationItem from "./invitation-item";
@@ -8,19 +8,13 @@ import { getT } from "@/lib/i18n/server";
 
 export default async function MembersPage() {
   const t = await getT();
-  const supabase = await createClient();
-  const adminClient = createAdminClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
-  const { data: profile } = await adminClient
-    .from("profiles")
-    .select("role, company_id")
-    .eq("id", user.id)
-    .single();
-
+  const profile = await getProfile();
   if (!profile?.company_id) return null;
+
+  const adminClient = createAdminClient();
 
   const { data: members } = await adminClient
     .from("profiles")

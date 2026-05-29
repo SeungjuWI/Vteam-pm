@@ -281,7 +281,8 @@ export default function SidebarTeamList({
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "profiles", filter: "presence=neq." },
-        (payload) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
           setMembers((prev) =>
             prev.map((m) =>
               m.id === payload.new.id

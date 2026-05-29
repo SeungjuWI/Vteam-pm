@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import LeaveRequestForm from "./leave-request-form";
 import LeaveActions from "./leave-actions";
 import Avatar from "@/components/avatar";
@@ -24,19 +24,13 @@ const STATUS_KEYS: Record<string, string> = {
 
 export default async function LeavesPage() {
   const t = await getT();
-  const supabase = await createClient();
-  const adminClient = createAdminClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
-  const { data: profile } = await adminClient
-    .from("profiles")
-    .select("role, company_id")
-    .eq("id", user.id)
-    .single();
-
+  const profile = await getProfile();
   if (!profile?.company_id) return null;
+
+  const adminClient = createAdminClient();
 
   const isManager = profile.role === "manager";
   const year = new Date().getFullYear();

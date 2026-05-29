@@ -92,6 +92,5 @@ export async function saveCompanyInfo(formData: FormData) {
   if (error) return { error: "저장에 실패했습니다" };
 
   revalidatePath("/settings/company");
-  revalidatePath("/");
   return { success: true };
 }

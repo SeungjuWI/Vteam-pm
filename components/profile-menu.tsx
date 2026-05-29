@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { getProfileMenuData } from "./profile-menu-actions";
+import Image from "next/image";
 import { logout } from "@/app/(auth)/actions";
 import { useT } from "@/lib/i18n";
 
@@ -15,22 +15,15 @@ interface ProfileData {
   email: string;
 }
 
-export default function ProfileMenu() {
+export default function ProfileMenu({ profile }: { profile: ProfileData }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   const ROLE_KEYS = { admin: "role.admin", manager: "role.manager", employee: "role.employee" } as const;
-
-  useEffect(() => {
-    getProfileMenuData().then((data) => {
-      if (data) setProfile(data);
-    });
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -57,10 +50,6 @@ export default function ProfileMenu() {
     setOpen((prev) => !prev);
   }
 
-  if (!profile) {
-    return <div className="h-8 w-8 animate-pulse rounded-full bg-gray-100" />;
-  }
-
   const roleKey = profile.role as keyof typeof ROLE_KEYS;
   const roleLabel = roleKey in ROLE_KEYS ? t(ROLE_KEYS[roleKey]) : profile.role;
 
@@ -72,8 +61,7 @@ export default function ProfileMenu() {
         className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 transition-colors hover:ring-2 hover:ring-gray-200"
       >
         {profile.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={profile.avatarUrl} alt={profile.name} className="h-full w-full object-cover" />
+          <Image src={profile.avatarUrl} alt={profile.name} width={32} height={32} className="h-full w-full object-cover" />
         ) : (
           <span className="text-sm font-medium text-gray-500">{profile.name[0]}</span>
         )}
@@ -89,8 +77,7 @@ export default function ProfileMenu() {
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100">
                 {profile.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.avatarUrl} alt={profile.name} className="h-full w-full object-cover" />
+                  <Image src={profile.avatarUrl} alt={profile.name} width={40} height={40} className="h-full w-full object-cover" />
                 ) : (
                   <span className="text-sm font-medium text-gray-500">{profile.name[0]}</span>
                 )}

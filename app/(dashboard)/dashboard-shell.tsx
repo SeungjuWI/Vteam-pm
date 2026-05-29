@@ -87,18 +87,49 @@ const iconMap: Record<string, React.ReactNode> = {
   ),
 };
 
+export interface ProfileData {
+  name: string;
+  role: string;
+  position: string;
+  avatarUrl: string;
+}
+
+export interface CompanyData {
+  name: string;
+  foundedAt: string | null;
+  memberCount: number;
+  businessNumber: string | null;
+  corpNumber: string | null;
+  phone: string | null;
+  address: string | null;
+  logoUrl: string | null;
+}
+
+export interface WorkStatus {
+  status: "idle" | "working" | "done";
+  clockIn: string | null;
+}
+
 export default function DashboardShell({
   children,
   role,
   userId,
+  userEmail,
   userLang,
   uiLang,
+  profileData,
+  companyData,
+  initialWorkStatus,
 }: {
   children: React.ReactNode;
   role: string;
   userId: string;
+  userEmail: string;
   userLang: string;
   uiLang: string;
+  profileData: ProfileData;
+  companyData: CompanyData | null;
+  initialWorkStatus: WorkStatus;
 }) {
   const pathname = usePathname();
   const isManager = role === "manager" || role === "admin";
@@ -129,7 +160,7 @@ export default function DashboardShell({
         {/* Sidebar */}
         <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
           <div className="flex h-14 items-center px-3">
-            <CompanyChip />
+            <CompanyChip profile={profileData} company={companyData} />
           </div>
           <div className="flex-1 overflow-y-auto">
             <nav className="px-3 py-2">
@@ -152,9 +183,9 @@ export default function DashboardShell({
         <div className="flex flex-1 flex-col">
           {/* Header */}
           <header className="flex h-14 items-center justify-end gap-3 border-b border-gray-200 bg-white px-6">
-            <WorkTimer />
+            <WorkTimer initialStatus={initialWorkStatus} />
             <NotificationButton />
-            <ProfileMenu />
+            <ProfileMenu profile={{ ...profileData, email: userEmail }} />
           </header>
           {/* Content */}
           <main className="flex-1 overflow-auto bg-gray-50 p-6">{children}</main>

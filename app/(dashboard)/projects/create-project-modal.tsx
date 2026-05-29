@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { createProject } from "./actions";
 import { compressImage } from "@/lib/compress-image";
 import { useT } from "@/lib/i18n";
@@ -175,7 +176,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
                     >
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[9px] font-medium text-blue-600">
                         {m.avatarUrl ? (
-                          <img src={m.avatarUrl} alt="" className="h-5 w-5 rounded-full object-cover" />
+                          <Image src={m.avatarUrl} alt="" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
                         ) : (
                           m.name[0]
                         )}
@@ -225,7 +226,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
                       >
                         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-600">
                           {m.avatarUrl ? (
-                            <img src={m.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+                            <Image src={m.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" />
                           ) : (
                             m.name[0]
                           )}

@@ -1,21 +1,15 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import LeaveSettingsView from "./leave-settings-view";
 
 export default async function LeaveSettingsPage() {
-  const supabase = await createClient();
-  const adminClient = createAdminClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
-  const { data: profile } = await adminClient
-    .from("profiles")
-    .select("role, company_id")
-    .eq("id", user.id)
-    .single();
-
+  const profile = await getProfile();
   if (!profile?.company_id) return null;
+
+  const adminClient = createAdminClient();
 
   const { data: settings } = await adminClient
     .from("company_leave_settings")

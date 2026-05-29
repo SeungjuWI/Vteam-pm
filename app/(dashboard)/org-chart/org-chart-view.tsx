@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import {
   ReactFlow,
   Background,
@@ -16,7 +17,6 @@ import {
   Position,
   type OnConnect,
   type OnEdgesDelete,
-  type NodeDragHandler,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { updateReportsTo, type OrgMember } from "./actions";
@@ -43,8 +43,7 @@ function MemberNode({ data }: NodeProps) {
       <Handle type="target" position={Position.Top} className="!bg-gray-300 !h-2 !w-2" />
       <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-100">
         {d.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={d.avatarUrl} alt={d.name} className="h-full w-full object-cover" />
+          <Image src={d.avatarUrl} alt={d.name} width={40} height={40} className="h-full w-full object-cover" />
         ) : (
           <span className="text-sm font-medium text-gray-500">{(d.name as string)[0]}</span>
         )}
@@ -227,7 +226,7 @@ export default function OrgChartView({
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
 
-  const onNodeDragStop: NodeDragHandler = useCallback(() => {
+  const onNodeDragStop = useCallback(() => {
     savePositions(nodesRef.current);
   }, []);
 

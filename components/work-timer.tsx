@@ -69,10 +69,14 @@ function Confetti() {
   );
 }
 
-export default function WorkTimer() {
+export default function WorkTimer({
+  initialStatus,
+}: {
+  initialStatus: { status: WorkStatus; clockIn: string | null };
+}) {
   const t = useT();
-  const [status, setStatus] = useState<WorkStatus>("idle");
-  const [clockInTime, setClockInTime] = useState<string | null>(null);
+  const [status, setStatus] = useState<WorkStatus>(initialStatus.status);
+  const [clockInTime, setClockInTime] = useState<string | null>(initialStatus.clockIn);
   const [loading, setLoading] = useState(false);
   const [modalStep, setModalStep] = useState<"confirm" | "summary" | null>(null);
   const [totalDuration, setTotalDuration] = useState("");
@@ -97,10 +101,6 @@ export default function WorkTimer() {
     setStatus(result.status);
     setClockInTime(result.clockIn);
   }, []);
-
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
 
   useEffect(() => {
     if (!open) return;

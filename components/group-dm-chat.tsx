@@ -209,7 +209,8 @@ export default function GroupDmChat({
           table: "group_dm_messages",
           filter: `room_id=eq.${room.id}`,
         },
-        async (payload) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async (payload: any) => {
           const msg = payload.new as {
             id: string;
             room_id: string;

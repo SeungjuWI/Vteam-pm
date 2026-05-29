@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "5mb",
     },
+    optimizePackageImports: ["@xyflow/react", "openai"],
   },
   images: {
     remotePatterns: [

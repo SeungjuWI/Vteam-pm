@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Pretendard + Nunito */
-  --font-sans: "Pretendard Variable", "Pretendard", "-apple-system", "sans-serif";
+  /* Pretendard + Nunito (loaded via next/font) */
+  --font-sans: var(--font-pretendard), "-apple-system", "sans-serif";
 
   /* Toss Gray Scale */
   --color-gray-50: #F9FAFB;

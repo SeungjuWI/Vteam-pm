@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { getCompanyChipData } from "./company-chip-actions";
+import Image from "next/image";
 import { useT } from "@/lib/i18n";
 
 interface CompanyInfo {
@@ -18,7 +18,7 @@ interface CompanyInfo {
 
 interface ProfileInfo {
   name: string;
-  role: "admin" | "manager" | "employee";
+  role: string;
 }
 
 function daysSince(dateStr: string): number {
@@ -61,25 +61,20 @@ function CopyButton({ value, label }: { value: string; label: string }) {
   );
 }
 
-export default function CompanyChip() {
+export default function CompanyChip({
+  profile,
+  company,
+}: {
+  profile: ProfileInfo;
+  company: CompanyInfo | null;
+}) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const [company, setCompany] = useState<CompanyInfo | null>(null);
-  const [profile, setProfile] = useState<ProfileInfo | null>(null);
   const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const ROLE_KEYS = { admin: "role.admin", manager: "role.manager", employee: "role.employee" } as const;
-
-  useEffect(() => {
-    getCompanyChipData().then((data) => {
-      if (data) {
-        setProfile(data.profile);
-        setCompany(data.company);
-      }
-    });
-  }, []);
 
   const handleToggle = useCallback(() => {
     if (!open && btnRef.current) {
@@ -107,11 +102,11 @@ export default function CompanyChip() {
     }
   }, [open]);
 
-  if (!company || !profile) {
+  if (!company) {
     return (
       <div className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2">
-        <div className="h-8 w-8 flex-shrink-0 animate-pulse rounded-lg bg-gray-100" />
-        <div className="h-4 flex-1 animate-pulse rounded bg-gray-100" />
+        <div className="h-8 w-8 flex-shrink-0 rounded-lg bg-gray-100" />
+        <div className="h-4 flex-1 rounded bg-gray-100" />
       </div>
     );
   }
@@ -127,7 +122,7 @@ export default function CompanyChip() {
         className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 transition-colors hover:bg-gray-50"
       >
         {company.logoUrl ? (
-          <img src={company.logoUrl} alt="" className="h-8 w-8 flex-shrink-0 rounded-lg object-contain" />
+          <Image src={company.logoUrl} alt="" width={32} height={32} className="h-8 w-8 flex-shrink-0 rounded-lg object-contain" />
         ) : (
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-medium text-gray-400">
             {company.name.charAt(0)}
@@ -153,7 +148,7 @@ export default function CompanyChip() {
         >
           <div className="mb-4 flex items-center gap-3 px-5">
             {company.logoUrl ? (
-              <img src={company.logoUrl} alt="" className="h-11 w-11 flex-shrink-0 rounded-xl object-contain" />
+              <Image src={company.logoUrl} alt="" width={44} height={44} className="h-11 w-11 flex-shrink-0 rounded-xl object-contain" />
             ) : (
               <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gray-100 text-base font-medium text-gray-400">
                 {company.name.charAt(0)}

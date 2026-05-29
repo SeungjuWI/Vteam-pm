@@ -1,21 +1,15 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import CompanyInfoView from "./company-info-view";
 
 export default async function CompanySettingsPage() {
-  const supabase = await createClient();
-  const adminClient = createAdminClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
-  const { data: profile } = await adminClient
-    .from("profiles")
-    .select("company_id, role")
-    .eq("id", user.id)
-    .single();
-
+  const profile = await getProfile();
   if (!profile?.company_id) return null;
+
+  const adminClient = createAdminClient();
 
   const { data: company } = await adminClient
     .from("companies")

@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { revalidatePath } from "next/cache";
 
 export async function getNotifications() {
   const supabase = await createClient();
@@ -33,8 +32,6 @@ export async function markNotificationRead(notificationId: string) {
     .update({ is_read: true })
     .eq("id", notificationId)
     .eq("user_id", user.id);
-
-  revalidatePath("/");
 }
 
 export async function markAllNotificationsRead() {
@@ -49,6 +46,4 @@ export async function markAllNotificationsRead() {
     .update({ is_read: true })
     .eq("user_id", user.id)
     .eq("is_read", false);
-
-  revalidatePath("/");
 }

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { saveCompanyInfo } from "./actions";
 import { compressImage } from "@/lib/compress-image";
 import { useT } from "@/lib/i18n";
@@ -201,7 +202,7 @@ export default function CompanyInfoView({
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={data.logoUrl} alt={t("company.logo")} className="h-full w-full object-contain p-1" />
+            <Image src={data.logoUrl} alt={t("company.logo")} width={64} height={64} className="h-full w-full object-contain p-1" />
           </div>
           <span className="text-sm font-medium text-gray-900">{data.name}</span>
         </div>

@@ -6,24 +6,44 @@ import { useCallback, useEffect, useRef } from "react";
 function playNotificationSound() {
   try {
     const ctx = new AudioContext();
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const t = ctx.currentTime;
 
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
+    // 슬랙 스타일: 나무 노크 느낌의 두 번 톡톡
+    const knocks = [
+      { start: 0, freq: 800 },
+      { start: 0.12, freq: 1000 },
+    ];
 
-    // 슬랙 스타일 알림음: 짧고 부드러운 두 음
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(880, ctx.currentTime); // A5
-    oscillator.frequency.setValueAtTime(1046.5, ctx.currentTime + 0.08); // C6
+    for (const knock of knocks) {
+      // 노이즈 + 톤을 섞어 나무 노크 질감 생성
+      const osc = ctx.createOscillator();
+      const oscGain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
 
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.connect(filter);
+      filter.connect(oscGain);
+      oscGain.connect(ctx.destination);
 
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.2);
+      // 밴드패스 필터로 나무 울림 느낌
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(knock.freq, t + knock.start);
+      filter.Q.setValueAtTime(15, t + knock.start);
 
-    oscillator.onended = () => ctx.close();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(knock.freq, t + knock.start);
+
+      // 짧고 날카로운 어택 → 빠른 감쇠
+      oscGain.gain.setValueAtTime(0.4, t + knock.start);
+      oscGain.gain.exponentialRampToValueAtTime(
+        0.001,
+        t + knock.start + 0.08
+      );
+
+      osc.start(t + knock.start);
+      osc.stop(t + knock.start + 0.08);
+    }
+
+    setTimeout(() => ctx.close(), 400);
   } catch {
     // AudioContext를 지원하지 않는 환경에서는 무시
   }

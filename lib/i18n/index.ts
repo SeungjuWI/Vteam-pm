@@ -15,11 +15,17 @@ function createT(locale: string): TFunction {
 
 // Client-side context
 const I18nContext = createContext<TFunction>(createT("ko"));
+const LocaleContext = createContext<string>("ko");
 
 export const I18nProvider = I18nContext.Provider;
+export const LocaleProvider = LocaleContext.Provider;
 
 export function useT(): TFunction {
   return useContext(I18nContext);
+}
+
+export function useLocale(): string {
+  return useContext(LocaleContext);
 }
 
 export function makeT(locale: string): TFunction {

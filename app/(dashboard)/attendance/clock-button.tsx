@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/lib/i18n";
+import { useT, useLocale } from "@/lib/i18n";
 
 type Props = {
   isClockedIn: boolean;
@@ -9,6 +9,7 @@ type Props = {
 
 export default function ClockButton({ isClockedIn, clockInTime }: Props) {
   const t = useT();
+  const locale = useLocale();
 
   function getElapsed() {
     if (!clockInTime) return null;
@@ -28,8 +29,8 @@ export default function ClockButton({ isClockedIn, clockInTime }: Props) {
         </span>
       </div>
       {isClockedIn && clockInTime && (
-        <p className="mt-1 text-xs text-gray-400">
-          {new Date(clockInTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} {t("clock.clockedIn")}
+        <p className="mt-1 text-xs text-gray-400" suppressHydrationWarning>
+          {new Date(clockInTime).toLocaleTimeString(locale === "en" ? "en-US" : "ko-KR", { hour: "2-digit", minute: "2-digit" })} {t("clock.clockedIn")}
           {" · "}
           {getElapsed()} {t("clock.elapsed")}
         </p>

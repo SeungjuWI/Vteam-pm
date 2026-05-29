@@ -7,7 +7,7 @@ import WorkTimer from "@/components/work-timer";
 import NotificationButton from "@/components/notification-button";
 import ProfileMenu from "@/components/profile-menu";
 import DmChatManager from "@/components/dm-chat-manager";
-import { I18nProvider, makeT, type TFunction } from "@/lib/i18n";
+import { I18nProvider, LocaleProvider, makeT, type TFunction } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/ko";
 
 interface NavItem {
@@ -124,6 +124,7 @@ export default function DashboardShell({
 
   return (
     <I18nProvider value={t}>
+    <LocaleProvider value={uiLang}>
       <div className="flex min-h-screen">
         {/* Sidebar */}
         <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
@@ -159,6 +160,7 @@ export default function DashboardShell({
           <main className="flex-1 overflow-auto bg-gray-50 p-6">{children}</main>
         </div>
       </div>
+    </LocaleProvider>
     </I18nProvider>
   );
 }

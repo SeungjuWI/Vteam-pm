@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { saveWorkSettings } from "./actions";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   current: {
@@ -20,18 +21,6 @@ type Props = {
   onSaved?: () => void;
 };
 
-const WORK_TYPES = [
-  { value: "fixed", label: "고정 출퇴근", desc: "정해진 시간에 출퇴근" },
-  { value: "flexible", label: "시차 출퇴근", desc: "허용 시간 내 자율 출근" },
-  { value: "free", label: "자율 출퇴근", desc: "출퇴근 시간 제한 없음" },
-];
-
-const LUNCH_OPTIONS = [
-  { value: 30, label: "30분" },
-  { value: 60, label: "1시간" },
-  { value: 90, label: "1시간 30분" },
-];
-
 function timeOptions() {
   const opts: string[] = [];
   for (let h = 0; h < 24; h++) {
@@ -45,6 +34,20 @@ function timeOptions() {
 const TIME_OPTS = timeOptions();
 
 export default function WorkSettingsForm({ current, onSaved }: Props) {
+  const t = useT();
+
+  const WORK_TYPES = [
+    { value: "fixed", label: t("work.fixed"), desc: t("work.fixedDesc") },
+    { value: "flexible", label: t("work.flexible"), desc: t("work.flexibleDesc") },
+    { value: "free", label: t("work.free"), desc: t("work.freeDesc") },
+  ];
+
+  const LUNCH_OPTIONS = [
+    { value: 30, label: t("work.lunch30") },
+    { value: 60, label: t("work.lunch60") },
+    { value: 90, label: t("work.lunch90") },
+  ];
+
   const [workType, setWorkType] = useState(current?.work_type ?? "flexible");
   const [fixedStart, setFixedStart] = useState(current?.fixed_start?.slice(0, 5) ?? "09:00");
   const [fixedEnd, setFixedEnd] = useState(current?.fixed_end?.slice(0, 5) ?? "18:00");
@@ -85,23 +88,23 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
 
       {/* 근무 유형 */}
       <div className="rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-sm font-medium text-gray-900">근무 유형</h2>
+        <h2 className="mb-4 text-sm font-medium text-gray-900">{t("work.type")}</h2>
         <div className="flex flex-col gap-2">
-          {WORK_TYPES.map((t) => (
+          {WORK_TYPES.map((wt) => (
             <button
-              key={t.value}
+              key={wt.value}
               type="button"
-              onClick={() => setWorkType(t.value)}
+              onClick={() => setWorkType(wt.value)}
               className={`flex flex-col rounded-xl border p-4 text-left transition-colors ${
-                workType === t.value
+                workType === wt.value
                   ? "border-blue-500 bg-blue-50"
                   : "border-gray-200 hover:border-gray-300"
               }`}
             >
-              <span className={`text-sm font-medium ${workType === t.value ? "text-blue-600" : "text-gray-900"}`}>
-                {t.label}
+              <span className={`text-sm font-medium ${workType === wt.value ? "text-blue-600" : "text-gray-900"}`}>
+                {wt.label}
               </span>
-              <span className="mt-0.5 text-xs text-gray-500">{t.desc}</span>
+              <span className="mt-0.5 text-xs text-gray-500">{wt.desc}</span>
             </button>
           ))}
         </div>
@@ -109,28 +112,28 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
 
       {/* 출퇴근 시간 */}
       <div className="rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-sm font-medium text-gray-900">출퇴근 시간</h2>
+        <h2 className="mb-4 text-sm font-medium text-gray-900">{t("work.commute")}</h2>
 
         {workType === "fixed" && (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">출근 시간</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.clockIn")}</label>
               <select
                 value={fixedStart}
                 onChange={(e) => setFixedStart(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
               >
-                {TIME_OPTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">퇴근 시간</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.clockOut")}</label>
               <select
                 value={fixedEnd}
                 onChange={(e) => setFixedEnd(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
               >
-                {TIME_OPTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
               </select>
             </div>
           </div>
@@ -140,42 +143,42 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-600">출근 가능 시작</label>
+                <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.flexStart")}</label>
                 <select
                   value={flexStart}
                   onChange={(e) => setFlexStart(e.target.value)}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                 >
-                  {TIME_OPTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-600">출근 가능 마감</label>
+                <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.flexEnd")}</label>
                 <select
                   value={flexEnd}
                   onChange={(e) => setFlexEnd(e.target.value)}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                 >
-                  {TIME_OPTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
                 </select>
               </div>
             </div>
             <p className="text-xs text-gray-400">
-              {flexStart} ~ {flexEnd} 사이에 출근하면 됩니다
+              {flexStart} ~ {flexEnd} {t("work.flexBetween")}
             </p>
           </div>
         )}
 
         {workType === "free" && (
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-gray-500">출퇴근 시간 제한이 없습니다</p>
+            <p className="text-sm text-gray-500">{t("work.noRestriction")}</p>
 
             {/* 코어타임 */}
             <div className="border-t border-gray-100 pt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-900">코어타임</p>
-                  <p className="text-xs text-gray-500">반드시 근무해야 하는 시간대</p>
+                  <p className="text-sm text-gray-900">{t("work.coreTime")}</p>
+                  <p className="text-xs text-gray-500">{t("work.coreTimeDesc")}</p>
                 </div>
                 <button
                   type="button"
@@ -188,23 +191,23 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
               {coreEnabled && (
                 <div className="mt-3 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-gray-600">시작</label>
+                    <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.coreTimeStart")}</label>
                     <select
                       value={coreStart}
                       onChange={(e) => setCoreStart(e.target.value)}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                     >
-                      {TIME_OPTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                      {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-gray-600">종료</label>
+                    <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.coreTimeEnd")}</label>
                     <select
                       value={coreEnd}
                       onChange={(e) => setCoreEnd(e.target.value)}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                     >
-                      {TIME_OPTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                      {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
                     </select>
                   </div>
                 </div>
@@ -215,7 +218,7 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
 
         {/* 필수 근무시간 */}
         <div className="mt-4">
-          <label className="mb-1.5 block text-xs font-medium text-gray-600">일일 필수 근무시간</label>
+          <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.dailyRequired")}</label>
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -226,27 +229,27 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
               step={0.5}
               className="w-20 rounded-lg border border-gray-200 px-3 py-2 text-center text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
             />
-            <span className="text-sm text-gray-500">시간</span>
+            <span className="text-sm text-gray-500">{t("common.hours")}</span>
           </div>
         </div>
       </div>
 
       {/* 점심시간 */}
       <div className="rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-sm font-medium text-gray-900">점심시간</h2>
+        <h2 className="mb-4 text-sm font-medium text-gray-900">{t("work.lunchTime")}</h2>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">시작 시간</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.lunchStart")}</label>
             <select
               value={lunchStart}
               onChange={(e) => setLunchStart(e.target.value)}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
             >
-              {TIME_OPTS.map((t) => <option key={t} value={t}>{t}</option>)}
+              {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">점심시간 길이</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.lunchDuration")}</label>
             <div className="flex gap-2">
               {LUNCH_OPTIONS.map((opt) => (
                 <button
@@ -270,7 +273,7 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
             const [h, m] = lunchStart.split(":").map(Number);
             const total = h * 60 + m + lunchDuration;
             return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-          })()} ({lunchDuration}분)
+          })()} ({lunchDuration}{t("common.minutes")})
         </p>
       </div>
 
@@ -280,7 +283,7 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
           disabled={loading}
           className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
         >
-          {loading ? "저장 중..." : "저장"}
+          {loading ? t("common.saving") : t("common.save")}
         </button>
         {onSaved && (
           <button
@@ -288,7 +291,7 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
             onClick={onSaved}
             className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
           >
-            취소
+            {t("common.cancel")}
           </button>
         )}
       </div>

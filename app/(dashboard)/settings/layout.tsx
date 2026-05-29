@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const companyTabs = [
-  { href: "/settings/company", label: "회사 정보" },
-  { href: "/settings/work", label: "근무 규정" },
-  { href: "/settings/leave", label: "연차 제도" },
-];
+import { useT } from "@/lib/i18n";
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const t = useT();
   const isSimple = pathname === "/settings" || pathname === "/settings/account";
 
+  const companyTabs = [
+    { href: "/settings/company", label: t("settings.companyInfoTab") },
+    { href: "/settings/work", label: t("settings.workPolicy") },
+    { href: "/settings/leave", label: t("settings.leavePolicy") },
+  ];
+
   if (isSimple) {
-    const title = pathname === "/settings" ? "내 프로필" : "설정";
+    const title = pathname === "/settings" ? t("settings.myProfile") : t("settings.settings");
     return (
       <div className="flex flex-col gap-6">
         <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
@@ -25,7 +27,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold text-gray-900">회사정보</h1>
+      <h1 className="text-lg font-semibold text-gray-900">{t("settings.companyInfo")}</h1>
       <div className="flex gap-1 border-b border-gray-200">
         {companyTabs.map((tab) => {
           const isActive = pathname === tab.href;

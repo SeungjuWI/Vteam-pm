@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useT } from "@/lib/i18n";
 
 type AttendanceRecord = {
   clock_in: string;
@@ -25,7 +26,6 @@ type ViewMode = "week" | "month";
 
 const LEGAL_WEEKLY_HOURS = 40;
 const MAX_WEEKLY_HOURS = 52;
-const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
 function getSunday(date: Date): Date {
   const d = new Date(date);
@@ -47,12 +47,6 @@ function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function formatHM(ms: number): string {
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  return `${h}시간 ${m}분`;
-}
-
 function formatHMShort(ms: number): string {
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
@@ -72,10 +66,18 @@ type DayInfo = {
 };
 
 export default function AttendanceCalendar({ records, leaves, requiredHours }: Props) {
+  const t = useT();
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [baseDate, setBaseDate] = useState(new Date());
   const [now, setNow] = useState(0);
-  const mounted = now > 0;
+
+  const DAY_NAMES = t("calendar.dayNames").split(",");
+
+  function formatHM(ms: number): string {
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    return `${h}${t("common.hours")} ${m}${t("common.minutes")}`;
+  }
 
   const today = useMemo(() => {
     const d = new Date();
@@ -83,7 +85,6 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
     return d;
   }, []);
 
-  // 마운트 후 현재 시간 설정 + 근무 중이면 1분마다 갱신
   const hasActiveRecord = records.some((r) => !r.clock_out);
   useEffect(() => {
     setNow(Date.now());
@@ -94,10 +95,8 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
 
   const requiredMs = requiredHours * 3600000;
 
-  // Build a map of date -> day info
   const dayMap = useMemo(() => {
     const map = new Map<string, { totalMs: number; isWorking: boolean }>();
-
     for (const r of records) {
       const clockIn = new Date(r.clock_in);
       const key = `${clockIn.getFullYear()}-${clockIn.getMonth()}-${clockIn.getDate()}`;
@@ -114,7 +113,6 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
     return map;
   }, [records, now]);
 
-  // Build leave map
   const leaveMap = useMemo(() => {
     const map = new Map<string, { type: string; hours: number }>();
     for (const l of leaves) {
@@ -133,9 +131,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
     const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
     const attendance = dayMap.get(key);
     const leave = leaveMap.get(key);
-
     const totalMs = attendance?.totalMs ?? (leave ? leave.hours * 3600000 : 0);
-
     return {
       date: new Date(date),
       totalMs,
@@ -148,7 +144,6 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
     };
   }
 
-  // Get calendar days
   const calendarDays = useMemo((): DayInfo[][] => {
     if (viewMode === "week") {
       const monday = getSunday(baseDate);
@@ -165,7 +160,6 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
       const calStart = getSunday(monthStart);
       const weeks: DayInfo[][] = [];
       let current = new Date(calStart);
-
       while (current <= monthEnd || current.getDay() !== 0) {
         const week: DayInfo[] = [];
         for (let i = 0; i < 7; i++) {
@@ -180,7 +174,6 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, baseDate, dayMap, leaveMap, requiredMs, today]);
 
-  // Weekly stats (for the week containing baseDate)
   const weekStats = useMemo(() => {
     const monday = getSunday(baseDate);
     let totalMs = 0;
@@ -220,27 +213,26 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
         sat.setDate(sun.getDate() + 6);
         return `${sun.getMonth() + 1}/${sun.getDate()} ~ ${sat.getMonth() + 1}/${sat.getDate()}`;
       })()
-    : `${baseDate.getFullYear()}년 ${baseDate.getMonth() + 1}월`;
+    : `${baseDate.getFullYear()}. ${baseDate.getMonth() + 1}`;
 
   const leaveLabel = (type: string | null) => {
     const map: Record<string, string> = {
-      annual: "연차",
-      half_am: "오전반차",
-      half_pm: "오후반차",
-      sick: "병가",
-      condolence: "경조",
-      maternity: "출산",
-      paternity: "배우자출산",
-      family_care: "가족돌봄",
-      compensatory: "대체휴무",
-      other: "기타",
+      annual: t("leaveType.annual"),
+      half_am: t("calendar.halfAm"),
+      half_pm: t("calendar.halfPm"),
+      sick: t("calendar.sickLeave"),
+      condolence: t("calendar.condolence"),
+      maternity: t("calendar.maternity"),
+      paternity: t("calendar.paternity"),
+      family_care: t("calendar.familyCare"),
+      compensatory: t("calendar.compensatory"),
+      other: t("calendar.otherLeave"),
     };
-    return type ? map[type] ?? "휴가" : "휴가";
+    return type ? map[type] ?? t("calendar.leave") : t("calendar.leave");
   };
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg bg-gray-100 p-0.5">
@@ -250,7 +242,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
                 viewMode === "week" ? "bg-white text-gray-900" : "text-gray-500"
               }`}
             >
-              주
+              {t("calendar.week")}
             </button>
             <button
               onClick={() => setViewMode("month")}
@@ -258,14 +250,14 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
                 viewMode === "month" ? "bg-white text-gray-900" : "text-gray-500"
               }`}
             >
-              월
+              {t("calendar.month")}
             </button>
           </div>
           <button
             onClick={goToday}
             className="rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
           >
-            오늘
+            {t("calendar.today")}
           </button>
         </div>
 
@@ -284,30 +276,28 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
         </div>
       </div>
 
-      {/* Weekly Summary */}
       <div className="rounded-xl bg-white p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-gray-500">이번 주 총 근무시간</p>
+            <p className="text-xs text-gray-500">{t("calendar.weeklyTotal")}</p>
             <p className="mt-1 text-xl font-semibold text-gray-900">{formatHM(weekStats.totalMs)}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-500">법정 기준 (주 {LEGAL_WEEKLY_HOURS}시간)</p>
+            <p className="text-xs text-gray-500">{t("calendar.legalBasis")} ({LEGAL_WEEKLY_HOURS}h)</p>
             <p className={`mt-1 text-sm font-medium ${
               weekStats.diff > 0 ? "text-blue-500" : weekStats.diff < 0 ? "text-gray-400" : "text-gray-600"
             }`}>
               {weekStats.diff === 0
-                ? "정확히 달성"
+                ? t("calendar.exactlyMet")
                 : weekStats.diff > 0
-                  ? `${formatHM(weekStats.diff)} 초과 달성`
-                  : `${formatHM(Math.abs(weekStats.diff))} 부족`}
+                  ? `${formatHM(weekStats.diff)} ${t("calendar.exceeded")}`
+                  : `${formatHM(Math.abs(weekStats.diff))} ${t("calendar.shortage")}`}
             </p>
             {weekStats.totalMs > weekStats.maxMs && (
-              <p className="mt-0.5 text-xs text-red-500">⚠ 주 {MAX_WEEKLY_HOURS}시간 초과</p>
+              <p className="mt-0.5 text-xs text-red-500">⚠ {MAX_WEEKLY_HOURS}h {t("calendar.overLimit")}</p>
             )}
           </div>
         </div>
-        {/* Progress bar */}
         <div className="mt-3">
           <div className="h-2 rounded-full bg-gray-100">
             <div
@@ -331,9 +321,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
         </div>
       </div>
 
-      {/* Calendar Grid */}
       <div className="overflow-hidden rounded-xl border border-gray-100 bg-white">
-        {/* Day headers */}
         <div className="grid grid-cols-7 border-b border-gray-100">
           {DAY_NAMES.map((name, i) => (
             <div
@@ -347,7 +335,6 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
           ))}
         </div>
 
-        {/* Weeks */}
         {calendarDays.map((week, wi) => (
           <div key={wi} className="grid grid-cols-7 border-b border-gray-50 last:border-b-0">
             {week.map((day, di) => {
@@ -361,7 +348,6 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
                     day.isToday ? "bg-blue-50/50" : dimmed ? "bg-gray-50/50" : ""
                   }`}
                 >
-                  {/* Date number */}
                   <div className="flex items-center gap-1">
                     <span
                       className={`text-xs ${
@@ -377,19 +363,18 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
                     {day.isOvertime && !day.isLeave && <span className="text-xs">🔥</span>}
                   </div>
 
-                  {/* Content */}
                   {day.isLeave ? (
                     <div className="mt-1.5">
                       <span className="inline-block rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-600">
                         {leaveLabel(day.leaveType)}
                       </span>
-                      <p className="mt-0.5 text-[10px] text-gray-400">8시간</p>
+                      <p className="mt-0.5 text-[10px] text-gray-400">8h</p>
                     </div>
                   ) : day.isWorking ? (
                     <div className="mt-1.5">
                       <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-500">
                         <span className="h-1 w-1 rounded-full bg-blue-500" />
-                        근무중
+                        {t("clock.working")}
                       </span>
                       <p className="mt-0.5 text-[10px] text-gray-400">{formatHMShort(day.totalMs)}</p>
                     </div>

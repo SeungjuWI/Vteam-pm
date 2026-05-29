@@ -7,28 +7,30 @@ import WorkTimer from "@/components/work-timer";
 import NotificationButton from "@/components/notification-button";
 import ProfileMenu from "@/components/profile-menu";
 import DmChatManager from "@/components/dm-chat-manager";
+import { I18nProvider, makeT, type TFunction } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/ko";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: TranslationKey;
   icon: string;
   managerOnly?: boolean;
 }
 
 const mainNavItems: NavItem[] = [
-  { href: "/dashboard", label: "대시보드", icon: "home" },
-  { href: "/attendance", label: "출퇴근", icon: "clock" },
-  { href: "/leaves", label: "휴가", icon: "calendar" },
-  { href: "/projects", label: "프로젝트", icon: "folder" },
-  { href: "/members", label: "멤버", icon: "users" },
-  { href: "/org-chart", label: "조직도", icon: "orgchart" },
-  { href: "/settings/company", label: "회사정보", icon: "building" },
-  { href: "/settings/account", label: "설정", icon: "settings" },
+  { href: "/dashboard", labelKey: "nav.dashboard", icon: "home" },
+  { href: "/attendance", labelKey: "nav.attendance", icon: "clock" },
+  { href: "/leaves", labelKey: "nav.leaves", icon: "calendar" },
+  { href: "/projects", labelKey: "nav.projects", icon: "folder" },
+  { href: "/members", labelKey: "nav.members", icon: "users" },
+  { href: "/org-chart", labelKey: "nav.orgChart", icon: "orgchart" },
+  { href: "/settings/company", labelKey: "nav.companyInfo", icon: "building" },
+  { href: "/settings/account", labelKey: "nav.settings", icon: "settings" },
 ];
 
 const managerNavItems: NavItem[] = [
-  { href: "/attendance-dashboard", label: "근태 대시보드", icon: "chart", managerOnly: true },
-  { href: "/export", label: "데이터 내보내기", icon: "download", managerOnly: true },
+  { href: "/attendance-dashboard", labelKey: "nav.attendanceDashboard", icon: "chart", managerOnly: true },
+  { href: "/export", labelKey: "nav.export", icon: "download", managerOnly: true },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -90,14 +92,17 @@ export default function DashboardShell({
   role,
   userId,
   userLang,
+  uiLang,
 }: {
   children: React.ReactNode;
   role: string;
   userId: string;
   userLang: string;
+  uiLang: string;
 }) {
   const pathname = usePathname();
   const isManager = role === "manager" || role === "admin";
+  const t = makeT(uiLang);
 
   function renderNavItem(item: NavItem) {
     const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
@@ -112,46 +117,48 @@ export default function DashboardShell({
         }`}
       >
         {iconMap[item.icon]}
-        {item.label}
+        {t(item.labelKey)}
       </Link>
     );
   }
 
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
-        <div className="flex h-14 items-center px-3">
-          <CompanyChip />
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <nav className="px-3 py-2">
-            {mainNavItems.map(renderNavItem)}
+    <I18nProvider value={t}>
+      <div className="flex min-h-screen">
+        {/* Sidebar */}
+        <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
+          <div className="flex h-14 items-center px-3">
+            <CompanyChip />
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <nav className="px-3 py-2">
+              {mainNavItems.map(renderNavItem)}
 
-            {isManager && (
-              <>
-                <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
-                  관리자
-                </div>
-                {managerNavItems.map(renderNavItem)}
-              </>
-            )}
-          </nav>
-          <DmChatManager currentUserId={userId} currentUserLang={userLang} />
-        </div>
-      </aside>
+              {isManager && (
+                <>
+                  <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
+                    {t("nav.adminSection")}
+                  </div>
+                  {managerNavItems.map(renderNavItem)}
+                </>
+              )}
+            </nav>
+            <DmChatManager currentUserId={userId} currentUserLang={userLang} />
+          </div>
+        </aside>
 
-      {/* Main */}
-      <div className="flex flex-1 flex-col">
-        {/* Header */}
-        <header className="flex h-14 items-center justify-end gap-3 border-b border-gray-200 bg-white px-6">
-          <WorkTimer />
-          <NotificationButton />
-          <ProfileMenu />
-        </header>
-        {/* Content */}
-        <main className="flex-1 overflow-auto bg-gray-50 p-6">{children}</main>
+        {/* Main */}
+        <div className="flex flex-1 flex-col">
+          {/* Header */}
+          <header className="flex h-14 items-center justify-end gap-3 border-b border-gray-200 bg-white px-6">
+            <WorkTimer />
+            <NotificationButton />
+            <ProfileMenu />
+          </header>
+          {/* Content */}
+          <main className="flex-1 overflow-auto bg-gray-50 p-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </I18nProvider>
   );
 }

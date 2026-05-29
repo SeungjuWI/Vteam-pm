@@ -2,20 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import ClockButton from "./clock-button";
 import AttendanceCalendar from "./attendance-calendar";
-
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatDuration(clockIn: string, clockOut: string | null) {
-  const end = clockOut ? new Date(clockOut).getTime() : Date.now();
-  const diff = end - new Date(clockIn).getTime();
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  return `${h}시간 ${m}분`;
-}
+import { getT, getLocale } from "@/lib/i18n/server";
 
 export default async function AttendancePage() {
+  const t = await getT();
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
@@ -83,7 +73,7 @@ export default async function AttendancePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold text-gray-900">출퇴근</h1>
+      <h1 className="text-lg font-semibold text-gray-900">{t("attendance.title")}</h1>
 
       <div className="rounded-xl bg-white p-6">
         <ClockButton isClockedIn={isClockedIn} clockInTime={todayRecord?.clock_in || null} />

@@ -1,17 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { loginWithGoogle } from "../actions";
 import DesktopDownload from "@/components/desktop-download";
+import { makeT } from "@/lib/i18n";
 
 export default function LoginPage() {
+  const [lang, setLang] = useState("ko");
+  useEffect(() => {
+    const browserLang = navigator.language.startsWith("en") ? "en" : "ko";
+    setLang(browserLang);
+  }, []);
+  const t = makeT(lang);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8">
         <div className="mb-8 flex flex-col items-center gap-2">
           <Image src="/logo.png" alt="Vteam" width={36} height={36} />
           <h1 className="text-xl font-semibold text-gray-900">Vteam</h1>
-          <p className="text-sm text-gray-500">원격 팀을 위한 올인원 워크스페이스</p>
+          <p className="text-sm text-gray-500">{t("login.subtitle")}</p>
         </div>
         <form action={loginWithGoogle}>
           <button
@@ -24,7 +33,7 @@ export default function LoginPage() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
-            Google로 시작하기
+            {t("login.google")}
           </button>
         </form>
         <div className="mt-6 flex justify-center">

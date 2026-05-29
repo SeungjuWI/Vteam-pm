@@ -1,29 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n";
 
 const VERSION = "0.1.0";
 const BASE_URL = "https://github.com/SeungjuWI/Vteam-pm/releases/download";
 
 type Platform = "mac-arm" | "mac-intel" | "windows" | "unknown";
-
-const DOWNLOADS: Record<Exclude<Platform, "unknown">, { label: string; file: string; desc: string }> = {
-  "mac-arm": {
-    label: "Mac (Apple Silicon)",
-    file: `${BASE_URL}/v${VERSION}/Vteam-${VERSION}-arm64.dmg`,
-    desc: "M1 / M2 / M3 / M4",
-  },
-  "mac-intel": {
-    label: "Mac (Intel)",
-    file: `${BASE_URL}/v${VERSION}/Vteam-${VERSION}.dmg`,
-    desc: "2020년 이전 Mac",
-  },
-  windows: {
-    label: "Windows",
-    file: `${BASE_URL}/v${VERSION}/Vteam-Setup-${VERSION}.exe`,
-    desc: "Windows 10 이상",
-  },
-};
 
 function detectPlatform(): Platform {
   const ua = navigator.userAgent;
@@ -47,8 +30,27 @@ function detectPlatform(): Platform {
 }
 
 export default function DesktopDownload({ variant = "full" }: { variant?: "full" | "compact" }) {
+  const t = useT();
   const [isElectron, setIsElectron] = useState(false);
   const [platform, setPlatform] = useState<Platform>("unknown");
+
+  const DOWNLOADS: Record<Exclude<Platform, "unknown">, { label: string; file: string; desc: string }> = {
+    "mac-arm": {
+      label: "Mac (Apple Silicon)",
+      file: `${BASE_URL}/v${VERSION}/Vteam-${VERSION}-arm64.dmg`,
+      desc: "M1 / M2 / M3 / M4",
+    },
+    "mac-intel": {
+      label: "Mac (Intel)",
+      file: `${BASE_URL}/v${VERSION}/Vteam-${VERSION}.dmg`,
+      desc: t("desktop.macBefore2020"),
+    },
+    windows: {
+      label: "Windows",
+      file: `${BASE_URL}/v${VERSION}/Vteam-Setup-${VERSION}.exe`,
+      desc: t("desktop.windowsReq"),
+    },
+  };
 
   useEffect(() => {
     setIsElectron(!!(window as unknown as { electron?: unknown }).electron);
@@ -68,7 +70,7 @@ export default function DesktopDownload({ variant = "full" }: { variant?: "full"
         className="flex items-center gap-1.5 text-xs text-gray-400 transition-colors hover:text-gray-600"
       >
         <MonitorIcon className="h-3.5 w-3.5" />
-        데스크탑 앱 다운로드
+        {t("desktop.compactLabel")}
       </a>
     );
   }
@@ -79,7 +81,7 @@ export default function DesktopDownload({ variant = "full" }: { variant?: "full"
 
   return (
     <div className="rounded-xl bg-white p-6">
-      <h2 className="mb-4 text-sm font-medium text-gray-900">데스크탑 앱</h2>
+      <h2 className="mb-4 text-sm font-medium text-gray-900">{t("desktop.title")}</h2>
 
       {/* 추천 다운로드 */}
       {recommended && (
@@ -97,7 +99,7 @@ export default function DesktopDownload({ variant = "full" }: { variant?: "full"
             rel="noopener noreferrer"
             className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
           >
-            다운로드
+            {t("desktop.download")}
           </a>
         </div>
       )}
@@ -105,7 +107,7 @@ export default function DesktopDownload({ variant = "full" }: { variant?: "full"
       {/* 다른 플랫폼 */}
       {otherPlatforms.length > 0 && (
         <div className="mt-3 flex items-center gap-3">
-          <span className="text-xs text-gray-400">다른 버전:</span>
+          <span className="text-xs text-gray-400">{t("desktop.otherVersions")}</span>
           {otherPlatforms.map((key) => (
             <a
               key={key}

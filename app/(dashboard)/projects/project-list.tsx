@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import CreateProjectModal from "./create-project-modal";
 import { deleteProject, updateProjectStatus } from "./actions";
+import { useT } from "@/lib/i18n";
 
 interface Member {
   id: string;
@@ -34,10 +35,10 @@ interface Props {
   isManager: boolean;
 }
 
-const statusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  active: { label: "진행 중", bg: "bg-white/20", text: "text-white", dot: "bg-blue-400" },
-  completed: { label: "완료", bg: "bg-white/20", text: "text-white", dot: "bg-green-400" },
-  on_hold: { label: "보류", bg: "bg-white/20", text: "text-white", dot: "bg-gray-400" },
+const statusStyles: Record<string, { bg: string; text: string; dot: string }> = {
+  active: { bg: "bg-white/20", text: "text-white", dot: "bg-blue-400" },
+  completed: { bg: "bg-white/20", text: "text-white", dot: "bg-green-400" },
+  on_hold: { bg: "bg-white/20", text: "text-white", dot: "bg-gray-400" },
 };
 
 const defaultGradients = [
@@ -50,14 +51,21 @@ const defaultGradients = [
 ];
 
 export default function ProjectList({ projects, members, isManager }: Props) {
+  const t = useT();
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState<string>("all");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
+  const statusLabels: Record<string, string> = {
+    active: t("projects.active"),
+    completed: t("projects.completed"),
+    on_hold: t("projects.onHold"),
+  };
+
   const filtered = filter === "all" ? projects : projects.filter((p) => p.status === filter);
 
   async function handleDelete(projectId: string) {
-    if (!confirm("프로젝트를 삭제하시겠습니까? 관련 태스크도 모두 삭제됩니다.")) return;
+    if (!confirm(t("projects.deleteConfirm"))) return;
     const result = await deleteProject(projectId);
     if (result?.error) alert(result.error);
     setMenuOpen(null);
@@ -72,14 +80,14 @@ export default function ProjectList({ projects, members, isManager }: Props) {
   return (
     <>
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">프로젝트</h1>
+        <h1 className="text-lg font-semibold text-gray-900">{t("projects.title")}</h1>
         <div className="flex items-center gap-3">
           <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
             {[
-              { key: "all", label: "전체" },
-              { key: "active", label: "진행 중" },
-              { key: "completed", label: "완료" },
-              { key: "on_hold", label: "보류" },
+              { key: "all", label: t("projects.all") },
+              { key: "active", label: t("projects.active") },
+              { key: "completed", label: t("projects.completed") },
+              { key: "on_hold", label: t("projects.onHold") },
             ].map((f) => (
               <button
                 key={f.key}
@@ -97,7 +105,7 @@ export default function ProjectList({ projects, members, isManager }: Props) {
               onClick={() => setShowModal(true)}
               className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600"
             >
-              새 프로젝트
+              {t("projects.new")}
             </button>
           )}
         </div>
@@ -107,14 +115,14 @@ export default function ProjectList({ projects, members, isManager }: Props) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="flex aspect-[4/3] items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white">
             <p className="text-sm text-gray-400">
-              {projects.length === 0 ? "프로젝트를 추가하세요" : "해당 상태의 프로젝트가 없습니다"}
+              {projects.length === 0 ? t("projects.empty") : t("projects.emptyFiltered")}
             </p>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((project, idx) => {
-            const sc = statusConfig[project.status] || statusConfig.active;
+            const sc = statusStyles[project.status] || statusStyles.active;
             const gradient = defaultGradients[idx % defaultGradients.length];
             return (
               <div key={project.id} className="group relative aspect-[4/3] overflow-hidden rounded-2xl">
@@ -138,7 +146,7 @@ export default function ProjectList({ projects, members, isManager }: Props) {
                 <div className="pointer-events-none absolute top-3 left-3 z-10">
                   <span className={`inline-flex items-center gap-1.5 rounded-full ${sc.bg} px-2.5 py-1 text-[11px] font-medium ${sc.text} backdrop-blur-md`}>
                     <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
-                    {sc.label}
+                    {statusLabels[project.status] || statusLabels.active}
                   </span>
                 </div>
 
@@ -159,22 +167,22 @@ export default function ProjectList({ projects, members, isManager }: Props) {
                         <div className="absolute top-full right-0 z-20 mt-1 w-36 rounded-lg border border-gray-200 bg-white py-1">
                           {project.status !== "active" && (
                             <button onClick={() => handleStatusChange(project.id, "active")} className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
-                              진행 중으로 변경
+                              {t("projects.changeToActive")}
                             </button>
                           )}
                           {project.status !== "completed" && (
                             <button onClick={() => handleStatusChange(project.id, "completed")} className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
-                              완료로 변경
+                              {t("projects.changeToCompleted")}
                             </button>
                           )}
                           {project.status !== "on_hold" && (
                             <button onClick={() => handleStatusChange(project.id, "on_hold")} className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
-                              보류로 변경
+                              {t("projects.changeToOnHold")}
                             </button>
                           )}
                           <hr className="my-1 border-gray-100" />
                           <button onClick={() => handleDelete(project.id)} className="w-full px-3 py-1.5 text-left text-sm text-red-500 hover:bg-red-50">
-                            삭제
+                            {t("common.delete")}
                           </button>
                         </div>
                       </>
@@ -191,7 +199,7 @@ export default function ProjectList({ projects, members, isManager }: Props) {
                     )}
                     <div className="mt-2">
                       <span className="text-xs text-white/50">
-                        {project.members.length > 0 && `${project.members.length}명 참여 · `}{project.taskCount}개 태스크
+                        {project.members.length > 0 && `${project.members.length}${t("projects.members")} · `}{project.taskCount}{t("projects.tasks")}
                       </span>
                     </div>
                   </div>

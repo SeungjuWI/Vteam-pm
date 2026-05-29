@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import TeamTimeline from "../attendance/team-timeline";
+import { getT } from "@/lib/i18n/server";
 
 export default async function DashboardPage() {
+  const t = await getT();
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
@@ -51,14 +53,12 @@ export default async function DashboardPage() {
     .eq("status", "active");
   const totalMembers = count || 0;
 
-  // 진행 중 프로젝트 수
   const { count: activeProjectCount } = await adminClient
     .from("projects")
     .select("id", { count: "exact", head: true })
     .eq("company_id", profile.company_id)
     .eq("status", "active");
 
-  // 오늘 마감 태스크 수
   const today = todayStart.toISOString().split("T")[0];
   const { count: todayTaskCount } = await adminClient
     .from("tasks")
@@ -67,7 +67,6 @@ export default async function DashboardPage() {
     .eq("due_date", today)
     .neq("status", "done");
 
-  // 내 태스크 (할당된 것 중 미완료)
   const { data: myTasksRaw } = await adminClient
     .from("task_assignees")
     .select("tasks(id, title, status, priority, due_date, projects!inner(id, name, company_id))")
@@ -77,9 +76,8 @@ export default async function DashboardPage() {
   type TaskRow = { id: string; title: string; status: string; priority: string; due_date: string | null; projects: { id: string; name: string; company_id: string } };
   const myTasks = (myTasksRaw || [])
     .map((r) => (r as unknown as { tasks: TaskRow }).tasks)
-    .filter((t): t is TaskRow => t !== null && t.projects?.company_id === profile.company_id);
+    .filter((tk): tk is TaskRow => tk !== null && tk.projects?.company_id === profile.company_id);
 
-  // 마감 임박 태스크 (오늘~7일 이내, 회사 전체)
   const weekLater = new Date(todayStart);
   weekLater.setDate(weekLater.getDate() + 7);
   const weekLaterStr = weekLater.toISOString().split("T")[0];
@@ -96,42 +94,44 @@ export default async function DashboardPage() {
 
   const upcomingTasks = (upcomingTasksRaw || []) as unknown as TaskRow[];
 
+  const priorityLabel = (p: string) =>
+    p === "high" ? t("dashboard.priorityHigh") : p === "medium" ? t("dashboard.priorityMedium") : t("dashboard.priorityLow");
+
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold text-gray-900">대시보드</h1>
+      <h1 className="text-lg font-semibold text-gray-900">{t("dashboard.title")}</h1>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-white p-5">
-          <p className="text-sm text-gray-500">오늘 출근</p>
+          <p className="text-sm text-gray-500">{t("dashboard.todayAttendance")}</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">
-            {teamToday.length}<span className="text-sm font-normal text-gray-400">/{totalMembers}명</span>
+            {teamToday.length}<span className="text-sm font-normal text-gray-400">/{totalMembers}{t("dashboard.persons")}</span>
           </p>
         </div>
         <div className="rounded-xl bg-white p-5">
-          <p className="text-sm text-gray-500">미출근</p>
+          <p className="text-sm text-gray-500">{t("dashboard.absent")}</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">
-            {totalMembers - teamToday.length}<span className="text-sm font-normal text-gray-400">명</span>
+            {totalMembers - teamToday.length}<span className="text-sm font-normal text-gray-400">{t("dashboard.persons")}</span>
           </p>
         </div>
         <div className="rounded-xl bg-white p-5">
-          <p className="text-sm text-gray-500">진행 중 프로젝트</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-900">{activeProjectCount || 0}개</p>
+          <p className="text-sm text-gray-500">{t("dashboard.activeProjects")}</p>
+          <p className="mt-1 text-2xl font-semibold text-gray-900">{activeProjectCount || 0}{t("dashboard.items")}</p>
         </div>
         <div className="rounded-xl bg-white p-5">
-          <p className="text-sm text-gray-500">오늘 마감 태스크</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-900">{todayTaskCount || 0}개</p>
+          <p className="text-sm text-gray-500">{t("dashboard.todayDueTasks")}</p>
+          <p className="mt-1 text-2xl font-semibold text-gray-900">{todayTaskCount || 0}{t("dashboard.items")}</p>
         </div>
       </div>
 
       <TeamTimeline records={timelineRecords} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* 내 태스크 */}
         <div className="rounded-xl bg-white p-5">
-          <h2 className="text-sm font-medium text-gray-900 mb-4">내 태스크</h2>
+          <h2 className="text-sm font-medium text-gray-900 mb-4">{t("dashboard.myTasks")}</h2>
           {myTasks.length === 0 ? (
             <div className="flex h-32 items-center justify-center">
-              <p className="text-sm text-gray-400">할당된 태스크가 없습니다</p>
+              <p className="text-sm text-gray-400">{t("dashboard.noTasks")}</p>
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-gray-100">
@@ -150,7 +150,7 @@ export default async function DashboardPage() {
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       task.priority === "high" ? "bg-red-50 text-red-600" : task.priority === "medium" ? "bg-yellow-50 text-yellow-600" : "bg-gray-50 text-gray-500"
                     }`}>
-                      {task.priority === "high" ? "높음" : task.priority === "medium" ? "보통" : "낮음"}
+                      {priorityLabel(task.priority)}
                     </span>
                     {task.due_date && (
                       <span className="text-xs text-gray-400">{task.due_date}</span>
@@ -162,12 +162,11 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* 마감 임박 태스크 */}
         <div className="rounded-xl bg-white p-5">
-          <h2 className="text-sm font-medium text-gray-900 mb-4">마감 임박</h2>
+          <h2 className="text-sm font-medium text-gray-900 mb-4">{t("dashboard.upcoming")}</h2>
           {upcomingTasks.length === 0 ? (
             <div className="flex h-32 items-center justify-center">
-              <p className="text-sm text-gray-400">이번 주 마감 태스크가 없습니다</p>
+              <p className="text-sm text-gray-400">{t("dashboard.noUpcoming")}</p>
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-gray-100">
@@ -187,7 +186,7 @@ export default async function DashboardPage() {
                     <span className={`text-xs shrink-0 ml-4 ${
                       dDay === 0 ? "text-red-500 font-medium" : "text-gray-400"
                     }`}>
-                      {dDay === 0 ? "오늘 마감" : `D-${dDay}`}
+                      {dDay === 0 ? t("dashboard.dueToday") : `D-${dDay}`}
                     </span>
                   </div>
                 );

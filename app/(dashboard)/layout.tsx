@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import DashboardShell from "./dashboard-shell";
@@ -25,11 +26,15 @@ export default async function DashboardLayout({
   if (profile.status === "setup") redirect("/welcome");
   if (profile.status === "pending") redirect("/pending");
 
+  const cookieStore = await cookies();
+  const uiLang = cookieStore.get("vteam-ui-lang")?.value || "ko";
+
   return (
     <DashboardShell
       role={profile.role ?? "employee"}
       userId={user.id}
       userLang={profile.language ?? "ko"}
+      uiLang={uiLang}
     >
       {children}
     </DashboardShell>

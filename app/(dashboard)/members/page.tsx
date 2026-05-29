@@ -4,8 +4,10 @@ import InviteForm from "./invite-form";
 import MemberActions from "./member-actions";
 import InvitationItem from "./invitation-item";
 import MemberList from "./member-list";
+import { getT } from "@/lib/i18n/server";
 
 export default async function MembersPage() {
+  const t = await getT();
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
@@ -24,6 +26,7 @@ export default async function MembersPage() {
     .from("profiles")
     .select("id, name, email, role, status, position, avatar_url, created_at")
     .eq("company_id", profile.company_id)
+    .neq("is_bot", true)
     .order("created_at", { ascending: true });
 
   const { data: invitations } = await adminClient
@@ -40,7 +43,7 @@ export default async function MembersPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">멤버 관리</h1>
+        <h1 className="text-lg font-semibold text-gray-900">{t("members.title")}</h1>
       </div>
 
       {/* 초대 폼 (관리자만) */}
@@ -51,7 +54,7 @@ export default async function MembersPage() {
         <div className="rounded-xl bg-white">
           <div className="border-b border-gray-100 px-6 py-4">
             <h2 className="text-sm font-medium text-gray-900">
-              초대 발송됨 <span className="ml-1 text-gray-400">{invitations.length}</span>
+              {t("members.inviteSent")} <span className="ml-1 text-gray-400">{invitations.length}</span>
             </h2>
           </div>
           <div className="divide-y divide-gray-50">
@@ -67,7 +70,7 @@ export default async function MembersPage() {
         <div className="rounded-xl bg-white">
           <div className="border-b border-gray-100 px-6 py-4">
             <h2 className="text-sm font-medium text-gray-900">
-              가입 진행 중 <span className="ml-1 text-blue-500">{pendingMembers.length}</span>
+              {t("members.joining")} <span className="ml-1 text-blue-500">{pendingMembers.length}</span>
             </h2>
           </div>
           <div className="divide-y divide-gray-50">
@@ -84,7 +87,7 @@ export default async function MembersPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {member.status === "setup" && (
-                    <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-[11px] text-yellow-600">프로필 설정 중</span>
+                    <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-[11px] text-yellow-600">{t("members.settingUp")}</span>
                   )}
                   <MemberActions memberId={member.id} />
                 </div>

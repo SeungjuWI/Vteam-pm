@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateProject, addProjectMember, removeProjectMember, createTask, updateTaskStatus, updateTask, deleteTask, getTaskComments, createTaskComment, deleteTaskComment } from "../actions";
 import { compressImage } from "@/lib/compress-image";
+import { useT, type TFunction } from "@/lib/i18n";
 
 interface Member {
   id: string;
@@ -48,10 +49,10 @@ interface Props {
   currentUserId: string;
 }
 
-const statusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  active: { label: "진행 중", bg: "bg-blue-50", text: "text-blue-600", dot: "bg-blue-500" },
-  completed: { label: "완료", bg: "bg-green-50", text: "text-green-600", dot: "bg-green-500" },
-  on_hold: { label: "보류", bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
+const statusStyles: Record<string, { bg: string; text: string; dot: string }> = {
+  active: { bg: "bg-blue-50", text: "text-blue-600", dot: "bg-blue-500" },
+  completed: { bg: "bg-green-50", text: "text-green-600", dot: "bg-green-500" },
+  on_hold: { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
 };
 
 const priorityConfig: Record<string, { label: string; bg: string; text: string }> = {
@@ -63,9 +64,15 @@ const priorityConfig: Record<string, { label: string; bg: string; text: string }
 type TaskStatus = "todo" | "in_progress" | "done";
 
 export default function ProjectDetail({ project, members, allMembers, tasks: initialTasks, isManager, isMember, currentUserId }: Props) {
+  const t = useT();
   // 태스크 추가/드래그: 프로젝트 멤버 또는 관리자
   const canEdit = isMember || isManager;
-  const sc = statusConfig[project.status] || statusConfig.active;
+  const sc = statusStyles[project.status] || statusStyles.active;
+  const statusLabelMap: Record<string, string> = {
+    active: t("projects.active"),
+    completed: t("projects.completed"),
+    on_hold: t("projects.onHold"),
+  };
 
   const router = useRouter();
   const [tasks, setTasks] = useState(initialTasks);
@@ -135,7 +142,7 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        프로젝트 목록
+        {t("projects.backToList")}
       </Link>
 
       {/* 프로젝트 헤더 */}
@@ -155,7 +162,7 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
             <div className="flex items-center justify-between">
               <span className={`inline-flex items-center gap-1.5 rounded-full ${sc.bg} px-2.5 py-0.5 text-[11px] font-medium ${sc.text}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
-                {sc.label}
+                {statusLabelMap[project.status] || statusLabelMap.active}
               </span>
               {isManager && (
                 <button onClick={() => setShowEdit(true)} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
@@ -180,10 +187,10 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
                       </div>
                     ))}
                   </div>
-                  <span className="text-xs text-gray-400">{members.length}명 참여</span>
+                  <span className="text-xs text-gray-400">{members.length}{t("projects.members")}</span>
                 </>
               ) : (
-                <span className="text-xs text-gray-400">참여 멤버 없음</span>
+                <span className="text-xs text-gray-400">{t("projects.noMembers")}</span>
               )}
             </button>
 
@@ -199,9 +206,9 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMembers(false)} />
                 <div className="absolute top-full left-0 z-20 mt-2 w-64 rounded-xl border border-gray-200 bg-white py-2">
-                  <p className="px-4 pb-2 text-xs font-medium text-gray-400">참여 멤버</p>
+                  <p className="px-4 pb-2 text-xs font-medium text-gray-400">{t("projects.participatingMembers")}</p>
                   {members.length === 0 ? (
-                    <p className="px-4 py-3 text-sm text-gray-400">참여 멤버가 없습니다</p>
+                    <p className="px-4 py-3 text-sm text-gray-400">{t("projects.noParticipatingMembers")}</p>
                   ) : (
                     members.map((m) => (
                       <div key={m.id} className="flex items-center justify-between px-4 py-2">
@@ -228,7 +235,7 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
       {/* 진행도 대시보드 */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="flex flex-col gap-3 rounded-xl bg-white p-5">
-          <p className="text-xs font-medium text-gray-500">프로젝트 진행률</p>
+          <p className="text-xs font-medium text-gray-500">{t("projects.progress")}</p>
           <div className="flex items-end gap-2">
             <span className="text-3xl font-semibold text-gray-900">{progressPercent}</span>
             <span className="mb-1 text-sm text-gray-400">%</span>
@@ -238,9 +245,9 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
           </div>
         </div>
         {([
-          { label: "할 일", count: todoCount, dot: "bg-gray-400" },
-          { label: "진행 중", count: inProgressCount, dot: "bg-blue-500" },
-          { label: "완료", count: doneCount, dot: "bg-green-500" },
+          { label: t("tasks.todo"), count: todoCount, dot: "bg-gray-400" },
+          { label: t("tasks.inProgress"), count: inProgressCount, dot: "bg-blue-500" },
+          { label: t("tasks.done"), count: doneCount, dot: "bg-green-500" },
         ] as const).map((item) => (
           <div key={item.label} className="flex flex-col gap-3 rounded-xl bg-white p-5">
             <div className="flex items-center gap-2">
@@ -249,7 +256,7 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
             </div>
             <div className="flex items-end gap-2">
               <span className="text-3xl font-semibold text-gray-900">{item.count}</span>
-              <span className="mb-1 text-sm text-gray-400">개</span>
+              <span className="mb-1 text-sm text-gray-400">{t("tasks.count")}</span>
             </div>
           </div>
         ))}
@@ -257,10 +264,10 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
 
       {/* 칸반 보드 */}
       <div>
-        <h2 className="mb-4 text-base font-semibold text-gray-900">태스크</h2>
+        <h2 className="mb-4 text-base font-semibold text-gray-900">{t("tasks.title")}</h2>
         <div className="grid grid-cols-3 gap-4">
           {(["todo", "in_progress", "done"] as const).map((status) => {
-            const labels = { todo: "할 일", in_progress: "진행 중", done: "완료" };
+            const labels = { todo: t("tasks.todo"), in_progress: t("tasks.inProgress"), done: t("tasks.done") };
             const dotColors = { todo: "bg-gray-400", in_progress: "bg-blue-500", done: "bg-green-500" };
             const statusTasks = tasks.filter((t) => t.status === status);
             const isOver = dragOverColumn === status;
@@ -288,10 +295,10 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
-                        <span className="text-xs">{isOver ? "여기에 놓기" : "클릭하여 추가"}</span>
+                        <span className="text-xs">{isOver ? t("tasks.dropHere") : t("tasks.clickToAdd")}</span>
                       </button>
                     ) : (
-                      <p className="m-auto text-xs text-gray-300">태스크 없음</p>
+                      <p className="m-auto text-xs text-gray-300">{t("tasks.noTasks")}</p>
                     )
                   ) : (
                     statusTasks.map((task) => {
@@ -329,7 +336,7 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
                             </div>
                             {task.dueDate && (
                               <span className="text-[11px] text-gray-400">
-                                {new Date(task.dueDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                                {new Date(task.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                               </span>
                             )}
                           </div>
@@ -345,7 +352,7 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                       </svg>
-                      추가
+                      {t("common.add")}
                     </button>
                   )}
                 </div>
@@ -380,6 +387,7 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
 
 /* ── 태스크 생성 모달 ── */
 function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { projectId: string; initialStatus: TaskStatus; allMembers: Member[]; onClose: () => void }) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
@@ -409,7 +417,7 @@ function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { pr
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-2xl bg-white p-6">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">태스크 추가</h2>
+          <h2 className="text-base font-semibold text-gray-900">{t("tasks.add")}</h2>
           <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -420,12 +428,12 @@ function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { pr
         <div className="flex flex-col gap-4">
           {/* 제목 */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">제목 <span className="text-red-400">*</span></label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.taskTitle")} <span className="text-red-400">*</span></label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="태스크 제목"
+              placeholder={t("tasks.titlePlaceholder")}
               className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
               autoFocus
             />
@@ -433,11 +441,11 @@ function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { pr
 
           {/* 작업 내용 */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">작업 내용</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.content")}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="작업에 대해 설명해주세요"
+              placeholder={t("tasks.contentPlaceholder")}
               rows={3}
               className="w-full resize-none rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
             />
@@ -446,7 +454,7 @@ function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { pr
           {/* 우선순위 + 마감일 */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">우선순위</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.priority")}</label>
               <div className="flex gap-1.5">
                 {([
                   { key: "low", label: "Low", active: "bg-gray-100 text-gray-700" },
@@ -467,7 +475,7 @@ function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { pr
               </div>
             </div>
             <div className="flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">마감일</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.dueDate")}</label>
               <input
                 type="date"
                 value={dueDate}
@@ -479,7 +487,7 @@ function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { pr
 
           {/* 담당자 (복수) */}
           <div className="relative">
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">담당자</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.assignee")}</label>
             {selectedIds.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {selectedIds.map((mid) => {
@@ -507,7 +515,7 @@ function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { pr
               value={search}
               onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
               onFocus={() => setShowDropdown(true)}
-              placeholder={selectedIds.length > 0 ? "추가 검색..." : "이름 또는 이메일로 검색"}
+              placeholder={selectedIds.length > 0 ? t("common.searchMore") : t("common.searchPlaceholder")}
               className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
             />
             {showDropdown && (
@@ -516,7 +524,7 @@ function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { pr
                 <div className="absolute top-full left-0 z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1">
                   {filtered.length === 0 ? (
                     <p className="px-3.5 py-2 text-sm text-gray-400">
-                      {allMembers.length === selectedIds.length ? "모든 멤버 선택됨" : "검색 결과 없음"}
+                      {allMembers.length === selectedIds.length ? t("common.allSelected") : t("common.noResults")}
                     </p>
                   ) : (
                     filtered.map((m) => (
@@ -545,10 +553,10 @@ function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { pr
 
           <div className="mt-1 flex gap-2">
             <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
-              취소
+              {t("common.cancel")}
             </button>
             <button onClick={handleSubmit} disabled={loading} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50">
-              {loading ? "생성 중..." : "태스크 생성"}
+              {loading ? t("common.creating") : t("tasks.create")}
             </button>
           </div>
         </div>
@@ -559,6 +567,7 @@ function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { pr
 
 /* ── 프로젝트 수정 모달 ── */
 function EditProjectModal({ project, onClose }: { project: Project; onClose: () => void }) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<string | null>(project.imageUrl);
@@ -575,7 +584,7 @@ function EditProjectModal({ project, onClose }: { project: Project; onClose: () 
       setPreview(dataUrl);
       setRemoveImage(false);
     } catch {
-      setError("이미지를 불러올 수 없습니다");
+      setError(t("common.imageLoadFailed"));
     }
   }
 
@@ -602,7 +611,7 @@ function EditProjectModal({ project, onClose }: { project: Project; onClose: () 
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-2xl bg-white p-6">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">프로젝트 수정</h2>
+          <h2 className="text-base font-semibold text-gray-900">{t("editProject.title")}</h2>
           <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -611,7 +620,7 @@ function EditProjectModal({ project, onClose }: { project: Project; onClose: () 
         </div>
         <form action={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">프로젝트 이미지</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("createProject.image")}</label>
             {preview ? (
               <div className="relative inline-block">
                 <img src={preview} alt="" className="h-20 w-20 rounded-xl object-cover" />
@@ -627,17 +636,17 @@ function EditProjectModal({ project, onClose }: { project: Project; onClose: () 
             <input ref={fileRef} type="file" name="image" accept="image/*" onChange={handleImageChange} className="hidden" />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">프로젝트 이름 <span className="text-red-400">*</span></label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("createProject.name")} <span className="text-red-400">*</span></label>
             <input type="text" name="name" defaultValue={project.name} required className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">설명</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("createProject.description")}</label>
             <textarea name="description" defaultValue={project.description || ""} rows={3} className="w-full resize-none rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none" />
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="mt-1 flex gap-2">
-            <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">취소</button>
-            <button type="submit" disabled={loading} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50">{loading ? "저장 중..." : "저장"}</button>
+            <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">{t("common.cancel")}</button>
+            <button type="submit" disabled={loading} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50">{loading ? t("common.saving") : t("common.save")}</button>
           </div>
         </form>
       </div>
@@ -647,6 +656,7 @@ function EditProjectModal({ project, onClose }: { project: Project; onClose: () 
 
 /* ── 멤버 추가 모달 ── */
 function AddMemberModal({ projectId, currentMemberIds, allMembers, onClose }: { projectId: string; currentMemberIds: string[]; allMembers: Member[]; onClose: () => void }) {
+  const t = useT();
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -668,15 +678,15 @@ function AddMemberModal({ projectId, currentMemberIds, allMembers, onClose }: { 
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-2xl bg-white p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">멤버 추가</h2>
+          <h2 className="text-base font-semibold text-gray-900">{t("members.addMember")}</h2>
           <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="이름 또는 이메일로 검색" className="mb-3 w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none" autoFocus />
+        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("common.searchPlaceholder")} className="mb-3 w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none" autoFocus />
         <div className="max-h-64 overflow-y-auto">
           {available.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-400">{allMembers.length === currentMemberIds.length ? "모든 멤버가 참여 중입니다" : "검색 결과 없음"}</p>
+            <p className="py-6 text-center text-sm text-gray-400">{allMembers.length === currentMemberIds.length ? t("projects.allMembersJoined") : t("common.noResults")}</p>
           ) : (
             available.map((m) => (
               <div key={m.id} className="flex items-center justify-between py-2">
@@ -690,7 +700,7 @@ function AddMemberModal({ projectId, currentMemberIds, allMembers, onClose }: { 
                   </div>
                 </div>
                 <button onClick={() => handleAdd(m.id)} disabled={loading === m.id} className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100 disabled:opacity-50">
-                  {loading === m.id ? "추가 중..." : "추가"}
+                  {loading === m.id ? t("members.adding") : t("common.add")}
                 </button>
               </div>
             ))
@@ -703,10 +713,11 @@ function AddMemberModal({ projectId, currentMemberIds, allMembers, onClose }: { 
 
 /* ── 멤버 제거 버튼 ── */
 function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string; memberId: string; onDone: () => void }) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
 
   async function handleRemove() {
-    if (!confirm("이 멤버를 프로젝트에서 제거하시겠습니까?")) return;
+    if (!confirm(t("tasks.removeMemberConfirm"))) return;
     setLoading(true);
     await removeProjectMember(projectId, memberId);
     onDone();
@@ -723,6 +734,7 @@ function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string
 function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit, currentUserId, onClose }: {
   task: Task; projectId: string; allMembers: Member[]; projectMembers: Member[]; canEdit: boolean; currentUserId: string; onClose: () => void;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -746,7 +758,7 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
       (m.name.toLowerCase().includes(search.toLowerCase()) || m.email.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const statusLabels: Record<string, string> = { todo: "할 일", in_progress: "진행 중", done: "완료" };
+  const statusLabels: Record<string, string> = { todo: t("tasks.todo"), in_progress: t("tasks.inProgress"), done: t("tasks.done") };
   const statusDots: Record<string, string> = { todo: "bg-gray-400", in_progress: "bg-blue-500", done: "bg-green-500" };
   const statusChips: Record<string, string> = { todo: "bg-gray-100 text-gray-600", in_progress: "bg-blue-50 text-blue-600", done: "bg-green-50 text-green-600" };
   const pc = priorityConfig[task.priority];
@@ -760,7 +772,7 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
   }
 
   async function handleDelete() {
-    if (!confirm("이 태스크를 삭제하시겠습니까?")) return;
+    if (!confirm(t("tasks.deleteConfirm"))) return;
     setDeleting(true);
     const result = await deleteTask(task.id, projectId);
     if (result?.error) { alert(result.error); setDeleting(false); }
@@ -797,10 +809,10 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
                     <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
                     <div className="absolute top-full right-0 z-20 mt-1 w-28 rounded-lg border border-gray-200 bg-white py-1">
                       <button onClick={() => { setShowMenu(false); setEditing(true); }} className="w-full px-3.5 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                        수정
+                        {t("common.edit")}
                       </button>
                       <button onClick={() => { setShowMenu(false); handleDelete(); }} disabled={deleting} className="w-full px-3.5 py-2 text-left text-sm text-red-500 hover:bg-red-50 disabled:opacity-50">
-                        삭제
+                        {t("common.delete")}
                       </button>
                     </div>
                   </>
@@ -816,7 +828,7 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
 
             <div className="mt-4 flex flex-col gap-3">
               <div className="flex items-start gap-3">
-                <span className="mt-0.5 w-16 shrink-0 text-xs font-medium text-gray-400">담당자</span>
+                <span className="mt-0.5 w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.assignee")}</span>
                 {task.assignees.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {task.assignees.map((a, i) => (
@@ -833,10 +845,10 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <span className="w-16 shrink-0 text-xs font-medium text-gray-400">마감일</span>
+                <span className="w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.dueDate")}</span>
                 <span className="text-sm text-gray-700">
                   {task.dueDate
-                    ? new Date(task.dueDate).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })
+                    ? new Date(task.dueDate).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
                     : "-"}
                 </span>
               </div>
@@ -845,11 +857,11 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
 
           {/* 본문 */}
           <div className="px-6 pb-3 pt-5">
-            <p className="mb-2 text-xs font-medium text-gray-400">내용</p>
+            <p className="mb-2 text-xs font-medium text-gray-400">{t("tasks.content")}</p>
             {task.description ? (
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">{task.description}</p>
             ) : (
-              <p className="text-sm text-gray-300">작업 내용 없음</p>
+              <p className="text-sm text-gray-300">{t("tasks.noContent")}</p>
             )}
           </div>
 
@@ -879,7 +891,7 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">태스크 수정</h2>
+          <h2 className="text-base font-semibold text-gray-900">{t("tasks.edit")}</h2>
           <button onClick={() => setEditing(false)} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -889,18 +901,18 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
 
         <div className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">제목 <span className="text-red-400">*</span></label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.taskTitle")} <span className="text-red-400">*</span></label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">작업 내용</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.content")}</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full resize-none rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none" />
           </div>
 
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">우선순위</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.priority")}</label>
               <div className="flex gap-1.5">
                 {([
                   { key: "low", label: "Low", active: "bg-gray-100 text-gray-700" },
@@ -914,14 +926,14 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
               </div>
             </div>
             <div className="flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">마감일</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.dueDate")}</label>
               <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
             </div>
           </div>
 
           {/* 담당자 */}
           <div className="relative">
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">담당자</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.assignee")}</label>
             {selectedIds.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {selectedIds.map((mid) => {
@@ -947,7 +959,7 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
               value={search}
               onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
               onFocus={() => setShowDropdown(true)}
-              placeholder={selectedIds.length > 0 ? "추가 검색..." : "이름 또는 이메일로 검색"}
+              placeholder={selectedIds.length > 0 ? t("common.searchMore") : t("common.searchPlaceholder")}
               className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
             />
             {showDropdown && (
@@ -955,7 +967,7 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
                 <div className="fixed inset-0 z-[5]" onClick={() => setShowDropdown(false)} />
                 <div className="absolute top-full left-0 z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1">
                   {filtered.length === 0 ? (
-                    <p className="px-3.5 py-2 text-sm text-gray-400">검색 결과 없음</p>
+                    <p className="px-3.5 py-2 text-sm text-gray-400">{t("common.noResults")}</p>
                   ) : (
                     filtered.map((m) => (
                       <button key={m.id} type="button" onClick={() => { setSelectedIds((prev) => [...prev, m.id]); setSearch(""); setShowDropdown(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors hover:bg-gray-50">
@@ -978,10 +990,10 @@ function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit,
 
           <div className="mt-1 flex gap-2">
             <button type="button" onClick={() => setEditing(false)} className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
-              취소
+              {t("common.cancel")}
             </button>
             <button onClick={handleSave} disabled={loading} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50">
-              {loading ? "저장 중..." : "저장"}
+              {loading ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </div>
@@ -999,14 +1011,14 @@ interface Comment {
   createdAt: string;
 }
 
-function timeAgo(dateStr: string) {
+function timeAgo(dateStr: string, t: TFunction) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const min = Math.floor(diff / 60000);
-  if (min < 1) return "방금";
-  if (min < 60) return `${min}분 전`;
+  if (min < 1) return t("comments.justNow");
+  if (min < 60) return `${min}${t("comments.minutesAgo")}`;
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}시간 전`;
-  return `${Math.floor(hr / 24)}일 전`;
+  if (hr < 24) return `${hr}${t("comments.hoursAgo")}`;
+  return `${Math.floor(hr / 24)}${t("comments.daysAgo")}`;
 }
 
 function renderContent(content: string) {
@@ -1018,6 +1030,7 @@ function renderContent(content: string) {
 function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
   taskId: string; projectMembers: Member[]; currentUserId: string; projectId: string;
 }) {
+  const t = useT();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loaded, setLoaded] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -1046,11 +1059,11 @@ function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
 
   return (
     <div className="border-t border-gray-100 px-6 py-4">
-      <p className="mb-3 text-xs font-medium text-gray-400">댓글 {comments.length > 0 && comments.length}</p>
+      <p className="mb-3 text-xs font-medium text-gray-400">{t("comments.title")} {comments.length > 0 && comments.length}</p>
       {!loaded ? (
-        <p className="py-4 text-center text-xs text-gray-300">불러오는 중...</p>
+        <p className="py-4 text-center text-xs text-gray-300">{t("common.loading")}</p>
       ) : comments.length === 0 ? (
-        <p className="py-4 text-center text-xs text-gray-300">아직 댓글이 없습니다</p>
+        <p className="py-4 text-center text-xs text-gray-300">{t("comments.empty")}</p>
       ) : (
         <div className="flex flex-col gap-3">
           {comments.map((c) => {
@@ -1063,10 +1076,10 @@ function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-gray-900">{c.authorName}</span>
-                    <span className="text-[11px] text-gray-400">{timeAgo(c.createdAt)}</span>
+                    <span className="text-[11px] text-gray-400">{timeAgo(c.createdAt, t)}</span>
                     {isMine && (
                       <button onClick={() => handleDelete(c.id)} className="ml-auto hidden text-[11px] text-gray-300 hover:text-red-500 group-hover:block">
-                        삭제
+                        {t("common.delete")}
                       </button>
                     )}
                   </div>
@@ -1086,6 +1099,7 @@ function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
 function TaskCommentInput({ taskId, projectId, projectMembers }: {
   taskId: string; projectId: string; projectMembers: Member[];
 }) {
+  const t = useT();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [showMention, setShowMention] = useState(false);
@@ -1217,7 +1231,7 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
                     <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-[10px] font-medium text-blue-600">@</div>
                     <div>
                       <p className="text-sm font-medium text-blue-600">@all</p>
-                      <p className="text-[11px] text-gray-400">전체 멤버에게 알림</p>
+                      <p className="text-[11px] text-gray-400">{t("common.notifyAll")}</p>
                     </div>
                   </>
                 ) : (
@@ -1254,13 +1268,13 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="댓글 입력... (@로 멘션)"
+            placeholder={t("comments.placeholder")}
             rows={1}
             className="relative w-full resize-none rounded-lg border border-gray-200 bg-transparent px-3.5 py-2.5 text-sm text-transparent caret-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
           />
         </div>
         <button onClick={handleSend} disabled={sending || !input.trim()} className="shrink-0 rounded-lg bg-blue-500 px-3.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-40">
-          {sending ? "..." : "전송"}
+          {sending ? "..." : t("common.send")}
         </button>
       </div>
     </div>

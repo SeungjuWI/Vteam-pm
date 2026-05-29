@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { createProject } from "./actions";
 import { compressImage } from "@/lib/compress-image";
+import { useT } from "@/lib/i18n";
 
 interface Member {
   id: string;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function CreateProjectModal({ members, onClose }: Props) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
       compressedRef.current = new File([blob], file.name.replace(/\.\w+$/, ".webp"), { type: blob.type });
       setPreview(dataUrl);
     } catch {
-      setError("이미지를 불러올 수 없습니다");
+      setError(t("common.imageLoadFailed"));
     }
   }
 
@@ -86,7 +88,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-2xl bg-white p-6">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">새 프로젝트</h2>
+          <h2 className="text-base font-semibold text-gray-900">{t("createProject.title")}</h2>
           <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -97,10 +99,10 @@ export default function CreateProjectModal({ members, onClose }: Props) {
         <form ref={formRef} action={handleSubmit} className="flex flex-col gap-4">
           {/* 프로젝트 이미지 */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">프로젝트 이미지</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("createProject.image")}</label>
             {preview ? (
               <div className="relative inline-block">
-                <img src={preview} alt="미리보기" className="h-20 w-20 rounded-xl object-cover" />
+                <img src={preview} alt={t("common.preview")} className="h-20 w-20 rounded-xl object-cover" />
                 <button
                   type="button"
                   onClick={removeImage}
@@ -130,16 +132,16 @@ export default function CreateProjectModal({ members, onClose }: Props) {
               onChange={handleImageChange}
               className="hidden"
             />
-            <p className="mt-1 text-[11px] text-gray-400">2MB 이하, 분류용 대표 이미지</p>
+            <p className="mt-1 text-[11px] text-gray-400">{t("createProject.imageDesc")}</p>
           </div>
 
           {/* 프로젝트 이름 */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">프로젝트 이름 <span className="text-red-400">*</span></label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("createProject.name")} <span className="text-red-400">*</span></label>
             <input
               type="text"
               name="name"
-              placeholder="예: 신규 서비스 런칭"
+              placeholder={t("createProject.namePlaceholder")}
               required
               className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
             />
@@ -147,10 +149,10 @@ export default function CreateProjectModal({ members, onClose }: Props) {
 
           {/* 프로젝트 설명 */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">설명</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("createProject.description")}</label>
             <textarea
               name="description"
-              placeholder="프로젝트에 대해 간단히 설명해주세요"
+              placeholder={t("createProject.descPlaceholder")}
               rows={3}
               className="w-full resize-none rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
             />
@@ -158,7 +160,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
 
           {/* 담당자 (복수 선택) */}
           <div className="relative">
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">담당자</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("createProject.assignee")}</label>
 
             {/* 선택된 멤버 칩 */}
             {selectedMembers.length > 0 && (
@@ -201,7 +203,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
               value={memberSearch}
               onChange={(e) => { setMemberSearch(e.target.value); setShowDropdown(true); }}
               onFocus={() => setShowDropdown(true)}
-              placeholder={selectedMembers.length > 0 ? "추가 검색..." : "이름 또는 이메일로 검색"}
+              placeholder={selectedMembers.length > 0 ? t("common.searchMore") : t("common.searchPlaceholder")}
               className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
             />
 
@@ -211,7 +213,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
                 <div className="absolute top-full left-0 z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1">
                   {filteredMembers.length === 0 ? (
                     <p className="px-3.5 py-2 text-sm text-gray-400">
-                      {members.length === selectedMembers.length ? "모든 멤버가 선택됨" : "검색 결과 없음"}
+                      {members.length === selectedMembers.length ? t("common.allSelected") : t("common.noResults")}
                     </p>
                   ) : (
                     filteredMembers.map((m) => (
@@ -248,14 +250,14 @@ export default function CreateProjectModal({ members, onClose }: Props) {
               onClick={onClose}
               className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
             >
-              취소
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
             >
-              {loading ? "생성 중..." : "프로젝트 생성"}
+              {loading ? t("common.creating") : t("createProject.submit")}
             </button>
           </div>
         </form>

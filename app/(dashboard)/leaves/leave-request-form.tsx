@@ -2,38 +2,39 @@
 
 import { useRef, useState } from "react";
 import { requestLeave } from "./actions";
+import { useT } from "@/lib/i18n";
 
-const LEAVE_CATEGORIES = [
+const LEAVE_CATEGORIES_DATA = [
   {
-    label: "연차",
+    labelKey: "leaveCategory.annual" as const,
     types: [
-      { value: "annual", label: "연차", deductsBalance: true },
-      { value: "half_am", label: "오전 반차", deductsBalance: true },
-      { value: "half_pm", label: "오후 반차", deductsBalance: true },
+      { value: "annual", labelKey: "leaveType.annual" as const, deductsBalance: true },
+      { value: "half_am", labelKey: "leaveType.half_am" as const, deductsBalance: true },
+      { value: "half_pm", labelKey: "leaveType.half_pm" as const, deductsBalance: true },
     ],
   },
   {
-    label: "법정휴가",
+    labelKey: "leaveCategory.statutory" as const,
     types: [
-      { value: "sick", label: "병가", deductsBalance: false },
-      { value: "condolence", label: "경조사", deductsBalance: false },
-      { value: "maternity", label: "출산", deductsBalance: false },
-      { value: "paternity", label: "배우자출산", deductsBalance: false },
-      { value: "family_care", label: "가족돌봄", deductsBalance: true },
-      { value: "public_duty", label: "공가", deductsBalance: false },
-      { value: "menstrual", label: "생리", deductsBalance: false },
+      { value: "sick", labelKey: "leaveType.sick" as const, deductsBalance: false },
+      { value: "condolence", labelKey: "leaveType.condolence" as const, deductsBalance: false },
+      { value: "maternity", labelKey: "leaveType.maternity" as const, deductsBalance: false },
+      { value: "paternity", labelKey: "leaveType.paternity" as const, deductsBalance: false },
+      { value: "family_care", labelKey: "leaveType.family_care" as const, deductsBalance: true },
+      { value: "public_duty", labelKey: "leaveType.public_duty" as const, deductsBalance: false },
+      { value: "menstrual", labelKey: "leaveType.menstrual" as const, deductsBalance: false },
     ],
   },
   {
-    label: "기타",
+    labelKey: "leaveCategory.other" as const,
     types: [
-      { value: "compensatory", label: "대체휴가", deductsBalance: false },
-      { value: "other", label: "기타", deductsBalance: false },
+      { value: "compensatory", labelKey: "leaveType.compensatory" as const, deductsBalance: false },
+      { value: "other", labelKey: "leaveType.other" as const, deductsBalance: false },
     ],
   },
 ];
 
-const ALL_TYPES = LEAVE_CATEGORIES.flatMap((c) => c.types);
+const ALL_TYPES = LEAVE_CATEGORIES_DATA.flatMap((c) => c.types as { value: string; labelKey: string; deductsBalance: boolean }[]);
 
 function generateTimeOptions() {
   const options: string[] = [];
@@ -48,6 +49,7 @@ function generateTimeOptions() {
 const TIME_OPTIONS = generateTimeOptions();
 
 export default function LeaveRequestForm() {
+  const t = useT();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -56,7 +58,7 @@ export default function LeaveRequestForm() {
   const [endTime, setEndTime] = useState("18:00");
   const formRef = useRef<HTMLFormElement>(null);
 
-  const selectedType = ALL_TYPES.find((t) => t.value === type);
+  const selectedType = ALL_TYPES.find((tp) => tp.value === type);
 
   function handleTypeChange(newType: string) {
     setType(newType);
@@ -94,27 +96,27 @@ export default function LeaveRequestForm() {
 
   return (
     <div className="rounded-xl bg-white p-6">
-      <h2 className="mb-4 text-sm font-medium text-gray-900">휴가 신청</h2>
+      <h2 className="mb-4 text-sm font-medium text-gray-900">{t("leaves.request")}</h2>
       <form ref={formRef} action={handleSubmit} className="flex flex-col gap-4">
         {/* 유형 */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-gray-600">유형</label>
-          {LEAVE_CATEGORIES.map((cat) => (
-            <div key={cat.label} className="mb-2">
-              <p className="mb-1 text-[11px] text-gray-400">{cat.label}</p>
+          <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.type")}</label>
+          {LEAVE_CATEGORIES_DATA.map((cat) => (
+            <div key={cat.labelKey} className="mb-2">
+              <p className="mb-1 text-[11px] text-gray-400">{t(cat.labelKey)}</p>
               <div className="flex flex-wrap gap-1.5">
-                {cat.types.map((t) => (
+                {cat.types.map((tp) => (
                   <button
-                    key={t.value}
+                    key={tp.value}
                     type="button"
-                    onClick={() => handleTypeChange(t.value)}
+                    onClick={() => handleTypeChange(tp.value)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                      type === t.value
+                      type === tp.value
                         ? "bg-blue-500 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
-                    {t.label}
+                    {t(tp.labelKey)}
                   </button>
                 ))}
               </div>
@@ -122,14 +124,14 @@ export default function LeaveRequestForm() {
           ))}
           <input type="hidden" name="type" value={type} />
           {selectedType && !selectedType.deductsBalance && (
-            <p className="mt-1 text-[11px] text-green-600">이 휴가는 연차에서 차감되지 않습니다</p>
+            <p className="mt-1 text-[11px] text-green-600">{t("leaves.noDeduction")}</p>
           )}
         </div>
 
         {/* 날짜 + 시간 */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">시작일</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.startDate")}</label>
             <input
               type="date"
               name="startDate"
@@ -139,7 +141,7 @@ export default function LeaveRequestForm() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">시작 시간</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.startTime")}</label>
             <select
               name="startTime"
               value={startTime}
@@ -152,7 +154,7 @@ export default function LeaveRequestForm() {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">종료일</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.endDate")}</label>
             <input
               type="date"
               name="endDate"
@@ -162,7 +164,7 @@ export default function LeaveRequestForm() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">종료 시간</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.endTime")}</label>
             <select
               name="endTime"
               value={endTime}
@@ -179,26 +181,26 @@ export default function LeaveRequestForm() {
         {/* 사유 */}
         <div>
           <label className="mb-1.5 block text-xs font-medium text-gray-600">
-            사유 {type === "condolence" || type === "other" ? "(필수)" : "(선택)"}
+            {t("leaves.reason")} {type === "condolence" || type === "other" ? t("common.required") : t("common.optional")}
           </label>
           <input
             type="text"
             name="reason"
-            placeholder={type === "condolence" ? "예: 부모 회갑" : "사유를 입력하세요"}
+            placeholder={type === "condolence" ? t("leaves.condolencePlaceholder") : t("leaves.reasonPlaceholder")}
             required={type === "condolence" || type === "other"}
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
           />
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
-        {success && <p className="text-sm text-blue-500">휴가 신청이 완료되었습니다</p>}
+        {success && <p className="text-sm text-blue-500">{t("leaves.success")}</p>}
 
         <button
           type="submit"
           disabled={loading}
           className="w-full rounded-lg bg-blue-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
         >
-          {loading ? "신청 중..." : "신청하기"}
+          {loading ? t("leaves.requesting") : t("leaves.submit")}
         </button>
       </form>
     </div>

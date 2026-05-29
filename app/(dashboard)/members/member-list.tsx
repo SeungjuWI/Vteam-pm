@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Avatar from "@/components/avatar";
 import MemberDetailModal from "./member-detail-modal";
+import { useT } from "@/lib/i18n";
 
 type Member = {
   id: string;
@@ -13,10 +14,10 @@ type Member = {
   avatarUrl: string;
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: "최고관리자",
-  manager: "관리자",
-  employee: "직원",
+const ROLE_KEYS: Record<string, string> = {
+  admin: "role.admin",
+  manager: "role.manager",
+  employee: "role.employee",
 };
 
 export default function MemberList({
@@ -26,6 +27,7 @@ export default function MemberList({
   members: Member[];
   isManager: boolean;
 }) {
+  const t = useT();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   return (
@@ -33,12 +35,12 @@ export default function MemberList({
       <div className="rounded-xl bg-white">
         <div className="border-b border-gray-100 px-6 py-4">
           <h2 className="text-sm font-medium text-gray-900">
-            멤버 <span className="ml-1 text-gray-400">{members.length}</span>
+            {t("members.member")} <span className="ml-1 text-gray-400">{members.length}</span>
           </h2>
         </div>
         {members.length === 0 ? (
           <div className="flex h-48 items-center justify-center">
-            <p className="text-sm text-gray-400">아직 멤버가 없습니다. 이메일로 초대해보세요.</p>
+            <p className="text-sm text-gray-400">{t("members.empty")}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
@@ -62,7 +64,7 @@ export default function MemberList({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                    {ROLE_LABELS[member.role] ?? member.role}
+                    {ROLE_KEYS[member.role] ? t(ROLE_KEYS[member.role] as any) : member.role}
                   </span>
                   <svg className="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />

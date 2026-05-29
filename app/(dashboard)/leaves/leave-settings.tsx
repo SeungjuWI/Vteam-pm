@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { saveLeaveSettings } from "./actions";
+import { useT } from "@/lib/i18n";
 
 type Settings = {
   auto_grant: boolean;
@@ -38,6 +39,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 }
 
 export default function LeaveSettings({ current, onSaved }: Props) {
+  const t = useT();
   const [autoGrant, setAutoGrant] = useState(current?.auto_grant ?? true);
   const [defaultDays, setDefaultDays] = useState(current?.default_annual_days ?? 15);
   const [grantBasis, setGrantBasis] = useState(current?.grant_basis ?? "join_date");
@@ -79,12 +81,12 @@ export default function LeaveSettings({ current, onSaved }: Props) {
 
         {/* 연차 부여 */}
         <div className="rounded-xl bg-white p-6">
-          <h2 className="mb-4 text-sm font-medium text-gray-900">연차 부여</h2>
+          <h2 className="mb-4 text-sm font-medium text-gray-900">{t("leaveSettings.grantTitle")}</h2>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-900">자동 부여</p>
-                <p className="text-xs text-gray-500">멤버에게 연차를 자동으로 부여합니다</p>
+                <p className="text-sm text-gray-900">{t("leaveSettings.autoGrant")}</p>
+                <p className="text-xs text-gray-500">{t("leaveSettings.autoGrantDesc")}</p>
               </div>
               <Toggle value={autoGrant} onChange={setAutoGrant} />
             </div>
@@ -92,7 +94,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
             {autoGrant && (
               <>
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-gray-600">기본 연차 일수</label>
+                  <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaveSettings.defaultDays")}</label>
                   <input
                     type="number"
                     name="defaultDays"
@@ -102,15 +104,15 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                     max={50}
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                   />
-                  <p className="mt-1 text-xs text-gray-400">근로기준법 기준 1년 이상 근로자 15일</p>
+                  <p className="mt-1 text-xs text-gray-400">{t("leaveSettings.defaultDaysDesc")}</p>
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-gray-600">부여 기준</label>
+                  <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaveSettings.grantBasis")}</label>
                   <div className="flex gap-2">
                     {[
-                      { value: "join_date", label: "입사일 기준" },
-                      { value: "fiscal_year", label: "회계연도 기준" },
+                      { value: "join_date", label: t("leaveSettings.joinDateBasis") },
+                      { value: "fiscal_year", label: t("leaveSettings.fiscalYearBasis") },
                     ].map((opt) => (
                       <button
                         key={opt.value}
@@ -126,8 +128,8 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                   </div>
                   <p className="mt-1 text-xs text-gray-400">
                     {grantBasis === "join_date"
-                      ? "입사일 기준으로 매년 연차가 발생합니다"
-                      : "매년 1월 1일 기준으로 동일하게 부여됩니다"}
+                      ? t("leaveSettings.joinDateDesc")
+                      : t("leaveSettings.fiscalYearDesc")}
                   </p>
                 </div>
 
@@ -135,23 +137,23 @@ export default function LeaveSettings({ current, onSaved }: Props) {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-900">1년 미만 월차</p>
-                    <p className="text-xs text-gray-500">입사 1년 미만 근로자에게 매월 1일씩 부여 (최대 11일)</p>
+                    <p className="text-sm text-gray-900">{t("leaveSettings.firstYearMonthly")}</p>
+                    <p className="text-xs text-gray-500">{t("leaveSettings.firstYearMonthlyDesc")}</p>
                   </div>
                   <Toggle value={firstYearMonthly} onChange={setFirstYearMonthly} />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-900">근속 가산</p>
-                    <p className="text-xs text-gray-500">3년 이상 근무 시 2년마다 1일 추가</p>
+                    <p className="text-sm text-gray-900">{t("leaveSettings.longevityBonus")}</p>
+                    <p className="text-xs text-gray-500">{t("leaveSettings.longevityBonusDesc")}</p>
                   </div>
                   <Toggle value={longevityBonus} onChange={setLongevityBonus} />
                 </div>
 
                 {longevityBonus && (
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-gray-600">최대 연차 일수</label>
+                    <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaveSettings.maxAnnualDays")}</label>
                     <input
                       type="number"
                       name="maxAnnualDays"
@@ -161,7 +163,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                       max={50}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                     />
-                    <p className="mt-1 text-xs text-gray-400">근로기준법 기준 최대 25일</p>
+                    <p className="mt-1 text-xs text-gray-400">{t("leaveSettings.maxAnnualDaysDesc")}</p>
                   </div>
                 )}
               </>
@@ -173,19 +175,19 @@ export default function LeaveSettings({ current, onSaved }: Props) {
 
         {/* 연차 관리 */}
         <div className="rounded-xl bg-white p-6">
-          <h2 className="mb-4 text-sm font-medium text-gray-900">연차 관리</h2>
+          <h2 className="mb-4 text-sm font-medium text-gray-900">{t("leaveSettings.manageTitle")}</h2>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-900">연차 이월</p>
-                <p className="text-xs text-gray-500">미사용 연차를 다음 해로 이월합니다</p>
+                <p className="text-sm text-gray-900">{t("leaveSettings.carryOver")}</p>
+                <p className="text-xs text-gray-500">{t("leaveSettings.carryOverDesc")}</p>
               </div>
               <Toggle value={carryOver} onChange={setCarryOver} />
             </div>
 
             {carryOver && (
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-600">이월 최대 일수</label>
+                <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaveSettings.carryOverMaxDays")}</label>
                 <input
                   type="number"
                   name="carryOverMaxDays"
@@ -195,15 +197,15 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                   max={50}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                 />
-                <p className="mt-1 text-xs text-gray-400">0으로 설정 시 전체 이월</p>
+                <p className="mt-1 text-xs text-gray-400">{t("leaveSettings.carryOverMaxDaysDesc")}</p>
               </div>
             )}
             {!carryOver && <input type="hidden" name="carryOverMaxDays" value={carryOverMaxDays} />}
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-900">연차촉진제</p>
-                <p className="text-xs text-gray-500">사용 촉진 통보를 통해 미사용 연차수당 부담을 면제합니다</p>
+                <p className="text-sm text-gray-900">{t("leaveSettings.annualPromotion")}</p>
+                <p className="text-xs text-gray-500">{t("leaveSettings.annualPromotionDesc")}</p>
               </div>
               <Toggle value={annualPromotion} onChange={setAnnualPromotion} />
             </div>
@@ -212,10 +214,10 @@ export default function LeaveSettings({ current, onSaved }: Props) {
 
         {/* 특별휴가 */}
         <div className="rounded-xl bg-white p-6">
-          <h2 className="mb-4 text-sm font-medium text-gray-900">특별휴가</h2>
+          <h2 className="mb-4 text-sm font-medium text-gray-900">{t("leaveSettings.specialTitle")}</h2>
           <div className="flex flex-col gap-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">유급 병가 일수</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaveSettings.sickLeaveDays")}</label>
               <input
                 type="number"
                 name="sickLeaveDays"
@@ -225,35 +227,35 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                 max={30}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
               />
-              <p className="mt-1 text-xs text-gray-400">근로기준법상 무급이나, 회사에서 유급 병가를 부여할 수 있습니다</p>
+              <p className="mt-1 text-xs text-gray-400">{t("leaveSettings.sickLeaveDaysDesc")}</p>
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-900">경조사 휴가</p>
-                <p className="text-xs text-gray-500">결혼, 사망, 출산 등 경조사 유급휴가</p>
+                <p className="text-sm text-gray-900">{t("leaveSettings.condolenceLeave")}</p>
+                <p className="text-xs text-gray-500">{t("leaveSettings.condolenceLeaveDesc")}</p>
               </div>
               <Toggle value={condolenceLeave} onChange={setCondolenceLeave} />
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-900">출산 휴가</p>
-                <p className="text-xs text-gray-500">출산 전후 90일 (근로기준법 의무)</p>
+                <p className="text-sm text-gray-900">{t("leaveSettings.maternityLeave")}</p>
+                <p className="text-xs text-gray-500">{t("leaveSettings.maternityLeaveDesc")}</p>
               </div>
               <Toggle value={maternityLeave} onChange={setMaternityLeave} />
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-900">배우자 출산 휴가</p>
-                <p className="text-xs text-gray-500">배우자 출산 시 10일 유급 (남녀고용평등법)</p>
+                <p className="text-sm text-gray-900">{t("leaveSettings.paternityLeave")}</p>
+                <p className="text-xs text-gray-500">{t("leaveSettings.paternityLeaveDesc")}</p>
               </div>
               <Toggle value={paternityLeave} onChange={setPaternityLeave} />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">가족돌봄 휴가 일수</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaveSettings.familyCareDays")}</label>
               <input
                 type="number"
                 name="familyCareDays"
@@ -263,7 +265,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                 max={30}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
               />
-              <p className="mt-1 text-xs text-gray-400">남녀고용평등법 기준 연 10일 (연차 차감)</p>
+              <p className="mt-1 text-xs text-gray-400">{t("leaveSettings.familyCareDaysDesc")}</p>
             </div>
           </div>
         </div>
@@ -275,7 +277,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
             disabled={loading}
             className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
           >
-            {loading ? "저장 중..." : "저장"}
+            {loading ? t("common.saving") : t("common.save")}
           </button>
           {onSaved && (
             <button
@@ -283,7 +285,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
               onClick={onSaved}
               className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
             >
-              취소
+              {t("common.cancel")}
             </button>
           )}
         </div>

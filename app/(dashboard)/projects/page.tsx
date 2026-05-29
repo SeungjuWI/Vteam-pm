@@ -30,6 +30,7 @@ export default async function ProjectsPage() {
       .select("id, name, email, avatar_url")
       .eq("company_id", profile.company_id)
       .eq("status", "active")
+      .neq("is_bot", true)
       .order("name", { ascending: true }),
   ]);
 

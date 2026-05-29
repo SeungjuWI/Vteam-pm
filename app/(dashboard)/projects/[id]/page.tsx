@@ -48,6 +48,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       .select("id, name, email, avatar_url, position")
       .eq("company_id", profile.company_id)
       .eq("status", "active")
+      .neq("is_bot", true)
       .order("name", { ascending: true }),
   ]);
 

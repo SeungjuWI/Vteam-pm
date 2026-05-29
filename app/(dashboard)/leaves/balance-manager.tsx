@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { adjustBalance } from "./actions";
+import { useT } from "@/lib/i18n";
 
 type Member = {
   id: string;
@@ -12,6 +13,7 @@ type Member = {
 };
 
 export default function BalanceManager({ members }: { members: Member[] }) {
+  const t = useT();
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState(0);
 
@@ -26,11 +28,11 @@ export default function BalanceManager({ members }: { members: Member[] }) {
   return (
     <div className="rounded-xl bg-white">
       <div className="border-b border-gray-100 px-6 py-4">
-        <h2 className="text-sm font-medium text-gray-900">멤버별 연차 현황</h2>
+        <h2 className="text-sm font-medium text-gray-900">{t("leaveSettings.balanceTitle")}</h2>
       </div>
       {members.length === 0 ? (
         <div className="flex h-32 items-center justify-center">
-          <p className="text-sm text-gray-400">연차 설정을 먼저 저장해주세요</p>
+          <p className="text-sm text-gray-400">{t("leaveSettings.balanceEmpty")}</p>
         </div>
       ) : (
         <div className="divide-y divide-gray-50">
@@ -51,9 +53,9 @@ export default function BalanceManager({ members }: { members: Member[] }) {
                   <div className="text-right">
                     <p className="text-sm text-gray-900">
                       <span className="font-medium">{remaining}</span>
-                      <span className="text-gray-400">/{m.total}일</span>
+                      <span className="text-gray-400">/{m.total}{t("common.days")}</span>
                     </p>
-                    <p className="text-xs text-gray-400">사용 {m.used}일</p>
+                    <p className="text-xs text-gray-400">{t("leaves.used")} {m.used}{t("common.days")}</p>
                   </div>
                   {editing === m.id ? (
                     <div className="flex items-center gap-1.5">
@@ -69,13 +71,13 @@ export default function BalanceManager({ members }: { members: Member[] }) {
                         onClick={() => handleSave(m.id)}
                         className="rounded-lg bg-blue-500 px-2.5 py-1 text-xs font-medium text-white"
                       >
-                        저장
+                        {t("common.save")}
                       </button>
                       <button
                         onClick={() => setEditing(null)}
                         className="text-xs text-gray-400"
                       >
-                        취소
+                        {t("common.cancel")}
                       </button>
                     </div>
                   ) : (
@@ -83,7 +85,7 @@ export default function BalanceManager({ members }: { members: Member[] }) {
                       onClick={() => { setEditing(m.id); setEditValue(m.total); }}
                       className="text-xs text-gray-400 hover:text-gray-600"
                     >
-                      수정
+                      {t("common.edit")}
                     </button>
                   )}
                 </div>

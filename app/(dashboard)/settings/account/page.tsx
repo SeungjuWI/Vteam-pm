@@ -1,14 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cookies } from "next/headers";
 import DesktopDownload from "@/components/desktop-download";
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: "최고관리자",
-  manager: "관리자",
-  employee: "직원",
-};
+import LanguageSetting from "./language-setting";
+import UiLanguageSetting from "./ui-language-setting";
+import { getT } from "@/lib/i18n/server";
 
 export default async function AccountSettingsPage() {
+  const t = await getT();
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
@@ -17,28 +16,35 @@ export default async function AccountSettingsPage() {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("name, role")
+    .select("name, role, language")
     .eq("id", user.id)
     .single();
 
+  const cookieStore = await cookies();
+  const uiLang = cookieStore.get("vteam-ui-lang")?.value || "ko";
+
+  const roleKey = profile?.role as "admin" | "manager" | "employee" | undefined;
+  const ROLE_KEYS = { admin: "role.admin", manager: "role.manager", employee: "role.employee" } as const;
+  const roleLabel = roleKey && roleKey in ROLE_KEYS ? t(ROLE_KEYS[roleKey]) : profile?.role ?? "";
+
   const provider = user.app_metadata?.provider ?? "email";
-  const providerLabel = provider === "google" ? "Google" : provider === "github" ? "GitHub" : "이메일";
+  const providerLabel = provider === "google" ? "Google" : provider === "github" ? "GitHub" : t("account.email");
 
   return (
     <div className="flex flex-col gap-6">
       {/* 계정 정보 */}
       <div className="rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-sm font-medium text-gray-900">계정 정보</h2>
+        <h2 className="mb-4 text-sm font-medium text-gray-900">{t("account.title")}</h2>
         <div className="flex flex-col gap-3">
-          <Row label="이메일" value={user.email ?? ""} />
-          <Row label="역할" value={ROLE_LABELS[profile?.role ?? ""] ?? profile?.role ?? ""} />
-          <Row label="가입일" value={formatDate(user.created_at)} />
+          <Row label={t("account.email")} value={user.email ?? ""} />
+          <Row label={t("account.role")} value={roleLabel} />
+          <Row label={t("account.joinDate")} value={formatDate(user.created_at)} />
         </div>
       </div>
 
       {/* 연동 플랫폼 */}
       <div className="rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-sm font-medium text-gray-900">연동 플랫폼</h2>
+        <h2 className="mb-4 text-sm font-medium text-gray-900">{t("account.platform")}</h2>
         <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
           <div className="flex items-center gap-3">
             {provider === "google" ? <GoogleIcon /> : <EmailIcon />}
@@ -47,31 +53,37 @@ export default async function AccountSettingsPage() {
               <p className="text-xs text-gray-500">{user.email}</p>
             </div>
           </div>
-          <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-600">연동됨</span>
+          <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-600">{t("account.connected")}</span>
         </div>
       </div>
 
       {/* 구독 플랜 */}
       <div className="rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-sm font-medium text-gray-900">구독 플랜</h2>
+        <h2 className="mb-4 text-sm font-medium text-gray-900">{t("account.subscription")}</h2>
         <div className="rounded-lg border border-gray-200 px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-gray-900">Free</p>
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500">현재 플랜</span>
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500">{t("account.currentPlan")}</span>
               </div>
-              <p className="mt-1 text-xs text-gray-500">기본 기능을 무료로 이용하세요</p>
+              <p className="mt-1 text-xs text-gray-500">{t("account.freePlanDesc")}</p>
             </div>
             <button
               disabled
               className="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-400"
             >
-              준비 중
+              {t("account.comingSoon")}
             </button>
           </div>
         </div>
       </div>
+
+      {/* 시스템 언어 */}
+      <UiLanguageSetting currentUiLang={uiLang} />
+
+      {/* 모국어 */}
+      <LanguageSetting currentLanguage={profile?.language ?? "ko"} />
 
       {/* 데스크탑 앱 */}
       <DesktopDownload />

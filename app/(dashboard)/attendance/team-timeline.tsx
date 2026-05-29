@@ -1,6 +1,7 @@
 "use client";
 
 import Avatar from "@/components/avatar";
+import { useT } from "@/lib/i18n";
 
 type TeamRecord = {
   name: string;
@@ -16,15 +17,8 @@ const HOUR_END = 22;
 const TOTAL_HOURS = HOUR_END - HOUR_START;
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
-}
-
-function getDuration(clockIn: string, clockOut: string | null) {
-  const end = clockOut ? new Date(clockOut).getTime() : Date.now();
-  const diff = end - new Date(clockIn).getTime();
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  return `${h}시간 ${m}분`;
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 function getBarStyle(clockIn: string, clockOut: string | null) {
@@ -42,21 +36,29 @@ function getBarStyle(clockIn: string, clockOut: string | null) {
 }
 
 export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
+  const t = useT();
   const hours = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => HOUR_START + i);
+
+  function getDuration(clockIn: string, clockOut: string | null) {
+    const end = clockOut ? new Date(clockOut).getTime() : Date.now();
+    const diff = end - new Date(clockIn).getTime();
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    return `${h}${t("common.hours")} ${m}${t("common.minutes")}`;
+  }
 
   return (
     <div className="rounded-xl bg-white">
       <div className="border-b border-gray-100 px-6 py-4">
-        <h2 className="text-sm font-medium text-gray-900">팀원 근무 현황</h2>
+        <h2 className="text-sm font-medium text-gray-900">{t("dashboard.teamStatus")}</h2>
       </div>
 
       {records.length === 0 ? (
         <div className="flex h-32 items-center justify-center">
-          <p className="text-sm text-gray-400">오늘 출근한 팀원이 없습니다</p>
+          <p className="text-sm text-gray-400">{t("dashboard.noTeamToday")}</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
-          {/* 시간 헤더 */}
           <div className="flex min-w-[800px]">
             <div className="w-48 shrink-0" />
             <div className="relative flex flex-1">
@@ -71,7 +73,6 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
             </div>
           </div>
 
-          {/* 멤버 행 */}
           <div className="divide-y divide-gray-50">
             {records.map((record, i) => {
               const isWorking = !record.clockOut;
@@ -79,7 +80,6 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
 
               return (
                 <div key={i} className="flex min-w-[800px] items-center">
-                  {/* 프로필 */}
                   <div className="flex w-48 shrink-0 items-center gap-3 px-6 py-4">
                     <Avatar url={record.avatarUrl} name={record.name} size={32} />
                     <div className="min-w-0">
@@ -88,7 +88,6 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
                     </div>
                   </div>
 
-                  {/* 타임라인 바 */}
                   <div className="relative flex-1 py-4 pr-4">
                     <div className="relative h-10 rounded-lg bg-gray-50">
                       {hours.map((h) => (

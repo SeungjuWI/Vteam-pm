@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { saveWelcomeProfile } from "./actions";
 import { compressImage } from "@/lib/compress-image";
 import LanguageSelect from "@/components/language-select";
+import { makeT } from "@/lib/i18n";
 
 interface Props {
   companyName: string;
@@ -17,11 +18,18 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
   const compressedRef = useRef<Blob | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [lang, setLang] = useState("ko");
+  useEffect(() => {
+    const browserLang = navigator.language.startsWith("en") ? "en" : "ko";
+    setLang(browserLang);
+  }, []);
+  const t = makeT(lang);
+
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setError("이미지 파일만 업로드 가능합니다");
+      setError(t("common.imageOnly"));
       return;
     }
     try {
@@ -30,7 +38,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
       setAvatarPreview(dataUrl);
       setError("");
     } catch {
-      setError("이미지 처리에 실패했습니다");
+      setError(t("common.imageFailed"));
     }
   }
 
@@ -63,7 +71,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
       <div className="w-full max-w-md rounded-2xl bg-white p-8">
         {/* 헤더: 회사 로고 + 이름 */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <h1 className="text-xl font-semibold text-gray-900">환영합니다!</h1>
+          <h1 className="text-xl font-semibold text-gray-900">{t("welcome.title")}</h1>
           {companyName && (
             <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-4 py-2">
               {companyLogoUrl ? (
@@ -84,7 +92,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
             </div>
           )}
           <p className="text-sm text-gray-500">
-            시작하기 전에 프로필을 설정해주세요.
+            {t("welcome.subtitle")}
           </p>
         </div>
 
@@ -99,7 +107,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={avatarPreview}
-                  alt="프로필"
+                  alt="Profile"
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -128,7 +136,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
               onClick={() => fileRef.current?.click()}
               className="text-xs text-blue-500 hover:text-blue-600"
             >
-              {avatarPreview ? "사진 변경" : "프로필 사진 추가"}
+              {avatarPreview ? t("welcome.changePhoto") : t("welcome.addPhoto")}
             </button>
             <input
               ref={fileRef}
@@ -143,12 +151,12 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
           {/* 이름 */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              이름<span className="ml-0.5 text-red-400">*</span>
+              {t("welcome.name")}<span className="ml-0.5 text-red-400">*</span>
             </label>
             <input
               type="text"
               name="name"
-              placeholder="이름을 입력하세요"
+              placeholder={t("welcome.namePlaceholder")}
               maxLength={20}
               className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
               required
@@ -159,12 +167,12 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
           {/* 직책 */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              직책
+              {t("welcome.position")}
             </label>
             <input
               type="text"
               name="position"
-              placeholder="예: 프론트엔드 개발자, 디자이너, PM"
+              placeholder={t("welcome.positionPlaceholder")}
               className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -172,7 +180,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
           {/* 입사일 */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              입사일
+              {t("welcome.joinDate")}
             </label>
             <input
               type="date"
@@ -184,7 +192,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
           {/* 모국어 */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              모국어
+              {t("welcome.language")}
             </label>
             <LanguageSelect />
           </div>
@@ -196,7 +204,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
             disabled={saving}
             className="w-full rounded-lg bg-blue-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
           >
-            {saving ? "저장 중..." : "시작하기"}
+            {saving ? t("common.saving") : t("welcome.submit")}
           </button>
         </form>
       </div>

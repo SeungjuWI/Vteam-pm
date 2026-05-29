@@ -6,6 +6,7 @@ import { saveProfile } from "./profile-actions";
 import { compressImage } from "@/lib/compress-image";
 import LanguageSelect from "@/components/language-select";
 import { LANGUAGES } from "@/lib/languages";
+import { useT } from "@/lib/i18n";
 
 interface ProfileData {
   name: string;
@@ -16,13 +17,14 @@ interface ProfileData {
   language: string;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: "최고관리자",
-  manager: "관리자",
-  employee: "직원",
-};
-
 export default function ProfileView({ data }: { data: ProfileData }) {
+  const t = useT();
+
+  const ROLE_LABELS: Record<string, string> = {
+    admin: t("role.admin"),
+    manager: t("role.manager"),
+    employee: t("role.employee"),
+  };
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -52,7 +54,7 @@ export default function ProfileView({ data }: { data: ProfileData }) {
     if (result.error) {
       setMessage({ type: "error", text: result.error });
     } else {
-      setMessage({ type: "success", text: "저장되었습니다" });
+      setMessage({ type: "success", text: t("common.saved") });
       setEditing(false);
       setAvatarPreview(null);
       setRemoveAvatar(false);
@@ -67,7 +69,7 @@ export default function ProfileView({ data }: { data: ProfileData }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setMessage({ type: "error", text: "이미지 파일만 업로드 가능합니다" });
+      setMessage({ type: "error", text: t("common.imageOnly") });
       return;
     }
     try {
@@ -76,7 +78,7 @@ export default function ProfileView({ data }: { data: ProfileData }) {
       setAvatarPreview(dataUrl);
       setRemoveAvatar(false);
     } catch {
-      setMessage({ type: "error", text: "이미지 처리에 실패했습니다" });
+      setMessage({ type: "error", text: t("common.imageFailed") });
     }
   }
 
@@ -86,13 +88,13 @@ export default function ProfileView({ data }: { data: ProfileData }) {
     return (
       <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-gray-900">내 프로필</h2>
+          <h2 className="text-sm font-medium text-gray-900">{t("settings.myProfile")}</h2>
           <button
             type="button"
             onClick={() => { setEditing(false); setAvatarPreview(null); setRemoveAvatar(false); }}
             className="text-xs text-gray-400 hover:text-gray-600"
           >
-            취소
+            {t("common.cancel")}
           </button>
         </div>
 
@@ -104,7 +106,7 @@ export default function ProfileView({ data }: { data: ProfileData }) {
           >
             {currentAvatar ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={currentAvatar} alt="프로필" className="h-full w-full object-cover" />
+              <img src={currentAvatar} alt="Profile" className="h-full w-full object-cover" />
             ) : (
               <span className="text-lg font-medium text-gray-400">{data.name[0]}</span>
             )}
@@ -115,7 +117,7 @@ export default function ProfileView({ data }: { data: ProfileData }) {
               onClick={() => fileRef.current?.click()}
               className="w-fit rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
             >
-              {currentAvatar ? "변경" : "업로드"}
+              {currentAvatar ? t("common.change") : t("common.upload")}
             </button>
             {currentAvatar && (
               <button
@@ -123,17 +125,17 @@ export default function ProfileView({ data }: { data: ProfileData }) {
                 onClick={() => { setAvatarPreview(null); setRemoveAvatar(true); if (fileRef.current) fileRef.current.value = ""; }}
                 className="w-fit text-xs text-gray-400 hover:text-red-400"
               >
-                삭제
+                {t("common.delete")}
               </button>
             )}
-            <span className="text-[11px] text-gray-400">PNG, JPG / 최대 2MB</span>
+            <span className="text-[11px] text-gray-400">{t("profile.photoSpec")}</span>
           </div>
           <input ref={fileRef} type="file" name="avatar" accept="image/*,.heic,.heif" onChange={handleFileChange} className="hidden" />
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-gray-500">이름<span className="ml-0.5 text-red-400">*</span></label>
+            <label className="text-sm text-gray-500">{t("profile.name")}<span className="ml-0.5 text-red-400">*</span></label>
             <input
               name="name"
               defaultValue={data.name}
@@ -142,24 +144,24 @@ export default function ProfileView({ data }: { data: ProfileData }) {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-gray-500">포지션</label>
+            <label className="text-sm text-gray-500">{t("profile.position")}</label>
             <input
               name="position"
               defaultValue={data.position}
-              placeholder="예: 프론트엔드 개발자, 디자이너, PM"
+              placeholder={t("welcome.positionPlaceholder")}
               className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-300 focus:border-blue-500"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-gray-500">모국어</label>
+            <label className="text-sm text-gray-500">{t("profile.language")}</label>
             <LanguageSelect name="language" defaultValue={data.language} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-gray-500">이메일</label>
+            <label className="text-sm text-gray-500">{t("profile.email")}</label>
             <p className="px-3 py-2 text-sm text-gray-400">{data.email}</p>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-gray-500">역할</label>
+            <label className="text-sm text-gray-500">{t("profile.role")}</label>
             <p className="px-3 py-2 text-sm text-gray-400">{ROLE_LABELS[data.role] ?? data.role}</p>
           </div>
         </div>
@@ -170,7 +172,7 @@ export default function ProfileView({ data }: { data: ProfileData }) {
             disabled={saving}
             className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
           >
-            {saving ? "저장 중..." : "저장"}
+            {saving ? t("common.saving") : t("common.save")}
           </button>
           {message && (
             <span className={`text-sm ${message.type === "success" ? "text-green-600" : "text-red-500"}`}>
@@ -185,9 +187,9 @@ export default function ProfileView({ data }: { data: ProfileData }) {
   return (
     <div className="rounded-xl bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-gray-900">내 프로필</h2>
+        <h2 className="text-sm font-medium text-gray-900">{t("settings.myProfile")}</h2>
         <button onClick={() => setEditing(true)} className="text-xs text-blue-500 hover:text-blue-600">
-          수정
+          {t("common.edit")}
         </button>
       </div>
 
@@ -201,11 +203,11 @@ export default function ProfileView({ data }: { data: ProfileData }) {
       </div>
 
       <div className="flex flex-col gap-3">
-        <Row label="이메일" value={data.email} />
-        <Row label="역할" value={ROLE_LABELS[data.role] ?? data.role} />
-        {data.position && <Row label="포지션" value={data.position} />}
+        <Row label={t("profile.email")} value={data.email} />
+        <Row label={t("profile.role")} value={ROLE_LABELS[data.role] ?? data.role} />
+        {data.position && <Row label={t("profile.position")} value={data.position} />}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-500">모국어</span>
+          <span className="text-sm text-gray-500">{t("profile.language")}</span>
           <span className="text-sm text-gray-900">
             {(() => { const l = LANGUAGES.find((l) => l.code === data.language); return l ? `${l.flag} ${l.label}` : data.language; })()}
           </span>

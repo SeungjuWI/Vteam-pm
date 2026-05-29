@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { clockIn, clockOut, getAttendanceStatus } from "@/app/(dashboard)/attendance/actions";
+import { useT } from "@/lib/i18n";
 
 type WorkStatus = "idle" | "working" | "done";
 
@@ -68,15 +69,8 @@ function Confetti() {
   );
 }
 
-function formatDuration(ms: number): string {
-  const totalMin = Math.floor(ms / 60000);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  if (h > 0) return `${h}시간 ${m}분`;
-  return `${m}분`;
-}
-
 export default function WorkTimer() {
+  const t = useT();
   const [status, setStatus] = useState<WorkStatus>("idle");
   const [clockInTime, setClockInTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -88,6 +82,14 @@ export default function WorkTimer() {
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const btnRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  function formatDuration(ms: number): string {
+    const totalMin = Math.floor(ms / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (h > 0) return `${h}${t("common.hours")} ${m}${t("common.minutes")}`;
+    return `${m}${t("common.minutes")}`;
+  }
 
   const fetchStatus = useCallback(async () => {
     const result = await getAttendanceStatus();
@@ -141,8 +143,8 @@ export default function WorkTimer() {
     if (!clockInTime) return;
     const now = Date.now();
     const duration = now - new Date(clockInTime).getTime();
-    setClockInTimeStr(new Date(clockInTime).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
-    setClockOutTimeStr(new Date(now).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
+    setClockInTimeStr(new Date(clockInTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }));
+    setClockOutTimeStr(new Date(now).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }));
     setTotalDuration(formatDuration(duration));
     setModalStep("confirm");
     setOpen(false);
@@ -180,7 +182,7 @@ export default function WorkTimer() {
           <span className="h-2 w-2 rounded-full bg-gray-300" />
         )}
         <span className={`text-sm ${isWorking ? "text-blue-600" : "text-gray-500"}`}>
-          {isWorking ? "근무중" : status === "done" ? "퇴근완료" : "출근 전"}
+          {isWorking ? t("timer.working") : status === "done" ? t("timer.doneForDay") : t("timer.beforeWork")}
         </span>
       </div>
 
@@ -194,20 +196,20 @@ export default function WorkTimer() {
             {isWorking && clockInTime ? (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">출근</span>
+                  <span className="text-xs text-gray-400">{t("timer.clockInLabel")}</span>
                   <span className="text-sm text-gray-900">
-                    {new Date(clockInTime).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(clockInTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-blue-500">
-                  {formatDuration(Date.now() - new Date(clockInTime).getTime())} 근무중
+                  {formatDuration(Date.now() - new Date(clockInTime).getTime())} {t("timer.working")}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-xs text-gray-400">근무</p>
+                <p className="text-xs text-gray-400">{t("timer.workLabel")}</p>
                 <p className="mt-1 text-sm text-gray-900">
-                  {status === "done" ? "오늘 근무 완료" : "아직 출근하지 않았어요"}
+                  {status === "done" ? t("timer.doneToday") : t("timer.notYet")}
                 </p>
               </>
             )}
@@ -223,7 +225,7 @@ export default function WorkTimer() {
                 <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
                 </svg>
-                출근하기
+                {t("timer.doClockIn")}
               </button>
             )}
             {isWorking && (
@@ -235,11 +237,11 @@ export default function WorkTimer() {
                 <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" />
                 </svg>
-                퇴근하기
+                {t("timer.doClockOut")}
               </button>
             )}
             {status === "done" && (
-              <p className="px-4 py-2 text-sm text-gray-400">오늘 근무가 완료되었습니다</p>
+              <p className="px-4 py-2 text-sm text-gray-400">{t("timer.doneMessage")}</p>
             )}
           </div>
         </div>,
@@ -250,19 +252,19 @@ export default function WorkTimer() {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center">
           <div className="fixed inset-0 bg-black/40" onClick={() => setModalStep(null)} />
           <div className="relative w-80 rounded-2xl bg-white p-6">
-            <h3 className="text-center text-base font-medium text-gray-900">퇴근하시겠습니까?</h3>
+            <h3 className="text-center text-base font-medium text-gray-900">{t("timer.confirmClockOut")}</h3>
             <div className="mt-4 space-y-2 rounded-xl bg-gray-50 px-4 py-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">출근</span>
+                <span className="text-sm text-gray-500">{t("timer.clockInLabel")}</span>
                 <span className="text-sm text-gray-900">{clockInTimeStr}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">현재</span>
+                <span className="text-sm text-gray-500">{t("timer.now")}</span>
                 <span className="text-sm text-gray-900">{clockOutTimeStr}</span>
               </div>
               <div className="h-px bg-gray-200" />
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">총 근무시간</span>
+                <span className="text-sm text-gray-500">{t("timer.totalHours")}</span>
                 <span className="text-sm font-medium text-blue-600">{totalDuration}</span>
               </div>
             </div>
@@ -271,14 +273,14 @@ export default function WorkTimer() {
                 onClick={() => setModalStep(null)}
                 className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
               >
-                취소
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleClockOutConfirm}
                 disabled={loading}
                 className="flex-1 rounded-xl bg-blue-500 py-2.5 text-sm text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
               >
-                퇴근하기
+                {t("timer.doClockOut")}
               </button>
             </div>
           </div>
@@ -291,19 +293,19 @@ export default function WorkTimer() {
           <div className="fixed inset-0 bg-black/40" onClick={() => setModalStep(null)} />
           <div className="relative w-80 overflow-hidden rounded-2xl bg-white p-6">
             <Confetti />
-            <h3 className="text-center text-base font-medium text-gray-900">퇴근 완료</h3>
+            <h3 className="text-center text-base font-medium text-gray-900">{t("timer.clockOutDone")}</h3>
             <div className="mt-4 space-y-2 rounded-xl bg-gray-50 px-4 py-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">출근</span>
+                <span className="text-sm text-gray-500">{t("timer.clockInLabel")}</span>
                 <span className="text-sm text-gray-900">{clockInTimeStr}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">퇴근</span>
+                <span className="text-sm text-gray-500">{t("timer.doClockOut")}</span>
                 <span className="text-sm text-gray-900">{clockOutTimeStr}</span>
               </div>
               <div className="h-px bg-gray-200" />
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">총 근무시간</span>
+                <span className="text-sm text-gray-500">{t("timer.totalHours")}</span>
                 <span className="text-sm font-medium text-blue-600">{totalDuration}</span>
               </div>
             </div>
@@ -311,7 +313,7 @@ export default function WorkTimer() {
               onClick={() => setModalStep(null)}
               className="mt-5 w-full rounded-xl bg-blue-500 py-2.5 text-sm text-white transition-colors hover:bg-blue-600"
             >
-              수고 많으셨어요!
+              {t("timer.goodJob")}
             </button>
           </div>
         </div>,

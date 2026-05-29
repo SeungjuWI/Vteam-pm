@@ -17,13 +17,10 @@ export default async function DashboardPage() {
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
-  const today = todayStart.toISOString().split("T")[0];
-
   const [
     { data: teamTodayRaw, error: teamError },
     { count },
     { count: activeProjectCount },
-    { count: todayTaskCount },
   ] = await Promise.all([
     adminClient
       .from("attendances")
@@ -43,12 +40,6 @@ export default async function DashboardPage() {
       .select("id", { count: "exact", head: true })
       .eq("company_id", profile.company_id)
       .eq("status", "active"),
-    adminClient
-      .from("tasks")
-      .select("id, projects!inner(company_id)", { count: "exact", head: true })
-      .eq("projects.company_id", profile.company_id)
-      .eq("due_date", today)
-      .neq("status", "done"),
   ]);
 
   if (teamError) console.error("team query error:", teamError);
@@ -70,7 +61,7 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-lg font-semibold text-gray-900">{t("dashboard.title")}</h1>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl bg-white p-5">
           <p className="text-sm text-gray-500">{t("dashboard.todayAttendance")}</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">
@@ -86,10 +77,6 @@ export default async function DashboardPage() {
         <div className="rounded-xl bg-white p-5">
           <p className="text-sm text-gray-500">{t("dashboard.activeProjects")}</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">{activeProjectCount || 0}{t("dashboard.items")}</p>
-        </div>
-        <div className="rounded-xl bg-white p-5">
-          <p className="text-sm text-gray-500">{t("dashboard.todayDueTasks")}</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-900">{todayTaskCount || 0}{t("dashboard.items")}</p>
         </div>
       </div>
 

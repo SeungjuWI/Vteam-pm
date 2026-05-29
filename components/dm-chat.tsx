@@ -11,6 +11,7 @@ import {
 } from "@/app/(dashboard)/dm/actions";
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
+import { useT } from "@/lib/i18n";
 
 interface Message {
   id: string;
@@ -33,10 +34,10 @@ interface ChatMember {
   is_bot?: boolean | null;
 }
 
-const presenceLabel: Record<string, string> = {
-  online: "활동중",
-  away: "자리비움",
-  offline: "오프라인",
+const presenceKeys: Record<string, "dm.online" | "dm.away" | "dm.offline"> = {
+  online: "dm.online",
+  away: "dm.away",
+  offline: "dm.offline",
 };
 
 // 봇 메시지용 간단한 마크다운 렌더러
@@ -138,11 +139,13 @@ const MAX_H = 640;
 function ContextMenu({
   x,
   y,
+  label,
   onViewOriginal,
   onClose,
 }: {
   x: number;
   y: number;
+  label: string;
   onViewOriginal: () => void;
   onClose: () => void;
 }) {
@@ -172,7 +175,7 @@ function ContextMenu({
         <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
         </svg>
-        원문 보기
+        {label}
       </button>
     </div>
   );
@@ -182,10 +185,12 @@ function ContextMenu({
 function OriginalPopup({
   original,
   senderLang,
+  labelText,
   onClose,
 }: {
   original: string;
   senderLang: string;
+  labelText: string;
   onClose: () => void;
 }) {
   const lang = LANGUAGES.find((l) => l.code === senderLang);
@@ -194,7 +199,7 @@ function OriginalPopup({
     <div className="mt-1 rounded-lg border border-gray-200 bg-white px-3 py-2">
       <div className="mb-1 flex items-center justify-between">
         <span className="text-[10px] text-gray-400">
-          원문 {lang ? `${lang.flag} ${lang.label}` : ""}
+          {labelText} {lang ? `${lang.flag} ${lang.label}` : ""}
         </span>
         <button onClick={onClose} className="text-gray-300 hover:text-gray-500">
           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -224,6 +229,7 @@ export default function DmChat({
   isMinimized: boolean;
   style?: React.CSSProperties;
 }) {
+  const t = useT();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -374,7 +380,7 @@ export default function DmChat({
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
   const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
@@ -454,7 +460,7 @@ export default function DmChat({
               )}
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-              <span>{member.is_bot ? "항상 온라인" : (presenceLabel[member.presence ?? "offline"] ?? "오프라인")}</span>
+              <span>{member.is_bot ? t("dm.alwaysOnline") : t(presenceKeys[member.presence ?? "offline"] ?? "dm.offline")}</span>
               {isTranslated && (
                 <>
                   <span className="text-gray-200">·</span>
@@ -462,7 +468,7 @@ export default function DmChat({
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
                     </svg>
-                    자동 번역
+                    {t("dm.autoTranslate")}
                   </span>
                 </>
               )}
@@ -493,15 +499,15 @@ export default function DmChat({
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {loading ? (
           <div className="flex h-full items-center justify-center text-xs text-gray-400">
-            불러오는 중...
+            {t("common.loading")}
           </div>
         ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2">
             <Avatar url={member.avatar_url} name={member.name} size={48} />
             <p className="text-xs text-gray-400">
               {member.is_bot
-                ? "Vteam에 대해 무엇이든 물어보세요!"
-                : `${member.name}님과의 대화를 시작하세요`}
+                ? t("dm.askAnything")
+                : `${member.name} ${t("dm.startChat")}`}
             </p>
           </div>
         ) : (
@@ -537,7 +543,7 @@ export default function DmChat({
                       {formatTime(msg.created_at)}
                     </span>
                     {hasTranslation && (
-                      <span className="mt-0.5 text-[10px] text-blue-300">번역됨</span>
+                      <span className="mt-0.5 text-[10px] text-blue-300">{t("dm.translated")}</span>
                     )}
                   </div>
                   {/* 원문 보기 */}
@@ -545,6 +551,7 @@ export default function DmChat({
                     <OriginalPopup
                       original={msg.content}
                       senderLang={msg.sender_language ?? ""}
+                      labelText={t("dm.original")}
                       onClose={() => toggleOriginal(msg.id)}
                     />
                   )}
@@ -579,7 +586,7 @@ export default function DmChat({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={member.is_bot ? "Sean에게 질문하세요..." : "메시지를 입력하세요..."}
+            placeholder={member.is_bot ? t("dm.askSean") : t("dm.typeMessage")}
             className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
           />
           <button
@@ -599,6 +606,7 @@ export default function DmChat({
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
+          label={t("dm.viewOriginal")}
           onViewOriginal={() => toggleOriginal(contextMenu.msgId)}
           onClose={() => setContextMenu(null)}
         />

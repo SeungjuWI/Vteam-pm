@@ -363,6 +363,44 @@ const en: Record<TranslationKey, string> = {
   "clock.clockedIn": "Clocked in",
   "clock.elapsed": "elapsed",
 
+  // Notifications
+  "notification.title": "Notifications",
+  "notification.markAllRead": "Mark all read",
+  "notification.empty": "No new notifications",
+  "notification.justNow": "Just now",
+  "notification.minutesAgo": "m ago",
+  "notification.hoursAgo": "h ago",
+  "notification.daysAgo": "d ago",
+  "notification.newProject": "You've been assigned to a new project",
+  "notification.projectAssigned": "You've been assigned to a project",
+  "notification.taskAssigned": "You've been assigned a new task",
+  "notification.newComment": "New comment on",
+  "notification.assignedYou": "assigned you to",
+  "notification.assignedTask": "assigned you a task.",
+  "notification.projectSuffix": "project",
+
+  // Sidebar Team
+  "team.title": "Team",
+  "team.searchPlaceholder": "Search name, position...",
+  "team.noResults": "No results found",
+  "team.noMembers": "No team members",
+  "team.doubleClickToMsg": "Double-click to message",
+
+  // DM Chat
+  "dm.aiAssistant": "AI Assistant",
+  "dm.alwaysOnline": "Always online",
+  "dm.online": "Active",
+  "dm.away": "Away",
+  "dm.offline": "Offline",
+  "dm.autoTranslate": "Auto-translate",
+  "dm.translated": "Translated",
+  "dm.viewOriginal": "View original",
+  "dm.original": "Original",
+  "dm.askAnything": "Ask anything about Vteam!",
+  "dm.startChat": "Start a conversation",
+  "dm.askSean": "Ask Sean...",
+  "dm.typeMessage": "Type a message...",
+
   // Work Timer
   "timer.working": "Working",
   "timer.doneForDay": "Done",

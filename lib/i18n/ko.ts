@@ -361,6 +361,44 @@ const ko = {
   "clock.clockedIn": "출근",
   "clock.elapsed": "경과",
 
+  // Notifications
+  "notification.title": "알림",
+  "notification.markAllRead": "모두 읽음",
+  "notification.empty": "새로운 알림이 없습니다",
+  "notification.justNow": "방금 전",
+  "notification.minutesAgo": "분 전",
+  "notification.hoursAgo": "시간 전",
+  "notification.daysAgo": "일 전",
+  "notification.newProject": "새 프로젝트에 배정되었습니다",
+  "notification.projectAssigned": "프로젝트에 배정되었습니다",
+  "notification.taskAssigned": "새 태스크가 배정되었습니다",
+  "notification.newComment": "에 새 댓글",
+  "notification.assignedYou": "님이 담당자로 배정했습니다.",
+  "notification.assignedTask": "님이 태스크를 배정했습니다.",
+  "notification.projectSuffix": "프로젝트에",
+
+  // Sidebar Team
+  "team.title": "팀원",
+  "team.searchPlaceholder": "이름, 직책 검색...",
+  "team.noResults": "검색 결과가 없습니다",
+  "team.noMembers": "팀원이 없습니다",
+  "team.doubleClickToMsg": "더블클릭하여 메시지 보내기",
+
+  // DM Chat
+  "dm.aiAssistant": "AI 어시스턴트",
+  "dm.alwaysOnline": "항상 온라인",
+  "dm.online": "활동중",
+  "dm.away": "자리비움",
+  "dm.offline": "오프라인",
+  "dm.autoTranslate": "자동 번역",
+  "dm.translated": "번역됨",
+  "dm.viewOriginal": "원문 보기",
+  "dm.original": "원문",
+  "dm.askAnything": "Vteam에 대해 무엇이든 물어보세요!",
+  "dm.startChat": "님과의 대화를 시작하세요",
+  "dm.askSean": "Sean에게 질문하세요...",
+  "dm.typeMessage": "메시지를 입력하세요...",
+
   // Work Timer
   "timer.working": "근무중",
   "timer.doneForDay": "퇴근완료",

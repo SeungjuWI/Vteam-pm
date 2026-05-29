@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from "./notification-actions";
+import { useT } from "@/lib/i18n";
 
 interface Notification {
   id: string;
@@ -15,18 +16,45 @@ interface Notification {
   created_at: string;
 }
 
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "방금 전";
-  if (minutes < 60) return `${minutes}분 전`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  return `${days}일 전`;
-}
-
 export default function NotificationButton() {
+  const t = useT();
+
+  function timeAgo(dateStr: string) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return t("notification.justNow");
+    if (minutes < 60) return `${minutes}${t("notification.minutesAgo")}`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}${t("notification.hoursAgo")}`;
+    const days = Math.floor(hours / 24);
+    return `${days}${t("notification.daysAgo")}`;
+  }
+
+  const TITLE_MAP: Record<string, string> = {
+    "새 프로젝트에 배정되었습니다": t("notification.newProject"),
+    "프로젝트에 배정되었습니다": t("notification.projectAssigned"),
+    "새 태스크가 배정되었습니다": t("notification.taskAssigned"),
+  };
+
+  function translateTitle(title: string) {
+    if (TITLE_MAP[title]) return TITLE_MAP[title];
+    const commentMatch = title.match(/^"(.+)"에 새 댓글$/);
+    if (commentMatch) return `${t("notification.newComment")} "${commentMatch[1]}"`;
+    return title;
+  }
+
+  function translateMessage(message: string | null) {
+    if (!message) return null;
+    // "OOO님이 "프로젝트명" 프로젝트에 담당자로 배정했습니다."
+    const projMatch = message.match(/^(.+)님이 "(.+)" 프로젝트에 담당자로 배정했습니다\.$/);
+    if (projMatch) return `${projMatch[1]} ${t("notification.assignedYou")} "${projMatch[2]}" ${t("notification.projectSuffix")}`;
+    // "OOO님이 "태스크명" 태스크를 배정했습니다."
+    const taskMatch = message.match(/^(.+)님이 "(.+)" 태스크를 배정했습니다\.$/);
+    if (taskMatch) return `${taskMatch[1]} ${t("notification.assignedTask")} "${taskMatch[2]}"`;
+    // "OOO: 댓글내용" — 이건 이름: 내용이라 그대로 표시
+    return message;
+  }
+
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -117,24 +145,24 @@ export default function NotificationButton() {
           style={{ top: pos.top, right: pos.right }}
         >
           <div className="flex items-center justify-between px-4 py-3">
-            <p className="text-sm font-medium text-gray-900">알림</p>
+            <p className="text-sm font-medium text-gray-900">{t("notification.title")}</p>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
                 className="text-xs text-blue-500 hover:text-blue-600"
               >
-                모두 읽음
+                {t("notification.markAllRead")}
               </button>
             )}
           </div>
           <div className="h-px bg-gray-100" />
           {!loaded ? (
             <div className="flex items-center justify-center px-4 py-10">
-              <p className="text-sm text-gray-400">불러오는 중...</p>
+              <p className="text-sm text-gray-400">{t("common.loading")}</p>
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex items-center justify-center px-4 py-10">
-              <p className="text-sm text-gray-400">새로운 알림이 없습니다</p>
+              <p className="text-sm text-gray-400">{t("notification.empty")}</p>
             </div>
           ) : (
             <div className="max-h-80 overflow-y-auto">
@@ -149,10 +177,10 @@ export default function NotificationButton() {
                   <div className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${!n.is_read ? "bg-blue-500" : "bg-transparent"}`} />
                   <div className="min-w-0 flex-1">
                     <p className={`text-sm ${!n.is_read ? "font-medium text-gray-900" : "text-gray-700"}`}>
-                      {n.title}
+                      {translateTitle(n.title)}
                     </p>
                     {n.message && (
-                      <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{n.message}</p>
+                      <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{translateMessage(n.message)}</p>
                     )}
                     <p className="mt-1 text-[11px] text-gray-400">{timeAgo(n.created_at)}</p>
                   </div>

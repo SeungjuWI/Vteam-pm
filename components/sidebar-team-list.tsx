@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Avatar from "@/components/avatar";
 import { getTeamMembers, getUnreadCounts } from "@/app/(dashboard)/dm/actions";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n";
 
 interface TeamMember {
   id: string;
@@ -17,18 +18,17 @@ interface TeamMember {
   is_bot?: boolean | null;
 }
 
-const presenceConfig = {
-  online: { color: "bg-emerald-400", label: "활동중" },
-  away: { color: "bg-yellow-400", label: "자리비움" },
-  offline: { color: "bg-gray-300", label: "오프라인" },
+const presenceColors = {
+  online: "bg-emerald-400",
+  away: "bg-yellow-400",
+  offline: "bg-gray-300",
 } as const;
 
 function PresenceDot({ status }: { status: string | null }) {
-  const config = presenceConfig[(status as keyof typeof presenceConfig) ?? "offline"] ?? presenceConfig.offline;
+  const color = presenceColors[(status as keyof typeof presenceColors) ?? "offline"] ?? presenceColors.offline;
   return (
     <span
-      className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white ${config.color}`}
-      title={config.label}
+      className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white ${color}`}
     />
   );
 }
@@ -42,12 +42,13 @@ function MemberRow({
   unreadCount?: number;
   onOpenChat: (member: TeamMember) => void;
 }) {
+  const t = useT();
   return (
     <button
       key={member.id}
       onDoubleClick={() => onOpenChat(member)}
       className="flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left transition-colors hover:bg-gray-50"
-      title={`더블클릭하여 ${member.name}님에게 메시지 보내기`}
+      title={`${member.name} - ${t("team.doubleClickToMsg")}`}
     >
       <div className="relative">
         <Avatar url={member.avatar_url} name={member.name} size={28} />
@@ -68,7 +69,9 @@ function MemberRow({
           ) : null}
         </div>
         {member.position && (
-          <span className="truncate text-[11px] text-gray-400">{member.position}</span>
+          <span className="truncate text-[11px] text-gray-400">
+            {member.is_bot ? t("dm.aiAssistant") : member.position}
+          </span>
         )}
       </div>
     </button>
@@ -80,6 +83,7 @@ export default function SidebarTeamList({
 }: {
   onOpenChat: (member: TeamMember) => void;
 }) {
+  const t = useT();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -162,7 +166,7 @@ export default function SidebarTeamList({
       {/* 헤더 */}
       <div className="flex items-center justify-between px-3 py-1.5">
         <span className="text-[11px] font-medium tracking-wide text-gray-400">
-          팀원 {onlineCount > 0 && `(${onlineCount})`}
+          {t("team.title")} {onlineCount > 0 && `(${onlineCount})`}
         </span>
         <button
           onClick={() => {
@@ -184,7 +188,7 @@ export default function SidebarTeamList({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="이름, 직책 검색..."
+            placeholder={t("team.searchPlaceholder")}
             autoFocus
             className="w-full rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
           />
@@ -194,10 +198,10 @@ export default function SidebarTeamList({
       {/* 활동중 + 자리비움 */}
       <div className="space-y-0.5">
         {loading ? (
-          <div className="px-3 py-2 text-xs text-gray-400">불러오는 중...</div>
+          <div className="px-3 py-2 text-xs text-gray-400">{t("common.loading")}</div>
         ) : activeMembers.length === 0 && offlineMembers.length === 0 ? (
           <div className="px-3 py-2 text-xs text-gray-400">
-            {search ? "검색 결과가 없습니다" : "팀원이 없습니다"}
+            {search ? t("team.noResults") : t("team.noMembers")}
           </div>
         ) : (
           activeMembers.map((member) => (
@@ -227,7 +231,7 @@ export default function SidebarTeamList({
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
-            <span>오프라인 ({offlineMembers.length})</span>
+            <span>{t("dm.offline")} ({offlineMembers.length})</span>
           </button>
           {showOffline && (
             <div className="space-y-0.5">

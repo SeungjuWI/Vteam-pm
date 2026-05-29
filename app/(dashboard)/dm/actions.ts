@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { translateText } from "@/lib/translate";
@@ -249,7 +250,9 @@ export async function requestBotReply(botId: string, content: string) {
   }));
 
   // AI 응답 생성
-  const botReply = await generateBotResponse(content, conversationHistory);
+  const cookieStore = await cookies();
+  const uiLang = cookieStore.get("vteam-ui-lang")?.value || "ko";
+  const botReply = await generateBotResponse(content, conversationHistory, uiLang);
 
   // 봇 메시지를 DM으로 저장 → Realtime으로 클라이언트에 전달됨
   await adminClient.from("direct_messages").insert({

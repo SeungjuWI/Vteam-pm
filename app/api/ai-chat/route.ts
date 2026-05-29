@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
   }));
 
   // AI 응답 생성
-  const botReply = await generateBotResponse(content, conversationHistory);
+  const uiLang = req.cookies.get("vteam-ui-lang")?.value || "ko";
+  const botReply = await generateBotResponse(content, conversationHistory, uiLang);
 
   // 봇 메시지를 DM으로 저장
   const { error } = await adminClient.from("direct_messages").insert({

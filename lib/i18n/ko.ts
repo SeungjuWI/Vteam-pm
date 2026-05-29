@@ -417,6 +417,16 @@ const ko = {
   "dm.askSean": "Sean에게 질문하세요...",
   "dm.typeMessage": "메시지를 입력하세요...",
 
+  // Group DM
+  "groupDm.title": "단체 메시지",
+  "groupDm.create": "단체 대화방 만들기",
+  "groupDm.createButton": "대화방 만들기",
+  "groupDm.namePlaceholder": "대화방 이름 (선택)",
+  "groupDm.selected": "명 선택됨",
+  "groupDm.startChat": "단체 대화를 시작하세요",
+  "groupDm.me": "나",
+  "groupDm.minMembers": "2명 이상 선택해주세요",
+
   // Work Timer
   "timer.working": "근무중",
   "timer.doneForDay": "퇴근완료",

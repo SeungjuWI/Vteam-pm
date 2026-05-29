@@ -419,6 +419,16 @@ const en: Record<TranslationKey, string> = {
   "dm.askSean": "Ask Sean...",
   "dm.typeMessage": "Type a message...",
 
+  // Group DM
+  "groupDm.title": "Group Messages",
+  "groupDm.create": "Create Group Chat",
+  "groupDm.createButton": "Create",
+  "groupDm.namePlaceholder": "Room name (optional)",
+  "groupDm.selected": " selected",
+  "groupDm.startChat": "Start a group conversation",
+  "groupDm.me": "me",
+  "groupDm.minMembers": "Select at least 2 members",
+
   // Work Timer
   "timer.working": "Working",
   "timer.doneForDay": "Done",

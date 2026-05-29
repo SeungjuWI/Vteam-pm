@@ -3,137 +3,41 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import Avatar from "@/components/avatar";
 import {
-  getMessages,
-  sendMessage,
-  markAsRead,
-  translateSingleMessage,
-  requestBotReply,
-} from "@/app/(dashboard)/dm/actions";
+  getGroupDmMessages,
+  sendGroupDmMessage,
+  markGroupDmAsRead,
+  translateSingleGroupMessage,
+} from "@/app/(dashboard)/group-dm/actions";
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
 
-interface Message {
+interface GroupMessage {
   id: string;
+  room_id: string;
   sender_id: string;
-  receiver_id: string;
   content: string;
   sender_language?: string | null;
+  sender_name: string;
+  sender_avatar_url: string | null;
   translated_content?: string | null;
-  is_read: boolean;
   created_at: string;
 }
 
-interface ChatMember {
+interface RoomMember {
   id: string;
   name: string;
   avatar_url: string | null;
-  position: string | null;
-  presence: string | null;
+  presence?: string | null;
   language?: string | null;
-  is_bot?: boolean | null;
 }
 
-const presenceKeys: Record<string, "dm.online" | "dm.away" | "dm.offline"> = {
-  online: "dm.online",
-  away: "dm.away",
-  offline: "dm.offline",
-};
-
-// 봇 메시지용 간단한 마크다운 렌더러
-function ChatMarkdown({ text, isMine }: { text: string; isMine: boolean }) {
-  const lines = text.split("\n");
-  const elements: React.ReactNode[] = [];
-  let listItems: string[] = [];
-  let listOrdered = false;
-  let key = 0;
-
-  const flushList = () => {
-    if (listItems.length === 0) return;
-    const Tag = listOrdered ? "ol" : "ul";
-    elements.push(
-      <Tag key={key++} className={`my-1 space-y-0.5 pl-4 ${listOrdered ? "list-decimal" : "list-disc"}`}>
-        {listItems.map((item, i) => (
-          <li key={i}>{renderInline(item)}</li>
-        ))}
-      </Tag>
-    );
-    listItems = [];
-  };
-
-  const renderInline = (line: string): React.ReactNode[] => {
-    const parts: React.ReactNode[] = [];
-    // **bold** 과 일반 텍스트 분리
-    const regex = /\*\*(.+?)\*\*/g;
-    let lastIdx = 0;
-    let match;
-    let i = 0;
-    while ((match = regex.exec(line)) !== null) {
-      if (match.index > lastIdx) {
-        parts.push(<span key={i++}>{line.slice(lastIdx, match.index)}</span>);
-      }
-      parts.push(
-        <span key={i++} className="font-semibold">{match[1]}</span>
-      );
-      lastIdx = regex.lastIndex;
-    }
-    if (lastIdx < line.length) {
-      parts.push(<span key={i++}>{line.slice(lastIdx)}</span>);
-    }
-    return parts.length > 0 ? parts : [line];
-  };
-
-  for (const line of lines) {
-    const trimmed = line.trimStart();
-
-    // 번호 리스트: 1. 2. 3. ...
-    const orderedMatch = trimmed.match(/^(\d+)\.\s+(.+)/);
-    if (orderedMatch) {
-      if (listItems.length > 0 && !listOrdered) flushList();
-      listOrdered = true;
-      listItems.push(orderedMatch[2]);
-      continue;
-    }
-
-    // 불릿 리스트: - ...
-    const unorderedMatch = trimmed.match(/^[-*]\s+(.+)/);
-    if (unorderedMatch) {
-      if (listItems.length > 0 && listOrdered) flushList();
-      listOrdered = false;
-      listItems.push(unorderedMatch[1]);
-      continue;
-    }
-
-    flushList();
-
-    // 빈 줄
-    if (trimmed === "") {
-      elements.push(<div key={key++} className="h-1.5" />);
-      continue;
-    }
-
-    // ### 헤더 (h3 이하만 지원)
-    const headerMatch = trimmed.match(/^#{1,3}\s+(.+)/);
-    if (headerMatch) {
-      elements.push(
-        <div key={key++} className="font-semibold">{renderInline(headerMatch[1])}</div>
-      );
-      continue;
-    }
-
-    // 일반 텍스트
-    elements.push(<div key={key++}>{renderInline(trimmed)}</div>);
-  }
-
-  flushList();
-
-  return <div className="space-y-0.5">{elements}</div>;
+interface GroupDmRoom {
+  id: string;
+  name: string;
+  memberCount: number;
+  members: RoomMember[];
 }
-
-const MIN_W = 280;
-const MAX_W = 520;
-const MIN_H = 320;
-const MAX_H = 640;
 
 // 우클릭 컨텍스트 메뉴
 function ContextMenu({
@@ -212,8 +116,13 @@ function OriginalPopup({
   );
 }
 
-export default function DmChat({
-  member,
+const MIN_W = 320;
+const MAX_W = 560;
+const MIN_H = 360;
+const MAX_H = 680;
+
+export default function GroupDmChat({
+  room,
   currentUserId,
   currentUserLang,
   onClose,
@@ -221,7 +130,7 @@ export default function DmChat({
   isMinimized,
   style,
 }: {
-  member: ChatMember;
+  room: GroupDmRoom;
   currentUserId: string;
   currentUserLang: string;
   onClose: () => void;
@@ -230,19 +139,19 @@ export default function DmChat({
   style?: React.CSSProperties;
 }) {
   const t = useT();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [botTyping, setBotTyping] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [size, setSize] = useState({ w: 320, h: 420 });
+  const [size, setSize] = useState({ w: 360, h: 480 });
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msgId: string } | null>(null);
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
+  const [showMembers, setShowMembers] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resizingRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
-  const ASPECT = 420 / 320;
+  const ASPECT = 480 / 360;
 
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
@@ -277,32 +186,49 @@ export default function DmChat({
 
   // 메시지 로드
   useEffect(() => {
-    getMessages(member.id).then((data) => {
-      setMessages(data as Message[]);
+    getGroupDmMessages(room.id).then((data) => {
+      setMessages(data as GroupMessage[]);
       setLoading(false);
       setTimeout(scrollToBottom, 50);
     });
-    markAsRead(member.id);
-  }, [member.id, scrollToBottom]);
+    markGroupDmAsRead(room.id);
+  }, [room.id, scrollToBottom]);
 
   // Realtime 구독
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
-      .channel(`dm-${member.id}`)
+      .channel(`group-dm-${room.id}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "direct_messages" },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "group_dm_messages",
+          filter: `room_id=eq.${room.id}`,
+        },
         async (payload) => {
-          const msg = payload.new as Message;
+          const msg = payload.new as {
+            id: string;
+            room_id: string;
+            sender_id: string;
+            content: string;
+            sender_language: string;
+            created_at: string;
+          };
 
-          // 내가 보낸 메시지는 낙관적 업데이트로 이미 표시됨 → temp를 실제 ID로 교체만
+          // 내가 보낸 메시지 → 낙관적 업데이트 교체
           if (msg.sender_id === currentUserId) {
             setMessages((prev) => {
               const tempIdx = prev.findIndex((m) => m.id.startsWith("temp-") && m.content === msg.content);
               if (tempIdx !== -1) {
                 const next = [...prev];
-                next[tempIdx] = { ...msg, translated_content: null };
+                next[tempIdx] = {
+                  ...msg,
+                  sender_name: prev[tempIdx].sender_name,
+                  sender_avatar_url: prev[tempIdx].sender_avatar_url,
+                  translated_content: null,
+                };
                 return next;
               }
               return prev;
@@ -310,24 +236,29 @@ export default function DmChat({
             return;
           }
 
-          // 상대방 메시지
-          const isRelevant =
-            msg.sender_id === member.id && msg.receiver_id === currentUserId;
-          if (!isRelevant) return;
+          // 다른 멤버 메시지
+          const sender = room.members.find((m) => m.id === msg.sender_id);
+          let translatedContent: string | null = null;
 
           if (msg.sender_language && msg.sender_language !== currentUserLang) {
-            const result = await translateSingleMessage(
+            const result = await translateSingleGroupMessage(
               msg.id,
               msg.content,
               msg.sender_language
             );
-            msg.translated_content = result.translated ?? null;
+            translatedContent = result.translated ?? null;
           }
 
-          setMessages((prev) => [...prev, msg]);
-          if (member.is_bot) setBotTyping(false);
+          const newMsg: GroupMessage = {
+            ...msg,
+            sender_name: sender?.name ?? "알 수 없음",
+            sender_avatar_url: sender?.avatar_url ?? null,
+            translated_content: translatedContent,
+          };
+
+          setMessages((prev) => [...prev, newMsg]);
           setTimeout(scrollToBottom, 50);
-          markAsRead(member.id);
+          markGroupDmAsRead(room.id);
         }
       )
       .subscribe();
@@ -335,15 +266,15 @@ export default function DmChat({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [member.id, currentUserId, currentUserLang, scrollToBottom]);
+  }, [room.id, room.members, currentUserId, currentUserLang, scrollToBottom]);
 
   // 포커스 시 읽음 처리
   useEffect(() => {
     if (!isMinimized) {
-      markAsRead(member.id);
+      markGroupDmAsRead(room.id);
       inputRef.current?.focus();
     }
-  }, [isMinimized, member.id]);
+  }, [isMinimized, room.id]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -351,30 +282,27 @@ export default function DmChat({
     setInput("");
     setSending(true);
 
-    const optimistic: Message = {
+    // 내 프로필 정보
+    const myProfile = room.members.find((m) => m.id === currentUserId);
+
+    const optimistic: GroupMessage = {
       id: `temp-${Date.now()}`,
+      room_id: room.id,
       sender_id: currentUserId,
-      receiver_id: member.id,
       content: text,
       sender_language: currentUserLang,
+      sender_name: myProfile?.name ?? "",
+      sender_avatar_url: myProfile?.avatar_url ?? null,
       translated_content: null,
-      is_read: false,
       created_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, optimistic]);
     setTimeout(scrollToBottom, 50);
 
-    const result = await sendMessage(member.id, text);
+    const result = await sendGroupDmMessage(room.id, text);
     setSending(false);
     if (result.error) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-    } else if (member.is_bot) {
-      setBotTyping(true);
-      setTimeout(scrollToBottom, 50);
-      // 별도 서버 액션으로 봇 응답 요청 (Realtime으로 수신됨)
-      requestBotReply(member.id, text).finally(() => {
-        setBotTyping(false);
-      });
     }
   };
 
@@ -383,8 +311,7 @@ export default function DmChat({
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
-  const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
-    // 번역된 메시지에만 우클릭 메뉴
+  const handleContextMenu = (e: React.MouseEvent, msg: GroupMessage) => {
     if (!msg.translated_content) return;
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, msgId: msg.id });
@@ -399,7 +326,10 @@ export default function DmChat({
     });
   };
 
-  const isTranslated = member.language && member.language !== currentUserLang;
+  // 다국어 여부
+  const hasMultiLang = room.members.some(
+    (m) => m.language && m.language !== currentUserLang
+  );
 
   if (isMinimized) {
     return (
@@ -408,19 +338,21 @@ export default function DmChat({
         className="flex items-center gap-2 rounded-t-xl border border-b-0 border-gray-200 bg-white px-4 py-2.5 transition-colors hover:bg-gray-50"
         style={style}
       >
-        <div className="relative">
-          <Avatar url={member.avatar_url} name={member.name} size={24} />
-          <span
-            className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-white ${
-              member.presence === "online"
-                ? "bg-emerald-400"
-                : member.presence === "away"
-                  ? "bg-yellow-400"
-                  : "bg-gray-300"
-            }`}
-          />
+        {/* 겹친 아바타 */}
+        <div className="flex -space-x-2">
+          {room.members
+            .filter((m) => m.id !== currentUserId)
+            .slice(0, 3)
+            .map((m) => (
+              <div key={m.id} className="relative">
+                <Avatar url={m.avatar_url} name={m.name} size={22} />
+              </div>
+            ))}
         </div>
-        <span className="text-sm font-medium text-gray-700">{member.name}</span>
+        <span className="max-w-24 truncate text-sm font-medium text-gray-700">
+          {room.name}
+        </span>
+        <span className="text-[10px] text-gray-400">{room.memberCount}</span>
       </button>
     );
   }
@@ -438,44 +370,48 @@ export default function DmChat({
       {/* 헤더 */}
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5">
         <div className="flex items-center gap-2.5">
-          <div className="relative">
-            <Avatar url={member.avatar_url} name={member.name} size={28} />
-            <span
-              className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${
-                member.presence === "online"
-                  ? "bg-emerald-400"
-                  : member.presence === "away"
-                    ? "bg-yellow-400"
-                    : "bg-gray-300"
-              }`}
-            />
+          {/* 겹친 아바타 */}
+          <div className="flex -space-x-1.5">
+            {room.members
+              .filter((m) => m.id !== currentUserId)
+              .slice(0, 3)
+              .map((m) => (
+                <div key={m.id} className="rounded-full border-2 border-white">
+                  <Avatar url={m.avatar_url} name={m.name} size={24} />
+                </div>
+              ))}
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-medium text-gray-900">{member.name}</span>
-              {member.is_bot && (
-                <span className="flex h-4 items-center rounded-full bg-violet-100 px-1.5 text-[10px] font-medium text-violet-600">
-                  AI
-                </span>
-              )}
+              <span className="max-w-32 truncate text-sm font-medium text-gray-900">
+                {room.name}
+              </span>
+              <span className="flex h-4 items-center rounded-full bg-gray-100 px-1.5 text-[10px] font-medium text-gray-500">
+                {room.memberCount}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-              <span>{member.is_bot ? t("dm.alwaysOnline") : t(presenceKeys[member.presence ?? "offline"] ?? "dm.offline")}</span>
-              {isTranslated && (
-                <>
-                  <span className="text-gray-200">·</span>
-                  <span className="flex items-center gap-0.5">
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
-                    </svg>
-                    {t("dm.autoTranslate")}
-                  </span>
-                </>
+              {hasMultiLang && (
+                <span className="flex items-center gap-0.5">
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
+                  </svg>
+                  {t("dm.autoTranslate")}
+                </span>
               )}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {/* 멤버 보기 토글 */}
+          <button
+            onClick={() => setShowMembers(!showMembers)}
+            className={`rounded p-1 transition-colors ${showMembers ? "bg-gray-100 text-gray-600" : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"}`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+            </svg>
+          </button>
           <button
             onClick={onMinimize}
             className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
@@ -495,6 +431,41 @@ export default function DmChat({
         </div>
       </div>
 
+      {/* 멤버 패널 */}
+      {showMembers && (
+        <div className="border-b border-gray-100 bg-gray-50 px-4 py-2">
+          <div className="space-y-1.5">
+            {room.members.map((m) => (
+              <div key={m.id} className="flex items-center gap-2">
+                <div className="relative">
+                  <Avatar url={m.avatar_url} name={m.name} size={20} />
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-white ${
+                      m.presence === "online"
+                        ? "bg-emerald-400"
+                        : m.presence === "away"
+                          ? "bg-yellow-400"
+                          : "bg-gray-300"
+                    }`}
+                  />
+                </div>
+                <span className="text-xs text-gray-600">
+                  {m.name}
+                  {m.id === currentUserId && (
+                    <span className="ml-1 text-gray-400">({t("groupDm.me")})</span>
+                  )}
+                </span>
+                {m.language && m.language !== currentUserLang && (
+                  <span className="text-[10px] text-gray-400">
+                    {LANGUAGES.find((l) => l.code === m.language)?.flag}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 메시지 영역 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
         {loading ? (
@@ -503,20 +474,28 @@ export default function DmChat({
           </div>
         ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2">
-            <Avatar url={member.avatar_url} name={member.name} size={48} />
-            <p className="text-xs text-gray-400">
-              {member.is_bot
-                ? t("dm.askAnything")
-                : `${member.name} ${t("dm.startChat")}`}
-            </p>
+            <div className="flex -space-x-2">
+              {room.members
+                .filter((m) => m.id !== currentUserId)
+                .slice(0, 4)
+                .map((m) => (
+                  <div key={m.id} className="rounded-full border-2 border-white">
+                    <Avatar url={m.avatar_url} name={m.name} size={36} />
+                  </div>
+                ))}
+            </div>
+            <p className="text-xs text-gray-400">{t("groupDm.startChat")}</p>
           </div>
         ) : (
-          <>
-          {messages.map((msg, idx) => {
+          messages.map((msg, idx) => {
             const isMine = msg.sender_id === currentUserId;
             const hasTranslation = !!msg.translated_content;
             const displayText = hasTranslation ? msg.translated_content! : msg.content;
             const isShowingOriginal = showOriginal.has(msg.id);
+
+            // 이전 메시지와 같은 발신자면 이름/아바타 숨김
+            const prevMsg = idx > 0 ? messages[idx - 1] : null;
+            const showSenderInfo = !isMine && (!prevMsg || prevMsg.sender_id !== msg.sender_id);
 
             // 같은 시간 + 같은 발신자의 연속 메시지면 마지막 것만 시간 표시
             const time = formatTime(msg.created_at);
@@ -527,60 +506,54 @@ export default function DmChat({
               formatTime(nextMsg.created_at) !== time;
 
             return (
-              <div
-                key={msg.id}
-                className={`flex ${isMine ? "justify-end" : "justify-start"} ${showTime || hasTranslation ? "mb-3" : "mb-1"}`}
-              >
-                <div className={`flex max-w-[75%] flex-col ${isMine ? "items-end" : "items-start"}`}>
-                  <div
-                    onContextMenu={(e) => handleContextMenu(e, msg)}
-                    className={`select-text rounded-2xl px-3 py-2 text-sm ${
-                      isMine
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-100 text-gray-900"
-                    } ${hasTranslation ? "cursor-context-menu" : ""}`}
-                  >
-                    {!isMine && member.is_bot ? (
-                      <ChatMarkdown text={displayText} isMine={isMine} />
-                    ) : (
-                      displayText
+              <div key={msg.id} className={showTime || hasTranslation ? "mb-3" : "mb-1"}>
+                {/* 발신자 정보 (그룹에서만) */}
+                {showSenderInfo && (
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <Avatar url={msg.sender_avatar_url} name={msg.sender_name} size={20} />
+                    <span className="text-[11px] font-medium text-gray-500">
+                      {msg.sender_name}
+                    </span>
+                  </div>
+                )}
+                <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+                  <div className={`flex max-w-[75%] flex-col ${isMine ? "items-end" : "items-start"}`}>
+                    <div
+                      onContextMenu={(e) => handleContextMenu(e, msg)}
+                      className={`select-text rounded-2xl px-3 py-2 text-sm ${
+                        isMine
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-100 text-gray-900"
+                      } ${hasTranslation ? "cursor-context-menu" : ""} ${!isMine && !showSenderInfo ? "ml-[26px]" : ""}`}
+                    >
+                      {displayText}
+                    </div>
+                    {(showTime || hasTranslation) && (
+                      <div className={`flex items-center gap-1.5 ${!isMine && !showSenderInfo ? "ml-[26px]" : ""}`}>
+                        {showTime && (
+                          <span className="mt-0.5 text-[10px] text-gray-300">
+                            {time}
+                          </span>
+                        )}
+                        {hasTranslation && (
+                          <span className="mt-0.5 text-[10px] text-blue-300">{t("dm.translated")}</span>
+                        )}
+                      </div>
+                    )}
+                    {/* 원문 보기 */}
+                    {isShowingOriginal && hasTranslation && (
+                      <OriginalPopup
+                        original={msg.content}
+                        senderLang={msg.sender_language ?? ""}
+                        labelText={t("dm.original")}
+                        onClose={() => toggleOriginal(msg.id)}
+                      />
                     )}
                   </div>
-                  {(showTime || hasTranslation) && (
-                    <div className="flex items-center gap-1.5">
-                      {showTime && (
-                        <span className="mt-0.5 text-[10px] text-gray-300">
-                          {time}
-                        </span>
-                      )}
-                      {hasTranslation && (
-                        <span className="mt-0.5 text-[10px] text-blue-300">{t("dm.translated")}</span>
-                      )}
-                    </div>
-                  )}
-                  {/* 원문 보기 */}
-                  {isShowingOriginal && hasTranslation && (
-                    <OriginalPopup
-                      original={msg.content}
-                      senderLang={msg.sender_language ?? ""}
-                      labelText={t("dm.original")}
-                      onClose={() => toggleOriginal(msg.id)}
-                    />
-                  )}
                 </div>
               </div>
             );
-          })}
-          {botTyping && (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-1.5 rounded-2xl bg-gray-100 px-4 py-2.5">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:0ms]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:150ms]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:300ms]" />
-              </div>
-            </div>
-          )}
-          </>
+          })
         )}
       </div>
 
@@ -598,7 +571,7 @@ export default function DmChat({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={member.is_bot ? t("dm.askSean") : t("dm.typeMessage")}
+            placeholder={t("dm.typeMessage")}
             className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
           />
           <button

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Avatar from "@/components/avatar";
 import { useT } from "@/lib/i18n";
 
@@ -47,13 +48,40 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
     return `${h}${t("common.hours")} ${m}${t("common.minutes")}`;
   }
 
+  const [open, setOpen] = useState(true);
+  const workingCount = records.filter((r) => !r.clockOut).length;
+
   return (
     <div className="rounded-xl bg-white">
-      <div className="border-b border-gray-100 px-6 py-4">
-        <h2 className="text-sm font-medium text-gray-900">{t("dashboard.teamStatus")}</h2>
-      </div>
+      <button
+        type="button"
+        className={`flex w-full items-center justify-between px-6 py-4 ${open ? "border-b border-gray-100" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-sm font-medium text-gray-900">{t("dashboard.teamStatus")}</h2>
+          {!open && workingCount > 0 && (
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </span>
+              <span className="text-xs font-medium text-emerald-600">{workingCount}{t("dashboard.working")}</span>
+            </span>
+          )}
+        </div>
+        <svg
+          className={`h-4 w-4 text-gray-400 transition-transform ${open ? "" : "-rotate-90"}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
 
-      {records.length === 0 ? (
+      {!open ? null : records.length === 0 ? (
         <div className="flex h-32 items-center justify-center">
           <p className="text-sm text-gray-400">{t("dashboard.noTeamToday")}</p>
         </div>

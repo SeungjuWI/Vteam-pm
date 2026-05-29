@@ -360,6 +360,7 @@ const en: Record<TranslationKey, string> = {
   "dashboard.priorityLow": "Low",
   "dashboard.teamStatus": "Team Work Status",
   "dashboard.noTeamToday": "No team members checked in today",
+  "dashboard.working": " working",
   "dashboard.persons": "",
   "dashboard.items": "",
 

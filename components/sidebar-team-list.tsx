@@ -300,9 +300,22 @@ export default function SidebarTeamList({
       )
       .on(
         "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "direct_messages" },
+        () => {
+          getUnreadCounts().then(setUnreadCounts);
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "INSERT", schema: "public", table: "group_dm_messages" },
         () => {
-          // 단체 DM 안읽은 수 갱신
+          getGroupDmRooms().then((rooms) => setGroupRooms(rooms as GroupDmRoomData[]));
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "group_dm_members" },
+        () => {
           getGroupDmRooms().then((rooms) => setGroupRooms(rooms as GroupDmRoomData[]));
         }
       )

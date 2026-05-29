@@ -105,3 +105,4 @@ create policy "gdm_translations_select" on group_dm_translations for select usin
 
 -- Realtime 활성화
 alter publication supabase_realtime add table group_dm_messages;
+alter publication supabase_realtime add table group_dm_members;

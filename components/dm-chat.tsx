@@ -12,6 +12,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
+import { useNotification } from "@/hooks/use-notification";
 
 interface Message {
   id: string;
@@ -230,6 +231,7 @@ export default function DmChat({
   style?: React.CSSProperties;
 }) {
   const t = useT();
+  const { notify } = useNotification();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -326,6 +328,7 @@ export default function DmChat({
 
           setMessages((prev) => [...prev, msg]);
           if (member.is_bot) setBotTyping(false);
+          notify(member.name, msg.content);
           setTimeout(scrollToBottom, 50);
           markAsRead(member.id);
         }

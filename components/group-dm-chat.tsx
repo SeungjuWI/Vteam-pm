@@ -11,6 +11,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
+import { useNotification } from "@/hooks/use-notification";
 
 interface GroupMessage {
   id: string;
@@ -139,6 +140,7 @@ export default function GroupDmChat({
   style?: React.CSSProperties;
 }) {
   const t = useT();
+  const { notify } = useNotification();
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -257,6 +259,7 @@ export default function GroupDmChat({
           };
 
           setMessages((prev) => [...prev, newMsg]);
+          notify(newMsg.sender_name, newMsg.content);
           setTimeout(scrollToBottom, 50);
           markGroupDmAsRead(room.id);
         }

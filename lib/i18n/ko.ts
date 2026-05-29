@@ -358,6 +358,7 @@ const ko = {
   "dashboard.priorityLow": "낮음",
   "dashboard.teamStatus": "팀원 근무 현황",
   "dashboard.noTeamToday": "오늘 출근한 팀원이 없습니다",
+  "dashboard.working": "명 근무중",
   "dashboard.persons": "명",
   "dashboard.items": "개",
 

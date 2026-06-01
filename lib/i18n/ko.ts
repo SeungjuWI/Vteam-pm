@@ -363,6 +363,21 @@ const ko = {
   "dashboard.persons": "명",
   "dashboard.items": "개",
 
+  // Board
+  "board.title": "게시판",
+  "board.write": "글쓰기",
+  "board.placeholder": "팀에게 공유할 내용을 작성하세요...",
+  "board.submit": "게시",
+  "board.empty": "아직 게시글이 없습니다",
+  "board.delete": "삭제",
+  "board.deleteConfirm": "이 게시글을 삭제하시겠습니까?",
+  "board.translated": "번역됨",
+  "board.original": "원문 보기",
+  "board.justNow": "방금",
+  "board.minutesAgo": "분 전",
+  "board.hoursAgo": "시간 전",
+  "board.daysAgo": "일 전",
+
   // My Tasks
   "myTasks.title": "내 태스크",
   "myTasks.total": "전체",

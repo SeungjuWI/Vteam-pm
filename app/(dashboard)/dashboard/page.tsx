@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import TeamTimeline from "../attendance/team-timeline";
+import Board from "./board";
 import { getT } from "@/lib/i18n/server";
 
 export default async function DashboardPage() {
@@ -81,6 +82,8 @@ export default async function DashboardPage() {
       </div>
 
       <TeamTimeline records={timelineRecords} />
+
+      <Board currentUserId={user.id} companyId={profile.company_id} />
     </div>
   );
 }

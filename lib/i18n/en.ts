@@ -365,6 +365,21 @@ const en: Record<TranslationKey, string> = {
   "dashboard.persons": "",
   "dashboard.items": "",
 
+  // Board
+  "board.title": "Board",
+  "board.write": "Write",
+  "board.placeholder": "Share something with your team...",
+  "board.submit": "Post",
+  "board.empty": "No posts yet",
+  "board.delete": "Delete",
+  "board.deleteConfirm": "Delete this post?",
+  "board.translated": "Translated",
+  "board.original": "View original",
+  "board.justNow": "Just now",
+  "board.minutesAgo": "m ago",
+  "board.hoursAgo": "h ago",
+  "board.daysAgo": "d ago",
+
   // My Tasks
   "myTasks.title": "My Tasks",
   "myTasks.total": "All",

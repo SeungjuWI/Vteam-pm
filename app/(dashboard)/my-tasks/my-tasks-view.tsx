@@ -191,7 +191,7 @@ export default function MyTasksView({ activeTasks, doneTasks, projects, stats, t
                   <span className={`text-xs px-2 py-0.5 rounded-full ${priorityColor(task.priority)}`}>
                     {priorityLabel(task.priority)}
                   </span>
-                  {task.due_date ? dueBadge(task.due_date) : (
+                  {task.status === "done" ? null : task.due_date ? dueBadge(task.due_date) : (
                     <span className="text-xs text-gray-300">{t("myTasks.noDue")}</span>
                   )}
                 </div>

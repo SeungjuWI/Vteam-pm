@@ -468,6 +468,26 @@ const en: Record<TranslationKey, string> = {
   "groupDm.me": "me",
   "groupDm.minMembers": "Select at least 2 members",
 
+  // Channels (department chat)
+  "nav.channels": "Channels",
+  "channels.manage": "Manage",
+  "channels.manageTitle": "Department Management",
+  "channels.empty": "You don't belong to any department yet. Contact your admin.",
+  "channels.emptyAdmin": "Create a department to organize your team.",
+  "channels.selectChannel": "Select a channel",
+  "channels.selectDept": "Select a department",
+  "channels.addChannel": "Add channel",
+  "channels.channelNamePlaceholder": "Channel name",
+  "channels.messagePlaceholder": "Send a message",
+  "channels.startChat": "Be the first to post in this channel",
+  "channels.createDept": "Create department",
+  "channels.deptNamePlaceholder": "Department name",
+  "channels.deptColor": "Department color",
+  "channels.channelsLabel": "Channels",
+  "channels.assignMembers": "Assign members",
+  "channels.deleteDept": "Delete department",
+  "channels.deleteConfirm": "Deleting this department removes all its channels and messages. Continue?",
+
   // Work Timer
   "timer.working": "Working",
   "timer.doneForDay": "Done",

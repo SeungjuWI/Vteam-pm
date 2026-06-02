@@ -466,6 +466,26 @@ const ko = {
   "groupDm.me": "나",
   "groupDm.minMembers": "2명 이상 선택해주세요",
 
+  // Channels (부서 채팅)
+  "nav.channels": "부서 채팅",
+  "channels.manage": "부서 관리",
+  "channels.manageTitle": "부서 관리",
+  "channels.empty": "아직 소속된 부서가 없어요. 관리자에게 문의하세요.",
+  "channels.emptyAdmin": "부서를 만들어 팀을 구성해보세요.",
+  "channels.selectChannel": "채널을 선택하세요",
+  "channels.selectDept": "부서를 선택하세요",
+  "channels.addChannel": "채널 추가",
+  "channels.channelNamePlaceholder": "채널 이름",
+  "channels.messagePlaceholder": "메시지 보내기",
+  "channels.startChat": "이 채널의 첫 메시지를 남겨보세요",
+  "channels.createDept": "부서 만들기",
+  "channels.deptNamePlaceholder": "부서 이름",
+  "channels.deptColor": "부서 색상",
+  "channels.channelsLabel": "채널",
+  "channels.assignMembers": "멤버 배정",
+  "channels.deleteDept": "부서 삭제",
+  "channels.deleteConfirm": "이 부서를 삭제하면 채널과 대화가 모두 사라집니다. 삭제할까요?",
+
   // Work Timer
   "timer.working": "근무중",
   "timer.doneForDay": "퇴근완료",

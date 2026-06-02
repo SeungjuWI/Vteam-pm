@@ -85,9 +85,9 @@ function MemberRow({
             </span>
           ) : null}
         </div>
-        {member.position && (
+        {member.is_bot && (
           <span className="truncate text-[11px] text-gray-400">
-            {member.is_bot ? t("dm.aiAssistant") : member.position}
+            {t("dm.aiAssistant")}
           </span>
         )}
       </div>

@@ -482,6 +482,8 @@ const en: Record<TranslationKey, string> = {
   "channels.createDept": "Create department",
   "channels.deptNamePlaceholder": "Department name",
   "channels.deptColor": "Department color",
+  "channels.deptName": "Department name",
+  "channels.editName": "Edit name",
   "channels.channelsLabel": "Channels",
   "channels.assignMembers": "Assign members",
   "channels.deleteDept": "Delete department",

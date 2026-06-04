@@ -480,6 +480,8 @@ const ko = {
   "channels.createDept": "부서 만들기",
   "channels.deptNamePlaceholder": "부서 이름",
   "channels.deptColor": "부서 색상",
+  "channels.deptName": "부서 이름",
+  "channels.editName": "이름 수정",
   "channels.channelsLabel": "채널",
   "channels.assignMembers": "멤버 배정",
   "channels.deleteDept": "부서 삭제",

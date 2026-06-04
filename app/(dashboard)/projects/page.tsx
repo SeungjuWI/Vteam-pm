@@ -11,8 +11,6 @@ export default async function ProjectsPage() {
 
   const adminClient = createAdminClient();
 
-  const isManager = profile.role === "admin";
-
   const [projectsRes, membersRes] = await Promise.all([
     adminClient
       .from("projects")
@@ -83,7 +81,7 @@ export default async function ProjectsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <ProjectList projects={projects} members={members} isManager={isManager} />
+      <ProjectList projects={projects} members={members} />
     </div>
   );
 }

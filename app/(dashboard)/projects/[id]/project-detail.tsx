@@ -20,8 +20,6 @@ interface Props {
   members: Member[];
   allMembers: Member[];
   tasks: Task[];
-  isManager: boolean;
-  isMember: boolean;
   currentUserId: string;
 }
 
@@ -55,9 +53,8 @@ function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string
   );
 }
 
-export default function ProjectDetail({ project, members, allMembers, tasks: initialTasks, isManager, isMember, currentUserId }: Props) {
+export default function ProjectDetail({ project, members, allMembers, tasks: initialTasks, currentUserId }: Props) {
   const t = useT();
-  const canEdit = isMember || isManager;
   const sc = statusStyles[project.status] || statusStyles.active;
   const statusLabelMap: Record<string, string> = {
     active: t("projects.active"),
@@ -151,13 +148,11 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
                 <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
                 {statusLabelMap[project.status] || statusLabelMap.active}
               </span>
-              {isManager && (
-                <button onClick={() => setShowEdit(true)} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                  </svg>
-                </button>
-              )}
+              <button onClick={() => setShowEdit(true)} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                </svg>
+              </button>
             </div>
             <h1 className="mt-2 text-xl font-semibold text-gray-900">{project.name}</h1>
             {project.description && <p className="mt-1 text-sm text-gray-500">{project.description}</p>}
@@ -181,13 +176,11 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
               )}
             </button>
 
-            {isManager && (
-              <button onClick={() => setShowAddMember(true)} className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-blue-400 hover:text-blue-500">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              </button>
-            )}
+            <button onClick={() => setShowAddMember(true)} className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-blue-400 hover:text-blue-500">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
 
             <div className="ml-1 border-l border-gray-200 pl-2">
               <ProjectDiscussionButton projectId={project.id} currentUserId={currentUserId} />
@@ -212,7 +205,7 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
                             <p className="text-[11px] text-gray-400">{m.position || m.email}</p>
                           </div>
                         </div>
-                        {isManager && <RemoveMemberButton projectId={project.id} memberId={m.id} onDone={() => setShowMembers(false)} />}
+                        <RemoveMemberButton projectId={project.id} memberId={m.id} onDone={() => setShowMembers(false)} />
                       </div>
                     ))
                   )}
@@ -270,38 +263,34 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
                   <span className="text-xs text-gray-400">{statusTasks.length}</span>
                 </div>
                 <div
-                  onDragOver={canEdit ? (e) => handleDragOver(e, status) : undefined}
-                  onDragLeave={canEdit ? handleDragLeave : undefined}
-                  onDrop={canEdit ? () => handleDrop(status) : undefined}
+                  onDragOver={(e) => handleDragOver(e, status)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={() => handleDrop(status)}
                   className={`flex min-h-[160px] flex-col gap-2 rounded-xl p-3 transition-colors ${
                     isOver ? "bg-blue-50 ring-2 ring-blue-200" : "bg-white"
                   }`}
                 >
                   {statusTasks.length === 0 ? (
-                    canEdit ? (
-                      <button
-                        onClick={() => setShowCreateTask(status)}
-                        className="m-auto flex flex-col items-center gap-1.5 text-gray-300 transition-colors hover:text-gray-400"
-                      >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        <span className="text-xs">{isOver ? t("tasks.dropHere") : t("tasks.clickToAdd")}</span>
-                      </button>
-                    ) : (
-                      <p className="m-auto text-xs text-gray-300">{t("tasks.noTasks")}</p>
-                    )
+                    <button
+                      onClick={() => setShowCreateTask(status)}
+                      className="m-auto flex flex-col items-center gap-1.5 text-gray-300 transition-colors hover:text-gray-400"
+                    >
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      <span className="text-xs">{isOver ? t("tasks.dropHere") : t("tasks.clickToAdd")}</span>
+                    </button>
                   ) : (
                     statusTasks.map((task) => {
                       const pc = priorityConfig[task.priority];
                       return (
                         <div
                           key={task.id}
-                          draggable={canEdit}
+                          draggable
                           onMouseDown={handleMouseDown}
-                          onDragStart={canEdit ? () => handleDragStart(task.id) : undefined}
+                          onDragStart={() => handleDragStart(task.id)}
                           onClick={() => handleTaskClick(task)}
-                          className={`cursor-pointer rounded-lg border border-gray-100 p-3 transition-colors hover:border-gray-200 ${canEdit ? "active:cursor-grabbing active:border-blue-200 active:bg-blue-50/50" : ""}`}
+                          className="cursor-pointer rounded-lg border border-gray-100 p-3 transition-colors hover:border-gray-200 active:cursor-grabbing active:border-blue-200 active:bg-blue-50/50"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <p className="text-sm font-medium text-gray-900 line-clamp-2">{task.title}</p>
@@ -335,7 +324,7 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
                       );
                     })
                   )}
-                  {canEdit && statusTasks.length > 0 && (
+                  {statusTasks.length > 0 && (
                     <button
                       onClick={() => setShowCreateTask(status)}
                       className="mt-1 flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-gray-200 py-2 text-xs text-gray-300 transition-colors hover:border-gray-300 hover:text-gray-400"
@@ -367,7 +356,6 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
           projectId={project.id}
           allMembers={members}
           projectMembers={members}
-          canEdit={canEdit}
           currentUserId={currentUserId}
           onClose={() => { setSelectedTask(null); router.refresh(); }}
         />

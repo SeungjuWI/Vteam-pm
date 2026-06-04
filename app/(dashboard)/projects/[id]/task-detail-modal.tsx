@@ -287,8 +287,8 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
 }
 
 /* ── 태스크 상세/수정 모달 ── */
-export default function TaskDetailModal({ task, projectId, allMembers, projectMembers, canEdit, currentUserId, onClose }: {
-  task: Task; projectId: string; allMembers: Member[]; projectMembers: Member[]; canEdit: boolean; currentUserId: string; onClose: () => void;
+export default function TaskDetailModal({ task, projectId, allMembers, projectMembers, currentUserId, onClose }: {
+  task: Task; projectId: string; allMembers: Member[]; projectMembers: Member[]; currentUserId: string; onClose: () => void;
 }) {
   const t = useT();
   const [editing, setEditing] = useState(false);
@@ -350,31 +350,29 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
               </span>
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${pc.bg} ${pc.text}`}>{pc.label}</span>
             </div>
-            {canEdit && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                >
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                  </svg>
-                </button>
-                {showMenu && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                    <div className="absolute top-full right-0 z-20 mt-1 w-28 rounded-lg border border-gray-200 bg-white py-1">
-                      <button onClick={() => { setShowMenu(false); setEditing(true); }} className="w-full px-3.5 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                        {t("common.edit")}
-                      </button>
-                      <button onClick={() => { setShowMenu(false); handleDelete(); }} disabled={deleting} className="w-full px-3.5 py-2 text-left text-sm text-red-500 hover:bg-red-50 disabled:opacity-50">
-                        {t("common.delete")}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              >
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
+              </button>
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                  <div className="absolute top-full right-0 z-20 mt-1 w-28 rounded-lg border border-gray-200 bg-white py-1">
+                    <button onClick={() => { setShowMenu(false); setEditing(true); }} className="w-full px-3.5 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                      {t("common.edit")}
+                    </button>
+                    <button onClick={() => { setShowMenu(false); handleDelete(); }} disabled={deleting} className="w-full px-3.5 py-2 text-left text-sm text-red-500 hover:bg-red-50 disabled:opacity-50">
+                      {t("common.delete")}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">

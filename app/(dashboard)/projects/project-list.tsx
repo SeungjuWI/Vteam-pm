@@ -32,7 +32,6 @@ interface Project {
 interface Props {
   projects: Project[];
   members: Member[];
-  isManager: boolean;
 }
 
 const statusStyles: Record<string, { bg: string; text: string; dot: string }> = {
@@ -50,7 +49,7 @@ const defaultGradients = [
   "from-pink-500 to-rose-600",
 ];
 
-export default function ProjectList({ projects, members, isManager }: Props) {
+export default function ProjectList({ projects, members }: Props) {
   const t = useT();
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState<string>("all");
@@ -100,14 +99,12 @@ export default function ProjectList({ projects, members, isManager }: Props) {
               </button>
             ))}
           </div>
-          {isManager && (
-            <button
-              onClick={() => setShowModal(true)}
-              className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600"
-            >
-              {t("projects.new")}
-            </button>
-          )}
+          <button
+            onClick={() => setShowModal(true)}
+            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+          >
+            {t("projects.new")}
+          </button>
         </div>
       </div>
 
@@ -151,44 +148,42 @@ export default function ProjectList({ projects, members, isManager }: Props) {
                 </div>
 
                 {/* 메뉴 버튼 */}
-                {isManager && (
-                  <div className="absolute top-3 right-3 z-10">
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(menuOpen === project.id ? null : project.id); }}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white/80 backdrop-blur-md transition-colors hover:bg-white/25 hover:text-white"
-                    >
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                      </svg>
-                    </button>
-                    {menuOpen === project.id && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
-                        <div className="absolute top-full right-0 z-20 mt-1 w-36 rounded-lg border border-gray-200 bg-white py-1">
-                          {project.status !== "active" && (
-                            <button onClick={() => handleStatusChange(project.id, "active")} className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
-                              {t("projects.changeToActive")}
-                            </button>
-                          )}
-                          {project.status !== "completed" && (
-                            <button onClick={() => handleStatusChange(project.id, "completed")} className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
-                              {t("projects.changeToCompleted")}
-                            </button>
-                          )}
-                          {project.status !== "on_hold" && (
-                            <button onClick={() => handleStatusChange(project.id, "on_hold")} className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
-                              {t("projects.changeToOnHold")}
-                            </button>
-                          )}
-                          <hr className="my-1 border-gray-100" />
-                          <button onClick={() => handleDelete(project.id)} className="w-full px-3 py-1.5 text-left text-sm text-red-500 hover:bg-red-50">
-                            {t("common.delete")}
+                <div className="absolute top-3 right-3 z-10">
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(menuOpen === project.id ? null : project.id); }}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white/80 backdrop-blur-md transition-colors hover:bg-white/25 hover:text-white"
+                  >
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                    </svg>
+                  </button>
+                  {menuOpen === project.id && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
+                      <div className="absolute top-full right-0 z-20 mt-1 w-36 rounded-lg border border-gray-200 bg-white py-1">
+                        {project.status !== "active" && (
+                          <button onClick={() => handleStatusChange(project.id, "active")} className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
+                            {t("projects.changeToActive")}
                           </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
+                        )}
+                        {project.status !== "completed" && (
+                          <button onClick={() => handleStatusChange(project.id, "completed")} className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
+                            {t("projects.changeToCompleted")}
+                          </button>
+                        )}
+                        {project.status !== "on_hold" && (
+                          <button onClick={() => handleStatusChange(project.id, "on_hold")} className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
+                            {t("projects.changeToOnHold")}
+                          </button>
+                        )}
+                        <hr className="my-1 border-gray-100" />
+                        <button onClick={() => handleDelete(project.id)} className="w-full px-3 py-1.5 text-left text-sm text-red-500 hover:bg-red-50">
+                          {t("common.delete")}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 {/* 하단 콘텐츠 - 그라데이션 위에 바로 배치 */}
                 <Link href={`/projects/${project.id}`} className="absolute inset-0 flex flex-col justify-end">

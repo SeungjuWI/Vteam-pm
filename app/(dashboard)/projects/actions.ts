@@ -14,11 +14,11 @@ export async function createProject(formData: FormData) {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("role, company_id, name")
+    .select("company_id, name")
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "admin") {
+  if (!profile?.company_id) {
     return { error: "권한이 없습니다" };
   }
 
@@ -98,11 +98,11 @@ export async function deleteProject(projectId: string) {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("role, company_id")
+    .select("company_id")
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "admin") {
+  if (!profile?.company_id) {
     return { error: "권한이 없습니다" };
   }
 
@@ -133,11 +133,11 @@ export async function updateProject(formData: FormData) {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("role, company_id")
+    .select("company_id")
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "admin") {
+  if (!profile?.company_id) {
     return { error: "권한이 없습니다" };
   }
 
@@ -199,11 +199,11 @@ export async function addProjectMember(projectId: string, memberId: string) {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("role, company_id, name")
+    .select("company_id, name")
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "admin") {
+  if (!profile?.company_id) {
     return { error: "권한이 없습니다" };
   }
 
@@ -249,11 +249,11 @@ export async function removeProjectMember(projectId: string, memberId: string) {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("role, company_id")
+    .select("company_id")
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "admin") {
+  if (!profile?.company_id) {
     return { error: "권한이 없습니다" };
   }
 
@@ -284,7 +284,7 @@ export async function createTask(
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("role, company_id, name")
+    .select("company_id, name")
     .eq("id", user.id)
     .single();
 
@@ -534,11 +534,11 @@ export async function updateProjectStatus(projectId: string, status: string) {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("role, company_id")
+    .select("company_id")
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "admin") {
+  if (!profile?.company_id) {
     return { error: "권한이 없습니다" };
   }
 

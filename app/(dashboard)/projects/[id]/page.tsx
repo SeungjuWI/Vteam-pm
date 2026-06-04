@@ -88,9 +88,6 @@ export default async function ProjectDetailPage({ params }: Props) {
     dueDate: t.due_date,
   }));
 
-  const isMember = memberIds.includes(user.id);
-  const isManager = profile.role === "admin";
-
   return (
     <ProjectDetail
       project={{
@@ -104,8 +101,6 @@ export default async function ProjectDetailPage({ params }: Props) {
       members={projectMembers}
       allMembers={allMembers}
       tasks={tasks}
-      isManager={isManager}
-      isMember={isMember}
       currentUserId={user.id}
     />
   );

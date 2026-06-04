@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function createProject(formData: FormData) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -92,7 +93,7 @@ export async function deleteProject(projectId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -127,7 +128,7 @@ export async function updateProject(formData: FormData) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -193,7 +194,7 @@ export async function addProjectMember(projectId: string, memberId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -243,7 +244,7 @@ export async function removeProjectMember(projectId: string, memberId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -278,7 +279,7 @@ export async function createTask(
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -335,7 +336,7 @@ export async function updateTaskStatus(taskId: string, status: string, projectId
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { error } = await adminClient
@@ -361,7 +362,7 @@ export async function updateTask(
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   if (!title.trim()) return { error: "제목을 입력해주세요" };
@@ -394,7 +395,7 @@ export async function deleteTask(taskId: string, projectId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   // task_assignees는 on delete cascade
@@ -445,7 +446,7 @@ export async function createTaskComment(
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   if (!content.trim()) return { error: "내용을 입력해주세요" };
@@ -510,7 +511,7 @@ export async function deleteTaskComment(commentId: string, projectId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   // 본인 댓글만 삭제
@@ -528,7 +529,7 @@ export async function updateProjectStatus(projectId: string, status: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient

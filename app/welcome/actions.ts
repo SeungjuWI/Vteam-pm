@@ -2,15 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function saveWelcomeProfile(formData: FormData) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const name = (formData.get("name") as string)?.trim();

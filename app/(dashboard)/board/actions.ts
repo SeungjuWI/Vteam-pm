@@ -1,14 +1,13 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { translateText } from "@/lib/translate";
 
 export async function getPosts() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return [];
 
   const adminClient = createAdminClient();
@@ -109,9 +108,7 @@ export async function getPosts() {
 
 export async function createPost(content: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const adminClient = createAdminClient();
@@ -136,9 +133,7 @@ export async function createPost(content: string) {
 
 export async function deletePost(postId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const adminClient = createAdminClient();
@@ -154,9 +149,7 @@ export async function deletePost(postId: string) {
 
 export async function toggleReaction(postId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const adminClient = createAdminClient();
@@ -180,9 +173,7 @@ export async function toggleReaction(postId: string) {
 
 export async function translateSinglePost(postId: string, content: string, fromLang: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return null;
 
   const adminClient = createAdminClient();

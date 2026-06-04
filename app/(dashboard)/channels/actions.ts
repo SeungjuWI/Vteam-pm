@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { translateText } from "@/lib/translate";
 
@@ -8,9 +9,7 @@ import { translateText } from "@/lib/translate";
 
 async function getMe() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return null;
 
   const adminClient = createAdminClient();

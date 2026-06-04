@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function clockIn() {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -50,7 +51,7 @@ export async function getAttendanceStatus() {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return null;
 
   const today = new Date();
@@ -78,7 +79,7 @@ export async function clockOut() {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const today = new Date();
@@ -110,7 +111,7 @@ export async function getEmployeeAttendances(employeeId: string, year: number, m
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return null;
 
   const { data: profile } = await adminClient
@@ -152,7 +153,7 @@ export async function updateAttendance(
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -202,7 +203,7 @@ export async function createManualAttendance(
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -246,7 +247,7 @@ export async function deleteAttendance(attendanceId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient

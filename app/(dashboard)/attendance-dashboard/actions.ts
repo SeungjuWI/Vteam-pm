@@ -1,15 +1,14 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function getAttendanceDashboardData() {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return null;
 
   const { data: profile } = await adminClient

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // 연차에서 차감되는 타입
@@ -11,7 +12,7 @@ export async function requestLeave(formData: FormData) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -82,7 +83,7 @@ export async function approveLeave(leaveId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -133,7 +134,7 @@ export async function rejectLeave(leaveId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -156,7 +157,7 @@ export async function adjustBalance(formData: FormData) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient
@@ -244,7 +245,7 @@ export async function saveLeaveSettings(formData: FormData) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient

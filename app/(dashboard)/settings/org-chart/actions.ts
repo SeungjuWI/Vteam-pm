@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface OrgMember {
@@ -17,9 +18,7 @@ export async function getOrgChartData(): Promise<OrgMember[] | null> {
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return null;
 
   const { data: profile } = await adminClient
@@ -54,9 +53,7 @@ export async function updateReportsTo(memberId: string, reportsTo: string | null
   const supabase = await createClient();
   const adminClient = createAdminClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const { data: profile } = await adminClient

@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { translateText } from "@/lib/translate";
 import { generateBotResponse } from "@/lib/ai-chat";
@@ -79,9 +80,7 @@ export async function ensureBotExists(companyId: string) {
 
 export async function getTeamMembers() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return [];
 
   const adminClient = createAdminClient();
@@ -109,9 +108,7 @@ export async function getTeamMembers() {
 
 export async function getMessages(otherUserId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return [];
 
   const adminClient = createAdminClient();
@@ -191,9 +188,7 @@ export async function getMessages(otherUserId: string) {
 
 export async function sendMessage(receiverId: string, content: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const adminClient = createAdminClient();
@@ -220,9 +215,7 @@ export async function sendMessage(receiverId: string, content: string) {
 // 클라이언트에서 봇에게 메시지를 보낸 뒤 호출 → AI 응답 생성 후 DM으로 저장
 export async function requestBotReply(botId: string, content: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const adminClient = createAdminClient();
@@ -272,9 +265,7 @@ export async function translateSingleMessage(
   fromLang: string
 ) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const adminClient = createAdminClient();
@@ -311,9 +302,7 @@ export async function translateSingleMessage(
 
 export async function markAsRead(otherUserId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return;
 
   const adminClient = createAdminClient();
@@ -327,9 +316,7 @@ export async function markAsRead(otherUserId: string) {
 
 export async function getUnreadCounts() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return {};
 
   const adminClient = createAdminClient();
@@ -350,9 +337,7 @@ export async function getUnreadCounts() {
 
 export async function updatePresence(presence: "online" | "away" | "offline") {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return;
 
   const adminClient = createAdminClient();

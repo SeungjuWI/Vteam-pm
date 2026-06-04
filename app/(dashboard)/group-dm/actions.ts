@@ -1,15 +1,14 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { translateText } from "@/lib/translate";
 
 // 단체 DM방 생성
 export async function createGroupDm(memberIds: string[], name?: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const adminClient = createAdminClient();
@@ -52,9 +51,7 @@ export async function createGroupDm(memberIds: string[], name?: string) {
 // 내 단체 DM방 목록
 export async function getGroupDmRooms() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return [];
 
   const adminClient = createAdminClient();
@@ -158,9 +155,7 @@ export async function getGroupDmRooms() {
 // 단체 DM 메시지 조회 (번역 포함)
 export async function getGroupDmMessages(roomId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return [];
 
   const adminClient = createAdminClient();
@@ -249,9 +244,7 @@ export async function getGroupDmMessages(roomId: string) {
 // 단체 DM 메시지 전송
 export async function sendGroupDmMessage(roomId: string, content: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const adminClient = createAdminClient();
@@ -275,9 +268,7 @@ export async function sendGroupDmMessage(roomId: string, content: string) {
 // 읽음 처리
 export async function markGroupDmAsRead(roomId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return;
 
   const adminClient = createAdminClient();
@@ -295,9 +286,7 @@ export async function translateSingleGroupMessage(
   fromLang: string
 ) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const adminClient = createAdminClient();
@@ -333,9 +322,7 @@ export async function translateSingleGroupMessage(
 // 방 멤버 정보 조회
 export async function getGroupDmRoomMembers(roomId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getClaimsUser(supabase);
   if (!user) return [];
 
   const adminClient = createAdminClient();

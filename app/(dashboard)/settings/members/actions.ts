@@ -53,7 +53,7 @@ export async function inviteMember(formData: FormData) {
 
   if (inviteError) return { error: inviteError.message };
 
-  revalidatePath("/members");
+  revalidatePath("/settings/members");
   return { success: true };
 }
 
@@ -85,7 +85,7 @@ export async function approveMember(memberId: string) {
     .update({ status: "active" })
     .eq("id", memberId);
 
-  revalidatePath("/members");
+  revalidatePath("/settings/members");
 }
 
 export async function rejectMember(memberId: string) {
@@ -116,7 +116,7 @@ export async function rejectMember(memberId: string) {
     .update({ company_id: null, status: "inactive" })
     .eq("id", memberId);
 
-  revalidatePath("/members");
+  revalidatePath("/settings/members");
 }
 
 export async function getMemberDetail(memberId: string) {
@@ -212,7 +212,7 @@ export async function deactivateMember(memberId: string) {
     .update({ status: "inactive" })
     .eq("id", memberId);
 
-  revalidatePath("/members");
+  revalidatePath("/settings/members");
   return { success: true };
 }
 
@@ -228,5 +228,5 @@ export async function cancelInvitation(invitationId: string) {
     .update({ status: "expired" })
     .eq("id", invitationId);
 
-  revalidatePath("/members");
+  revalidatePath("/settings/members");
 }

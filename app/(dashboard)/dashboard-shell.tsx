@@ -23,7 +23,6 @@ const mainNavItems: NavItem[] = [
   { href: "/attendance", labelKey: "nav.attendance", icon: "clock" },
   { href: "/leaves", labelKey: "nav.leaves", icon: "calendar" },
   { href: "/projects", labelKey: "nav.projects", icon: "folder" },
-  { href: "/members", labelKey: "nav.members", icon: "users" },
   { href: "/channels", labelKey: "nav.channels", icon: "chat" },
   { href: "/settings/company", labelKey: "nav.companyInfo", icon: "building" },
   { href: "/settings/account", labelKey: "nav.settings", icon: "settings" },

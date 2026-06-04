@@ -75,6 +75,6 @@ export async function saveProfile(formData: FormData) {
   if (error) return { error: "저장에 실패했습니다" };
 
   revalidatePath("/settings");
-  revalidatePath("/members");
+  revalidatePath("/settings/members");
   return { success: true };
 }

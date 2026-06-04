@@ -189,7 +189,7 @@ export async function updateAttendance(
   if (error) return { error: error.message };
 
   revalidatePath("/attendance");
-  revalidatePath("/members");
+  revalidatePath("/settings/members");
   return { success: true };
 }
 
@@ -238,7 +238,7 @@ export async function createManualAttendance(
   if (error) return { error: error.message };
 
   revalidatePath("/attendance");
-  revalidatePath("/members");
+  revalidatePath("/settings/members");
   return { success: true };
 }
 
@@ -277,6 +277,6 @@ export async function deleteAttendance(attendanceId: string) {
   if (error) return { error: error.message };
 
   revalidatePath("/attendance");
-  revalidatePath("/members");
+  revalidatePath("/settings/members");
   return { success: true };
 }

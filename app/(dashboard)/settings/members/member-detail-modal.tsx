@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import Avatar from "@/components/avatar";
 import { getMemberDetail, deactivateMember } from "./actions";
-import { adjustBalance } from "../leaves/actions";
+import { adjustBalance } from "../../leaves/actions";
 import {
   getEmployeeAttendances,
   updateAttendance,
   createManualAttendance,
   deleteAttendance,
-} from "../attendance/actions";
+} from "../../attendance/actions";
 import { useT } from "@/lib/i18n";
 
 type MemberDetail = {

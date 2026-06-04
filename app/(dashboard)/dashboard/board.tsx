@@ -98,7 +98,7 @@ export default function Board({ currentUserId, companyId }: { currentUserId: str
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !(e.nativeEvent as KeyboardEvent).isComposing) {
       e.preventDefault();
       handleSubmit();
     }

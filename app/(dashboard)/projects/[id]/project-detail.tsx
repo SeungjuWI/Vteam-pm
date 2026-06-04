@@ -13,6 +13,7 @@ const CreateTaskModal = dynamic(() => import("./create-task-modal"));
 const EditProjectModal = dynamic(() => import("./edit-project-modal"));
 const AddMemberModal = dynamic(() => import("./add-member-modal"));
 const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
+const ProjectDiscussionButton = dynamic(() => import("./project-discussion-button"));
 
 interface Props {
   project: Project;
@@ -187,6 +188,10 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
                 </svg>
               </button>
             )}
+
+            <div className="ml-1 border-l border-gray-200 pl-2">
+              <ProjectDiscussionButton projectId={project.id} currentUserId={currentUserId} />
+            </div>
 
             {showMembers && (
               <>

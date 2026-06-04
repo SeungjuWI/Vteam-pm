@@ -114,6 +114,6 @@ export async function updateReportsTo(memberId: string, reportsTo: string | null
 
   if (error) return { error: error.message };
 
-  revalidatePath("/org-chart");
+  revalidatePath("/settings/org-chart");
   return { success: true };
 }

@@ -248,11 +248,10 @@ export default function OrgChartView({
   );
 
   return (
-    <div className="flex h-[calc(100vh-56px-48px)] flex-col">
+    <div className="flex h-[calc(100vh-240px)] min-h-[480px] flex-col">
       <div className="flex items-center justify-between pb-4">
         <div>
-          <h1 className="text-lg font-medium text-gray-900">조직도</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="text-sm text-gray-500">
             노드를 드래그해서 위치를 옮기고, 하단 핸들에서 상단 핸들로 연결하면 보고 관계가 설정됩니다.
           </p>
         </div>

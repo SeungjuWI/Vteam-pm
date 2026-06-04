@@ -11,6 +11,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
   const companyTabs = [
     { href: "/settings/company", label: t("settings.companyInfoTab") },
+    { href: "/settings/org-chart", label: t("settings.orgChart") },
     { href: "/settings/work", label: t("settings.workPolicy") },
     { href: "/settings/leave", label: t("settings.leavePolicy") },
   ];

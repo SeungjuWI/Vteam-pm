@@ -42,7 +42,6 @@ const en: Record<TranslationKey, string> = {
   "nav.leaves": "Leave",
   "nav.projects": "Projects",
   "nav.members": "Members",
-  "nav.orgChart": "Org Chart",
   "nav.companyInfo": "Company",
   "nav.settings": "Settings",
   "nav.attendanceDashboard": "Attendance Dashboard",
@@ -72,6 +71,7 @@ const en: Record<TranslationKey, string> = {
   "settings.settings": "Settings",
   "settings.companyInfo": "Company",
   "settings.companyInfoTab": "Company Info",
+  "settings.orgChart": "Org Chart",
   "settings.workPolicy": "Work Policy",
   "settings.leavePolicy": "Leave Policy",
 

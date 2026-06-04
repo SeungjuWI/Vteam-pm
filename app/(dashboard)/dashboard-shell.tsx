@@ -25,7 +25,6 @@ const mainNavItems: NavItem[] = [
   { href: "/projects", labelKey: "nav.projects", icon: "folder" },
   { href: "/members", labelKey: "nav.members", icon: "users" },
   { href: "/channels", labelKey: "nav.channels", icon: "chat" },
-  { href: "/org-chart", labelKey: "nav.orgChart", icon: "orgchart" },
   { href: "/settings/company", labelKey: "nav.companyInfo", icon: "building" },
   { href: "/settings/account", labelKey: "nav.settings", icon: "settings" },
 ];

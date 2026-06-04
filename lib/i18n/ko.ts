@@ -40,7 +40,6 @@ const ko = {
   "nav.leaves": "휴가",
   "nav.projects": "프로젝트",
   "nav.members": "멤버",
-  "nav.orgChart": "조직도",
   "nav.companyInfo": "회사정보",
   "nav.settings": "설정",
   "nav.attendanceDashboard": "근태 대시보드",
@@ -70,6 +69,7 @@ const ko = {
   "settings.settings": "설정",
   "settings.companyInfo": "회사정보",
   "settings.companyInfoTab": "회사 정보",
+  "settings.orgChart": "조직도",
   "settings.workPolicy": "근무 규정",
   "settings.leavePolicy": "연차 제도",
 

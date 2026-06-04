@@ -3,11 +3,17 @@ import DesktopDownload from "@/components/desktop-download";
 import LanguageSetting from "./language-setting";
 import UiLanguageSetting from "./ui-language-setting";
 import { getT } from "@/lib/i18n/server";
-import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
+import { getProfile } from "@/lib/supabase/auth-cache";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function AccountSettingsPage() {
   const t = await getT();
-  const user = await getAuthUser();
+  // 이 페이지는 가입일(created_at)·연동 provider 등 전체 user 객체가 필요하므로
+  // (JWT claims에 없는 필드) 여기서만 getUser()로 전체 객체를 가져온다.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
 
   const profile = await getProfile();

@@ -25,9 +25,11 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getUser()(인증 서버 왕복) 대신 getClaims()로 로컬 검증.
+  // 만료 토큰 갱신은 getClaims 내부 getSession() 경로에서 그대로 수행되어
+  // 새 토큰 쿠키가 supabaseResponse에 기록된다.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims ?? null;
 
   const pathname = request.nextUrl.pathname;
 

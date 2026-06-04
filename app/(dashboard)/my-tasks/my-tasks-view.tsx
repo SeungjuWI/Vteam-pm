@@ -28,7 +28,7 @@ const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 export default function MyTasksView({ activeTasks, doneTasks, projects, stats, today }: Props) {
   const t = useT();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todo");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortBy>("dueDate");

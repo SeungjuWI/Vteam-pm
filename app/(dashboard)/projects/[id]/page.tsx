@@ -88,6 +88,40 @@ export default async function ProjectDetailPage({ params }: Props) {
     dueDate: t.due_date,
   }));
 
+  // OKR 조회 (목표 + 핵심결과)
+  const { data: objectivesData } = await adminClient
+    .from("okr_objectives")
+    .select("id, period, title, description, owner_id, created_at")
+    .eq("project_id", id)
+    .order("created_at", { ascending: true });
+
+  const objectiveIds = (objectivesData || []).map((o) => o.id);
+  let keyResultsMap: Record<string, { id: string; title: string; progress: number }[]> = {};
+
+  if (objectiveIds.length > 0) {
+    const { data: krData } = await adminClient
+      .from("okr_key_results")
+      .select("id, objective_id, title, progress, sort_order")
+      .in("objective_id", objectiveIds)
+      .order("sort_order", { ascending: true });
+
+    if (krData) {
+      for (const kr of krData) {
+        if (!keyResultsMap[kr.objective_id]) keyResultsMap[kr.objective_id] = [];
+        keyResultsMap[kr.objective_id].push({ id: kr.id, title: kr.title, progress: kr.progress });
+      }
+    }
+  }
+
+  const objectives = (objectivesData || []).map((o) => ({
+    id: o.id,
+    period: o.period,
+    title: o.title,
+    description: o.description,
+    ownerId: o.owner_id,
+    keyResults: keyResultsMap[o.id] || [],
+  }));
+
   return (
     <ProjectDetail
       project={{
@@ -101,6 +135,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       members={projectMembers}
       allMembers={allMembers}
       tasks={tasks}
+      objectives={objectives}
       currentUserId={user.id}
     />
   );

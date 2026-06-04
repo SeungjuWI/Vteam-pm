@@ -306,6 +306,22 @@ const ko = {
   "tasks.deleteConfirm": "이 태스크를 삭제하시겠습니까?",
   "tasks.removeMemberConfirm": "이 멤버를 프로젝트에서 제거하시겠습니까?",
 
+  // OKR
+  "okr.title": "OKR",
+  "okr.add": "목표 추가",
+  "okr.create": "목표 생성",
+  "okr.objective": "목표 (Objective)",
+  "okr.objectivePlaceholder": "이번 달 달성할 목표",
+  "okr.description": "설명",
+  "okr.descriptionPlaceholder": "목표에 대한 설명 (선택)",
+  "okr.owner": "담당자",
+  "okr.noOwner": "담당자 없음",
+  "okr.keyResults": "핵심결과 (Key Results)",
+  "okr.keyResultPlaceholder": "측정 가능한 핵심결과",
+  "okr.addKeyResult": "핵심결과 추가",
+  "okr.empty": "이 달에 설정된 OKR이 없습니다",
+  "okr.deleteConfirm": "이 목표를 삭제하시겠습니까? 핵심결과도 함께 삭제됩니다.",
+
   // Members
   "members.title": "멤버 관리",
   "members.invite": "멤버 초대",

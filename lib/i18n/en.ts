@@ -308,6 +308,22 @@ const en: Record<TranslationKey, string> = {
   "tasks.deleteConfirm": "Delete this task?",
   "tasks.removeMemberConfirm": "Remove this member from the project?",
 
+  // OKR
+  "okr.title": "OKR",
+  "okr.add": "Add objective",
+  "okr.create": "Create",
+  "okr.objective": "Objective",
+  "okr.objectivePlaceholder": "Goal to achieve this month",
+  "okr.description": "Description",
+  "okr.descriptionPlaceholder": "Describe this objective (optional)",
+  "okr.owner": "Owner",
+  "okr.noOwner": "No owner",
+  "okr.keyResults": "Key Results",
+  "okr.keyResultPlaceholder": "A measurable key result",
+  "okr.addKeyResult": "Add key result",
+  "okr.empty": "No OKRs set for this month",
+  "okr.deleteConfirm": "Delete this objective? Its key results will also be deleted.",
+
   // Members
   "members.title": "Members",
   "members.invite": "Invite Member",

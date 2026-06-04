@@ -8,18 +8,21 @@ import dynamic from "next/dynamic";
 import { updateTaskStatus, removeProjectMember } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, Project, TaskStatus } from "./project-types";
+import type { Objective } from "./okr-types";
 
 const CreateTaskModal = dynamic(() => import("./create-task-modal"));
 const EditProjectModal = dynamic(() => import("./edit-project-modal"));
 const AddMemberModal = dynamic(() => import("./add-member-modal"));
 const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
 const ProjectDiscussionButton = dynamic(() => import("./project-discussion-button"));
+const OkrSection = dynamic(() => import("./okr-section"));
 
 interface Props {
   project: Project;
   members: Member[];
   allMembers: Member[];
   tasks: Task[];
+  objectives: Objective[];
   currentUserId: string;
 }
 
@@ -53,7 +56,7 @@ function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string
   );
 }
 
-export default function ProjectDetail({ project, members, allMembers, tasks: initialTasks, currentUserId }: Props) {
+export default function ProjectDetail({ project, members, allMembers, tasks: initialTasks, objectives, currentUserId }: Props) {
   const t = useT();
   const sc = statusStyles[project.status] || statusStyles.active;
   const statusLabelMap: Record<string, string> = {
@@ -245,6 +248,9 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
           </div>
         ))}
       </div>
+
+      {/* OKR 섹션 (월별) */}
+      <OkrSection projectId={project.id} members={members} objectives={objectives} />
 
       {/* 칸반 보드 */}
       <div>

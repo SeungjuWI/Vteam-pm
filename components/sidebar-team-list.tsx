@@ -280,7 +280,7 @@ export default function SidebarTeamList({
       .channel("team-presence")
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "profiles", filter: "presence=neq." },
+        { event: "UPDATE", schema: "public", table: "profiles" },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (payload: any) => {
           setMembers((prev) =>

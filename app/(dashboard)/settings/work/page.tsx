@@ -20,7 +20,7 @@ export default async function WorkSettingsPage() {
   return (
     <WorkSettingsView
       current={settings}
-      isManager={profile.role === "manager"}
+      isManager={profile.role === "admin"}
     />
   );
 }

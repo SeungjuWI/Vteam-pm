@@ -4,8 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: "최고관리자",
-  manager: "관리자",
+  admin: "관리자",
   employee: "직원",
 };
 
@@ -65,7 +64,7 @@ async function getAuthAndProfile() {
 
   if (
     !profile?.company_id ||
-    (profile.role !== "manager" && profile.role !== "admin")
+    (profile.role !== "admin")
   ) {
     return null;
   }

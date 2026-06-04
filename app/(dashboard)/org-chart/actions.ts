@@ -67,7 +67,7 @@ export async function updateReportsTo(memberId: string, reportsTo: string | null
 
   if (
     !profile?.company_id ||
-    (profile.role !== "manager" && profile.role !== "admin")
+    (profile.role !== "admin")
   ) {
     return { error: "권한이 없습니다" };
   }

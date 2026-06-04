@@ -32,7 +32,7 @@ export default async function MembersPage() {
 
   const pendingMembers = members?.filter((m) => m.status === "pending" || m.status === "setup") || [];
   const activeMembers = members?.filter((m) => m.status === "active") || [];
-  const isManager = profile.role === "manager" || profile.role === "admin";
+  const isManager = profile.role === "admin";
 
   return (
     <div className="flex flex-col gap-6">

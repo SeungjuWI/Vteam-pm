@@ -16,7 +16,6 @@ type Member = {
 
 const ROLE_KEYS: Record<string, string> = {
   admin: "role.admin",
-  manager: "role.manager",
   employee: "role.employee",
 };
 

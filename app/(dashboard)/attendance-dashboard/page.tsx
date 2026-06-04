@@ -8,7 +8,7 @@ export default async function AttendanceDashboardPage() {
   if (!user) redirect("/login");
 
   const profile = await getProfile();
-  if (!profile || (profile.role !== "manager" && profile.role !== "admin")) {
+  if (!profile || profile.role !== "admin") {
     redirect("/dashboard");
   }
 

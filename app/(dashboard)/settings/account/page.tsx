@@ -15,8 +15,8 @@ export default async function AccountSettingsPage() {
   const cookieStore = await cookies();
   const uiLang = cookieStore.get("vteam-ui-lang")?.value || "ko";
 
-  const roleKey = profile?.role as "admin" | "manager" | "employee" | undefined;
-  const ROLE_KEYS = { admin: "role.admin", manager: "role.manager", employee: "role.employee" } as const;
+  const roleKey = profile?.role as "admin" | "employee" | undefined;
+  const ROLE_KEYS = { admin: "role.admin", employee: "role.employee" } as const;
   const roleLabel = roleKey && roleKey in ROLE_KEYS ? t(ROLE_KEYS[roleKey]) : profile?.role ?? "";
 
   const provider = user.app_metadata?.provider ?? "email";

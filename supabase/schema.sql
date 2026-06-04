@@ -20,7 +20,7 @@ create table profiles (
   id uuid primary key references auth.users(id),
   email text not null,
   name text not null,
-  role text not null check (role in ('admin', 'manager', 'employee')),
+  role text not null check (role in ('admin', 'employee')),
   company_id uuid references companies(id),
   avatar_url text,
   position text,

@@ -23,7 +23,6 @@ export default function ProfileView({ data }: { data: ProfileData }) {
 
   const ROLE_LABELS: Record<string, string> = {
     admin: t("role.admin"),
-    manager: t("role.manager"),
     employee: t("role.employee"),
   };
   const [editing, setEditing] = useState(false);

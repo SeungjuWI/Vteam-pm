@@ -17,7 +17,7 @@ export async function saveCompanyInfo(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile.role !== "admin" && profile.role !== "manager")) {
+  if (!profile || profile.role !== "admin") {
     return { error: "권한이 없습니다" };
   }
 

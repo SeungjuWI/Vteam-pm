@@ -32,7 +32,7 @@ export default async function LeavesPage() {
 
   const adminClient = createAdminClient();
 
-  const isManager = profile.role === "manager";
+  const isManager = profile.role === "admin";
   const year = new Date().getFullYear();
 
   // 내 연차 잔여

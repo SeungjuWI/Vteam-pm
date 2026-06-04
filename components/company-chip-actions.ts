@@ -29,7 +29,7 @@ export async function getCompanyChipData() {
   return {
     profile: {
       name: profile.name,
-      role: profile.role as "admin" | "manager" | "employee",
+      role: profile.role as "admin" | "employee",
     },
     company: {
       name: c.name,

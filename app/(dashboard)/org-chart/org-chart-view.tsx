@@ -22,14 +22,12 @@ import "@xyflow/react/dist/style.css";
 import { updateReportsTo, type OrgMember } from "./actions";
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: "최고관리자",
-  manager: "관리자",
+  admin: "관리자",
   employee: "직원",
 };
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "border-blue-400 bg-blue-50",
-  manager: "border-green-400 bg-green-50",
   employee: "border-gray-300 bg-white",
 };
 

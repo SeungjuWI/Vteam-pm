@@ -17,7 +17,7 @@ export async function inviteMember(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   const email = (formData.get("email") as string)?.trim().toLowerCase();
   if (!email) return { error: "이메일을 입력해주세요" };
@@ -70,7 +70,7 @@ export async function approveMember(memberId: string) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   const { data: target } = await adminClient
     .from("profiles")
@@ -101,7 +101,7 @@ export async function rejectMember(memberId: string) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   const { data: target } = await adminClient
     .from("profiles")
@@ -196,7 +196,7 @@ export async function deactivateMember(memberId: string) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager" && profile?.role !== "admin") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   const { data: target } = await adminClient
     .from("profiles")

@@ -89,7 +89,7 @@ export default async function ProjectDetailPage({ params }: Props) {
   }));
 
   const isMember = memberIds.includes(user.id);
-  const isManager = profile.role === "manager" || profile.role === "admin";
+  const isManager = profile.role === "admin";
 
   return (
     <ProjectDetail

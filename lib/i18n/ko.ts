@@ -31,8 +31,7 @@ const ko = {
   "common.errorOccurred": "오류가 발생했습니다",
 
   // Roles
-  "role.admin": "최고관리자",
-  "role.manager": "관리자",
+  "role.admin": "관리자",
   "role.employee": "직원",
 
   // Navigation

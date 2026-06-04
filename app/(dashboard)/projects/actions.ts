@@ -17,7 +17,7 @@ export async function createProject(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile.role !== "admin" && profile.role !== "manager")) {
+  if (!profile || profile.role !== "admin") {
     return { error: "권한이 없습니다" };
   }
 
@@ -101,7 +101,7 @@ export async function deleteProject(projectId: string) {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile.role !== "admin" && profile.role !== "manager")) {
+  if (!profile || profile.role !== "admin") {
     return { error: "권한이 없습니다" };
   }
 
@@ -136,7 +136,7 @@ export async function updateProject(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile.role !== "admin" && profile.role !== "manager")) {
+  if (!profile || profile.role !== "admin") {
     return { error: "권한이 없습니다" };
   }
 
@@ -202,7 +202,7 @@ export async function addProjectMember(projectId: string, memberId: string) {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile.role !== "admin" && profile.role !== "manager")) {
+  if (!profile || profile.role !== "admin") {
     return { error: "권한이 없습니다" };
   }
 
@@ -252,7 +252,7 @@ export async function removeProjectMember(projectId: string, memberId: string) {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile.role !== "admin" && profile.role !== "manager")) {
+  if (!profile || profile.role !== "admin") {
     return { error: "권한이 없습니다" };
   }
 
@@ -537,7 +537,7 @@ export async function updateProjectStatus(projectId: string, status: string) {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile.role !== "admin" && profile.role !== "manager")) {
+  if (!profile || profile.role !== "admin") {
     return { error: "권한이 없습니다" };
   }
 

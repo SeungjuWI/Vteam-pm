@@ -34,7 +34,6 @@ const en: Record<TranslationKey, string> = {
 
   // Roles
   "role.admin": "Admin",
-  "role.manager": "Manager",
   "role.employee": "Employee",
 
   // Navigation

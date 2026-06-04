@@ -11,7 +11,7 @@ export default async function ProjectsPage() {
 
   const adminClient = createAdminClient();
 
-  const isManager = profile.role === "manager" || profile.role === "admin";
+  const isManager = profile.role === "admin";
 
   const [projectsRes, membersRes] = await Promise.all([
     adminClient

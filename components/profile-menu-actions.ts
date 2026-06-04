@@ -20,7 +20,7 @@ export async function getProfileMenuData() {
 
   return {
     name: profile.name as string,
-    role: profile.role as "admin" | "manager" | "employee",
+    role: profile.role as "admin" | "employee",
     position: (profile.position as string) ?? "",
     avatarUrl: (profile.avatar_url as string) ?? "",
     email: user.email ?? "",

@@ -91,7 +91,7 @@ export async function approveLeave(leaveId: string) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager" && profile?.role !== "admin") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   const { data: leave } = await adminClient
     .from("leaves")
@@ -142,7 +142,7 @@ export async function rejectLeave(leaveId: string) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager" && profile?.role !== "admin") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   await adminClient
     .from("leaves")
@@ -165,7 +165,7 @@ export async function adjustBalance(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager" && profile?.role !== "admin") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   const employeeId = formData.get("employeeId") as string;
   const total = Number(formData.get("total"));
@@ -253,7 +253,7 @@ export async function saveLeaveSettings(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager" && profile?.role !== "admin") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   const autoGrant = formData.get("autoGrant") === "true";
   const defaultDays = Number(formData.get("defaultDays"));

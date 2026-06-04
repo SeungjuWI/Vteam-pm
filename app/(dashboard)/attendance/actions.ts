@@ -119,7 +119,7 @@ export async function getEmployeeAttendances(employeeId: string, year: number, m
     .eq("id", user.id)
     .single();
 
-  if (!profile?.company_id || (profile.role !== "manager" && profile.role !== "admin")) return null;
+  if (!profile?.company_id || profile.role !== "admin") return null;
 
   const { data: target } = await adminClient
     .from("profiles")
@@ -161,7 +161,7 @@ export async function updateAttendance(
     .eq("id", user.id)
     .single();
 
-  if (!profile?.company_id || (profile.role !== "manager" && profile.role !== "admin")) {
+  if (!profile?.company_id || profile.role !== "admin") {
     return { error: "권한이 없습니다" };
   }
 
@@ -211,7 +211,7 @@ export async function createManualAttendance(
     .eq("id", user.id)
     .single();
 
-  if (!profile?.company_id || (profile.role !== "manager" && profile.role !== "admin")) {
+  if (!profile?.company_id || profile.role !== "admin") {
     return { error: "권한이 없습니다" };
   }
 
@@ -255,7 +255,7 @@ export async function deleteAttendance(attendanceId: string) {
     .eq("id", user.id)
     .single();
 
-  if (!profile?.company_id || (profile.role !== "manager" && profile.role !== "admin")) {
+  if (!profile?.company_id || profile.role !== "admin") {
     return { error: "권한이 없습니다" };
   }
 

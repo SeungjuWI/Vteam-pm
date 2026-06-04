@@ -44,7 +44,7 @@ export async function createCompany(formData: FormData) {
 
   const { error: profileError } = await adminClient
     .from("profiles")
-    .update({ name: name.trim(), role: "manager", company_id: company.id, status: "active", language })
+    .update({ name: name.trim(), role: "admin", company_id: company.id, status: "active", language })
     .eq("id", user.id);
 
   if (profileError) return { error: profileError.message };

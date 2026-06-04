@@ -23,7 +23,7 @@ export default function ProfileMenu({ profile }: { profile: ProfileData }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  const ROLE_KEYS = { admin: "role.admin", manager: "role.manager", employee: "role.employee" } as const;
+  const ROLE_KEYS = { admin: "role.admin", employee: "role.employee" } as const;
 
   useEffect(() => {
     if (!open) return;

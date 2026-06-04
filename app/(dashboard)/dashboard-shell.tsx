@@ -14,7 +14,7 @@ interface NavItem {
   href: string;
   labelKey: TranslationKey;
   icon: string;
-  managerOnly?: boolean;
+  adminOnly?: boolean;
 }
 
 const mainNavItems: NavItem[] = [
@@ -30,9 +30,9 @@ const mainNavItems: NavItem[] = [
   { href: "/settings/account", labelKey: "nav.settings", icon: "settings" },
 ];
 
-const managerNavItems: NavItem[] = [
-  { href: "/attendance-dashboard", labelKey: "nav.attendanceDashboard", icon: "chart", managerOnly: true },
-  { href: "/export", labelKey: "nav.export", icon: "download", managerOnly: true },
+const adminNavItems: NavItem[] = [
+  { href: "/attendance-dashboard", labelKey: "nav.attendanceDashboard", icon: "chart", adminOnly: true },
+  { href: "/export", labelKey: "nav.export", icon: "download", adminOnly: true },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -144,7 +144,7 @@ export default function DashboardShell({
   initialWorkStatus: WorkStatus;
 }) {
   const pathname = usePathname();
-  const isManager = role === "manager" || role === "admin";
+  const isAdmin = role === "admin";
   const t = makeT(uiLang);
 
   function renderNavItem(item: NavItem) {
@@ -178,12 +178,12 @@ export default function DashboardShell({
             <nav className="px-3 py-2">
               {mainNavItems.map(renderNavItem)}
 
-              {isManager && (
+              {isAdmin && (
                 <>
                   <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
                     {t("nav.adminSection")}
                   </div>
-                  {managerNavItems.map(renderNavItem)}
+                  {adminNavItems.map(renderNavItem)}
                 </>
               )}
             </nav>

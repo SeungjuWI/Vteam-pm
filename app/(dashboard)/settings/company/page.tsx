@@ -26,7 +26,7 @@ export default async function CompanySettingsPage() {
 
   if (!company) return null;
 
-  const isEditable = profile.role === "admin" || profile.role === "manager";
+  const isEditable = profile.role === "admin";
 
   return (
     <CompanyInfoView

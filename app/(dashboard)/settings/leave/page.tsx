@@ -17,7 +17,7 @@ export default async function LeaveSettingsPage() {
     .eq("company_id", profile.company_id)
     .single();
 
-  const isManager = profile.role === "manager" || profile.role === "admin";
+  const isManager = profile.role === "admin";
 
   return <LeaveSettingsView current={settings} isManager={isManager} />;
 }

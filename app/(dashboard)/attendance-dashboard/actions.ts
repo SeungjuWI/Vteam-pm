@@ -20,7 +20,7 @@ export async function getAttendanceDashboardData() {
 
   if (
     !profile?.company_id ||
-    (profile.role !== "manager" && profile.role !== "admin")
+    (profile.role !== "admin")
   ) {
     return null;
   }

@@ -174,7 +174,7 @@ An all-in-one workspace for remote teams.
    - Compensatory / Other
 4. Enter start date, start time, end date, and end time.
 5. Enter a reason (optional or required) and press **"Submit Request"**.
-6. Once a manager approves, the leave is confirmed. Check status in request history.
+6. Once an admin approves, the leave is confirmed. Check status in request history.
 
 ### Project Management
 1. Click **"Projects"** in the sidebar.

@@ -17,7 +17,7 @@ export async function saveWorkSettings(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "manager") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
 
   const workType = formData.get("workType") as string;
   const fixedStart = formData.get("fixedStart") as string || null;

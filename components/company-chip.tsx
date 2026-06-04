@@ -74,7 +74,7 @@ export default function CompanyChip({
   const btnRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  const ROLE_KEYS = { admin: "role.admin", manager: "role.manager", employee: "role.employee" } as const;
+  const ROLE_KEYS = { admin: "role.admin", employee: "role.employee" } as const;
 
   const handleToggle = useCallback(() => {
     if (!open && btnRef.current) {

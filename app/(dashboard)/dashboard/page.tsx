@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
+import { kstStartOfToday, kstAddDays } from "@/lib/date";
 import TeamTimeline from "../attendance/team-timeline";
 import Board from "./board";
 import { getT } from "@/lib/i18n/server";
@@ -14,10 +15,8 @@ export default async function DashboardPage() {
 
   const adminClient = createAdminClient();
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  const todayStart = kstStartOfToday();
+  const todayEnd = kstAddDays(new Date(), 1);
   const [
     { data: teamTodayRaw, error: teamError },
     { count },
@@ -28,7 +27,7 @@ export default async function DashboardPage() {
       .select("id, clock_in, clock_out, profiles!attendances_employee_id_fkey(name, email, avatar_url, position)")
       .eq("company_id", profile.company_id)
       .gte("clock_in", todayStart.toISOString())
-      .lte("clock_in", todayEnd.toISOString())
+      .lt("clock_in", todayEnd.toISOString())
       .order("clock_in", { ascending: true }),
     adminClient
       .from("profiles")

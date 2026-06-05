@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { kstStartOfToday } from "@/lib/date";
 
 export async function clockIn() {
   const supabase = await createClient();
@@ -20,9 +21,8 @@ export async function clockIn() {
 
   if (!profile?.company_id) return { error: "회사 정보가 없습니다" };
 
-  // 오늘 이미 출근했는지 확인
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 오늘(한국 날짜) 이미 출근했는지 확인
+  const today = kstStartOfToday();
 
   const { data: existing } = await adminClient
     .from("attendances")
@@ -54,8 +54,7 @@ export async function getAttendanceStatus() {
   const user = await getClaimsUser(supabase);
   if (!user) return null;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = kstStartOfToday();
 
   const { data: record } = await adminClient
     .from("attendances")
@@ -82,8 +81,9 @@ export async function clockOut() {
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 밤샘 근무는 지원하지 않으므로 오늘(한국 날짜) 출근 기록만 퇴근 대상으로 본다.
+  // 전날 퇴근을 누락한 기록은 여기서 잡히지 않고 '퇴근 누락'으로 남아 관리자가 정산한다.
+  const today = kstStartOfToday();
 
   const { data: record } = await adminClient
     .from("attendances")

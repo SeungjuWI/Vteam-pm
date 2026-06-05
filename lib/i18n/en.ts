@@ -562,6 +562,7 @@ const en: Record<TranslationKey, string> = {
   "calendar.familyCare": "Family Care",
   "calendar.compensatory": "Comp. Off",
   "calendar.otherLeave": "Other",
+  "calendar.missingCheckout": "No check-out",
   "calendar.dayNames": "Sun,Mon,Tue,Wed,Thu,Fri,Sat",
 
   // Desktop

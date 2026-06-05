@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { kstStartOfToday, kstAddDays, kstStartOfMonth, toKstParts } from "@/lib/date";
 
 export async function getAttendanceDashboardData() {
   const supabase = await createClient();
@@ -37,11 +38,9 @@ export async function getAttendanceDashboardData() {
 
   const totalMembers = members?.length ?? 0;
 
-  // 오늘 출퇴근 기록
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // 오늘(한국 날짜) 출퇴근 기록. 전날 퇴근 누락 기록은 오늘 범위 밖이라 제외된다.
+  const today = kstStartOfToday();
+  const tomorrow = kstAddDays(new Date(), 1);
 
   const { data: todayRecords } = await adminClient
     .from("attendances")
@@ -64,13 +63,11 @@ export async function getAttendanceDashboardData() {
       .map((r) => r.employee_id) ?? [],
   );
 
-  // 이번 주 출근율 (월~금)
+  // 이번 주 출근율 (월~금) — 한국 요일 기준
   const now = new Date();
-  const dayOfWeek = now.getDay();
+  const dayOfWeek = toKstParts(now).getUTCDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + mondayOffset);
-  monday.setHours(0, 0, 0, 0);
+  const monday = kstAddDays(now, mondayOffset);
 
   const { data: weekRecords } = await adminClient
     .from("attendances")
@@ -87,14 +84,14 @@ export async function getAttendanceDashboardData() {
   );
 
   weekRecords?.forEach((r) => {
-    const d = new Date(r.clock_in).getDay();
+    const d = toKstParts(new Date(r.clock_in)).getUTCDay();
     if (d >= 1 && d <= 5) {
       weekdayAttendance[d - 1]++;
     }
   });
 
-  // 이번 달 통계
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // 이번 달 통계 — 한국 날짜 기준
+  const monthStart = kstStartOfMonth(now);
   const { data: monthRecords } = await adminClient
     .from("attendances")
     .select("employee_id, clock_in, clock_out")
@@ -116,8 +113,8 @@ export async function getAttendanceDashboardData() {
   if (workSettings?.fixed_start) {
     const [h, m] = (workSettings.fixed_start as string).split(":").map(Number);
     todayRecords?.forEach((r) => {
-      const clockIn = new Date(r.clock_in);
-      if (clockIn.getHours() > h || (clockIn.getHours() === h && clockIn.getMinutes() > m)) {
+      const clockIn = toKstParts(new Date(r.clock_in));
+      if (clockIn.getUTCHours() > h || (clockIn.getUTCHours() === h && clockIn.getUTCMinutes() > m)) {
         lateCount++;
       }
     });

@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
+import { kstStartOfToday, kstAddDays } from "@/lib/date";
 import ClockButton from "./clock-button";
 import AttendanceCalendar from "./attendance-calendar";
 import { getT } from "@/lib/i18n/server";
@@ -14,10 +15,8 @@ export default async function AttendancePage() {
 
   const adminClient = createAdminClient();
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  const todayStart = kstStartOfToday();
+  const todayEnd = kstAddDays(new Date(), 1);
 
   const now = new Date();
   const rangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -34,7 +33,7 @@ export default async function AttendancePage() {
       .select("id, clock_in, clock_out")
       .eq("employee_id", user.id)
       .gte("clock_in", todayStart.toISOString())
-      .lte("clock_in", todayEnd.toISOString())
+      .lt("clock_in", todayEnd.toISOString())
       .order("clock_in", { ascending: false })
       .limit(1)
       .single(),

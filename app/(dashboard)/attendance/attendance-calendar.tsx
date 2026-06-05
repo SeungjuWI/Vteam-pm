@@ -58,6 +58,7 @@ type DayInfo = {
   date: Date;
   totalMs: number;
   isWorking: boolean;
+  isMissing: boolean;
   isLeave: boolean;
   leaveType: string | null;
   isToday: boolean;
@@ -96,22 +97,33 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
   const requiredMs = requiredHours * 3600000;
 
   const dayMap = useMemo(() => {
-    const map = new Map<string, { totalMs: number; isWorking: boolean }>();
+    const map = new Map<string, { totalMs: number; isWorking: boolean; isMissing: boolean }>();
     for (const r of records) {
       const clockIn = new Date(r.clock_in);
       const key = `${clockIn.getFullYear()}-${clockIn.getMonth()}-${clockIn.getDate()}`;
-      const end = r.clock_out ? new Date(r.clock_out).getTime() : (now || clockIn.getTime());
+      const dayStart = new Date(clockIn);
+      dayStart.setHours(0, 0, 0, 0);
+      const open = !r.clock_out;
+      // 오늘 열린 기록은 현재 근무중, 지난 날짜의 열린 기록은 퇴근 누락.
+      const isPastOpen = open && dayStart.getTime() < today.getTime();
+      // 퇴근 누락은 종료시각을 알 수 없으므로 근무시간을 합산하지 않는다(주간 합계 부풀림 방지).
+      const end = r.clock_out
+        ? new Date(r.clock_out).getTime()
+        : isPastOpen
+          ? clockIn.getTime()
+          : (now || clockIn.getTime());
       const ms = end - clockIn.getTime();
       const existing = map.get(key);
       if (existing) {
         existing.totalMs += ms;
-        if (!r.clock_out) existing.isWorking = true;
+        if (open && !isPastOpen) existing.isWorking = true;
+        if (isPastOpen) existing.isMissing = true;
       } else {
-        map.set(key, { totalMs: ms, isWorking: !r.clock_out });
+        map.set(key, { totalMs: ms, isWorking: open && !isPastOpen, isMissing: isPastOpen });
       }
     }
     return map;
-  }, [records, now]);
+  }, [records, now, today]);
 
   const leaveMap = useMemo(() => {
     const map = new Map<string, { type: string; hours: number }>();
@@ -136,6 +148,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
       date: new Date(date),
       totalMs,
       isWorking: attendance?.isWorking ?? false,
+      isMissing: attendance?.isMissing ?? false,
       isLeave: !!leave,
       leaveType: leave?.type ?? null,
       isToday: isSameDay(date, today),
@@ -369,6 +382,13 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
                         {leaveLabel(day.leaveType)}
                       </span>
                       <p className="mt-0.5 text-[10px] text-gray-400">8h</p>
+                    </div>
+                  ) : day.isMissing ? (
+                    <div className="mt-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">
+                        <span className="h-1 w-1 rounded-full bg-amber-500" />
+                        {t("calendar.missingCheckout")}
+                      </span>
                     </div>
                   ) : day.isWorking ? (
                     <div className="mt-1.5">

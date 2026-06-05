@@ -38,6 +38,7 @@ export default async function ProjectsPage() {
   const projectIds = rawProjects.map((p) => p.id);
   let projectMembersMap: Record<string, { name: string; avatarUrl: string | null }[]> = {};
   let taskCounts: Record<string, number> = {};
+  let doneCounts: Record<string, number> = {};
 
   if (projectIds.length > 0) {
     const [pmRes, taskRes] = await Promise.all([
@@ -47,7 +48,7 @@ export default async function ProjectsPage() {
         .in("project_id", projectIds),
       adminClient
         .from("tasks")
-        .select("project_id")
+        .select("project_id, status")
         .in("project_id", projectIds),
     ]);
 
@@ -64,20 +65,26 @@ export default async function ProjectsPage() {
     if (taskRes.data) {
       for (const t of taskRes.data) {
         taskCounts[t.project_id] = (taskCounts[t.project_id] || 0) + 1;
+        if (t.status === "done") doneCounts[t.project_id] = (doneCounts[t.project_id] || 0) + 1;
       }
     }
   }
 
-  const projects = rawProjects.map((p) => ({
-    id: p.id,
-    name: p.name,
-    description: p.description,
-    imageUrl: p.image_url,
-    status: p.status,
-    members: projectMembersMap[p.id] || [],
-    taskCount: taskCounts[p.id] || 0,
-    createdAt: p.created_at,
-  }));
+  const projects = rawProjects.map((p) => {
+    const total = taskCounts[p.id] || 0;
+    const done = doneCounts[p.id] || 0;
+    return {
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      imageUrl: p.image_url,
+      status: p.status,
+      members: projectMembersMap[p.id] || [],
+      taskCount: total,
+      progressPercent: total > 0 ? Math.round((done / total) * 100) : 0,
+      createdAt: p.created_at,
+    };
+  });
 
   return (
     <div className="flex flex-col gap-6">

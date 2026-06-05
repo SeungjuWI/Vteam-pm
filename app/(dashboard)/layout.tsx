@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { kstStartOfToday } from "@/lib/date";
 import DashboardShell from "./dashboard-shell";
 
 export default async function DashboardLayout({
@@ -20,8 +21,7 @@ export default async function DashboardLayout({
 
   const adminClient = createAdminClient();
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayStart = kstStartOfToday();
 
   const [companyRes, countRes, attendanceRes] = await Promise.all([
     adminClient.from("companies").select("*").eq("id", profile.company_id).single(),

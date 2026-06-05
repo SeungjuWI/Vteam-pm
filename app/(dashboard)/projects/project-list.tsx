@@ -26,6 +26,7 @@ interface Project {
   status: string;
   members: ProjectMember[];
   taskCount: number;
+  progressPercent: number;
   createdAt: string;
 }
 
@@ -196,6 +197,16 @@ export default function ProjectList({ projects, members }: Props) {
                       <span className="text-xs text-white/50">
                         {project.members.length > 0 && `${project.members.length}${t("projects.members")} · `}{project.taskCount}{t("projects.tasks")}
                       </span>
+                    </div>
+                    {/* 진행도 */}
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">
+                        <div
+                          className="h-full rounded-full bg-white transition-all duration-500"
+                          style={{ width: `${project.progressPercent}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-white/90 tabular-nums">{project.progressPercent}%</span>
                     </div>
                   </div>
                 </Link>

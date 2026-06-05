@@ -560,6 +560,7 @@ const ko = {
   "calendar.familyCare": "가족돌봄",
   "calendar.compensatory": "대체휴무",
   "calendar.otherLeave": "기타",
+  "calendar.missingCheckout": "퇴근 누락",
   "calendar.dayNames": "일,월,화,수,목,금,토",
 
   // Desktop

@@ -307,6 +307,20 @@ const en: Record<TranslationKey, string> = {
   "tasks.noTasks": "No tasks",
   "tasks.deleteConfirm": "Delete this task?",
   "tasks.removeMemberConfirm": "Remove this member from the project?",
+  "tasks.mainTasks": "Main Tasks",
+  "tasks.addMain": "Add main task",
+  "tasks.addSub": "Add subtask",
+  "tasks.noSubtasks": "No subtasks",
+  "tasks.mainPlaceholder": "Main task title",
+  "tasks.subPlaceholder": "Subtask title",
+  "tasks.emptyMain": "Add a main task to get started",
+  "tasks.subCount": " subtasks",
+  // Timeline matrix
+  "matrix.tbd": "TBD",
+  "matrix.total": "Total",
+  "matrix.cellTitle": "Main tasks",
+  "matrix.empty": "No projects",
+  "matrix.openProject": "Open project",
 
   // OKR
   "okr.title": "OKR",

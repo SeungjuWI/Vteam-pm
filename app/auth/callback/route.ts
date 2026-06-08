@@ -87,7 +87,7 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}/pending`);
       }
 
-      return NextResponse.redirect(`${origin}/attendance`);
+      return NextResponse.redirect(`${origin}/projects`); // [DEV] 원래 /attendance — 작업 끝나면 원복
     }
   }
 

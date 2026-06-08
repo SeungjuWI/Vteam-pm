@@ -275,6 +275,7 @@ export async function createTask(
   dueDate: string,
   assigneeIds: string[],
   status: string = "todo",
+  parentTaskId: string | null = null,
 ) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -301,6 +302,7 @@ export async function createTask(
       status,
       priority,
       due_date: dueDate || null,
+      parent_task_id: parentTaskId,
     })
     .select("id")
     .single();
@@ -330,6 +332,16 @@ export async function createTask(
 
   revalidatePath(`/projects/${projectId}`);
   return { success: true };
+}
+
+// 인라인 빠른 추가 (제목만) — 메인태스크는 parentTaskId=null, 서브태스크는 부모 id
+export async function quickAddTask(
+  projectId: string,
+  title: string,
+  parentTaskId: string | null,
+  dueDate: string | null,
+) {
+  return createTask(projectId, title, "", "medium", dueDate || "", [], "todo", parentTaskId);
 }
 
 export async function updateTaskStatus(taskId: string, status: string, projectId: string) {

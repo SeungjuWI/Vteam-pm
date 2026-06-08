@@ -1,19 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { updateTaskStatus, removeProjectMember } from "../actions";
+import { removeProjectMember } from "../actions";
 import { useT } from "@/lib/i18n";
-import type { Member, Task, Project, TaskStatus } from "./project-types";
+import type { Member, MainTask, Project } from "./project-types";
 import type { Objective } from "./okr-types";
+import TaskTree, { mainCompletion } from "./task-tree";
 
-const CreateTaskModal = dynamic(() => import("./create-task-modal"));
 const EditProjectModal = dynamic(() => import("./edit-project-modal"));
 const AddMemberModal = dynamic(() => import("./add-member-modal"));
-const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
 const ProjectDiscussionButton = dynamic(() => import("./project-discussion-button"));
 const OkrSection = dynamic(() => import("./okr-section"));
 
@@ -21,7 +19,7 @@ interface Props {
   project: Project;
   members: Member[];
   allMembers: Member[];
-  tasks: Task[];
+  mainTasks: MainTask[];
   objectives: Objective[];
   currentUserId: string;
 }
@@ -30,12 +28,6 @@ const statusStyles: Record<string, { bg: string; text: string; dot: string }> = 
   active: { bg: "bg-blue-50", text: "text-blue-600", dot: "bg-blue-500" },
   completed: { bg: "bg-green-50", text: "text-green-600", dot: "bg-green-500" },
   on_hold: { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
-};
-
-const priorityConfig: Record<string, { label: string; bg: string; text: string }> = {
-  high: { label: "High", bg: "bg-red-50", text: "text-red-500" },
-  medium: { label: "Medium", bg: "bg-amber-50", text: "text-amber-600" },
-  low: { label: "Low", bg: "bg-gray-100", text: "text-gray-500" },
 };
 
 function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string; memberId: string; onDone: () => void }) {
@@ -56,7 +48,7 @@ function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string
   );
 }
 
-export default function ProjectDetail({ project, members, allMembers, tasks: initialTasks, objectives, currentUserId }: Props) {
+export default function ProjectDetail({ project, members, allMembers, mainTasks, objectives, currentUserId }: Props) {
   const t = useT();
   const sc = statusStyles[project.status] || statusStyles.active;
   const statusLabelMap: Record<string, string> = {
@@ -65,63 +57,17 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
     on_hold: t("projects.onHold"),
   };
 
-  const router = useRouter();
-  const [tasks, setTasks] = useState(initialTasks);
-  useEffect(() => { setTasks(initialTasks); }, [initialTasks]);
   const [showMembers, setShowMembers] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
-  const [showCreateTask, setShowCreateTask] = useState<TaskStatus | null>(null);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
-  const dragTaskRef = useRef<string | null>(null);
-  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
-  const isDragging = useRef(false);
 
-  const todoCount = tasks.filter((t) => t.status === "todo").length;
-  const inProgressCount = tasks.filter((t) => t.status === "in_progress").length;
-  const doneCount = tasks.filter((t) => t.status === "done").length;
-  const totalCount = tasks.length;
-  const progressPercent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
-
-  function handleMouseDown(e: React.MouseEvent) {
-    dragStartPos.current = { x: e.clientX, y: e.clientY };
-    isDragging.current = false;
-  }
-
-  function handleDragStart(taskId: string) {
-    dragTaskRef.current = taskId;
-    isDragging.current = true;
-  }
-
-  function handleTaskClick(task: Task) {
-    if (isDragging.current) return;
-    setSelectedTask(task);
-  }
-
-  function handleDragOver(e: React.DragEvent, status: string) {
-    e.preventDefault();
-    setDragOverColumn(status);
-  }
-
-  function handleDragLeave() {
-    setDragOverColumn(null);
-  }
-
-  async function handleDrop(newStatus: TaskStatus) {
-    setDragOverColumn(null);
-    const taskId = dragTaskRef.current;
-    if (!taskId) return;
-
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task || task.status === newStatus) return;
-
-    setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: newStatus } : t));
-    const result = await updateTaskStatus(taskId, newStatus, project.id);
-    if (result?.error) {
-      setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: task.status } : t));
-    }
-  }
+  const totalCount = mainTasks.length;
+  const doneCount = mainTasks.filter((m) => mainCompletion(m) === 1).length;
+  const inProgressCount = mainTasks.filter((m) => { const c = mainCompletion(m); return c > 0 && c < 1; }).length;
+  const todoCount = totalCount - doneCount - inProgressCount;
+  const progressPercent = totalCount > 0
+    ? Math.round((mainTasks.reduce((s, m) => s + mainCompletion(m), 0) / totalCount) * 100)
+    : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -252,119 +198,13 @@ export default function ProjectDetail({ project, members, allMembers, tasks: ini
       {/* OKR 섹션 (월별) */}
       <OkrSection projectId={project.id} members={members} objectives={objectives} />
 
-      {/* 칸반 보드 */}
-      <div>
-        <h2 className="mb-4 text-base font-semibold text-gray-900">{t("tasks.title")}</h2>
-        <div className="grid grid-cols-3 gap-4">
-          {(["todo", "in_progress", "done"] as const).map((status) => {
-            const labels = { todo: t("tasks.todo"), in_progress: t("tasks.inProgress"), done: t("tasks.done") };
-            const dotColors = { todo: "bg-gray-400", in_progress: "bg-blue-500", done: "bg-green-500" };
-            const statusTasks = tasks.filter((t) => t.status === status);
-            const isOver = dragOverColumn === status;
-            return (
-              <div key={status} className="flex flex-col gap-3">
-                <div className="flex items-center gap-2 px-1">
-                  <span className={`h-2 w-2 rounded-full ${dotColors[status]}`} />
-                  <h3 className="text-sm font-medium text-gray-700">{labels[status]}</h3>
-                  <span className="text-xs text-gray-400">{statusTasks.length}</span>
-                </div>
-                <div
-                  onDragOver={(e) => handleDragOver(e, status)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={() => handleDrop(status)}
-                  className={`flex min-h-[160px] flex-col gap-2 rounded-xl p-3 transition-colors ${
-                    isOver ? "bg-blue-50 ring-2 ring-blue-200" : "bg-white"
-                  }`}
-                >
-                  {statusTasks.length === 0 ? (
-                    <button
-                      onClick={() => setShowCreateTask(status)}
-                      className="m-auto flex flex-col items-center gap-1.5 text-gray-300 transition-colors hover:text-gray-400"
-                    >
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                      <span className="text-xs">{isOver ? t("tasks.dropHere") : t("tasks.clickToAdd")}</span>
-                    </button>
-                  ) : (
-                    statusTasks.map((task) => {
-                      const pc = priorityConfig[task.priority];
-                      return (
-                        <div
-                          key={task.id}
-                          draggable
-                          onMouseDown={handleMouseDown}
-                          onDragStart={() => handleDragStart(task.id)}
-                          onClick={() => handleTaskClick(task)}
-                          className="cursor-pointer rounded-lg border border-gray-100 p-3 transition-colors hover:border-gray-200 active:cursor-grabbing active:border-blue-200 active:bg-blue-50/50"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-medium text-gray-900 line-clamp-2">{task.title}</p>
-                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${pc.bg} ${pc.text}`}>{pc.label}</span>
-                          </div>
-                          {task.description && (
-                            <p className="mt-1 text-xs text-gray-400 line-clamp-1">{task.description}</p>
-                          )}
-                          <div className="mt-2 flex items-center justify-between">
-                            <div className="flex items-center">
-                              {task.assignees.length > 0 && (
-                                <div className="flex -space-x-1">
-                                  {task.assignees.slice(0, 3).map((a, i) => (
-                                    <div key={i} className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[8px] font-medium text-gray-500">
-                                      {a.avatarUrl ? <Image src={a.avatarUrl} alt="" width={20} height={20} className="h-5 w-5 rounded-full object-cover" /> : a.name[0]}
-                                    </div>
-                                  ))}
-                                  {task.assignees.length > 3 && (
-                                    <span className="ml-1 text-[10px] text-gray-400">+{task.assignees.length - 3}</span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            {task.dueDate && (
-                              <span className="text-[11px] text-gray-400">
-                                {new Date(task.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                  {statusTasks.length > 0 && (
-                    <button
-                      onClick={() => setShowCreateTask(status)}
-                      className="mt-1 flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-gray-200 py-2 text-xs text-gray-300 transition-colors hover:border-gray-300 hover:text-gray-400"
-                    >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                      {t("common.add")}
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* 메인/서브 태스크 트리 */}
+      <TaskTree projectId={project.id} mainTasks={mainTasks} members={members} currentUserId={currentUserId} />
 
       {/* 모달들 (dynamic import) */}
       {showEdit && <EditProjectModal project={project} onClose={() => setShowEdit(false)} />}
       {showAddMember && (
         <AddMemberModal projectId={project.id} currentMemberIds={members.map((m) => m.id)} allMembers={allMembers} onClose={() => setShowAddMember(false)} />
-      )}
-      {showCreateTask && (
-        <CreateTaskModal projectId={project.id} initialStatus={showCreateTask} allMembers={members} onClose={() => { setShowCreateTask(null); router.refresh(); }} />
-      )}
-      {selectedTask && (
-        <TaskDetailModal
-          task={selectedTask}
-          projectId={project.id}
-          allMembers={members}
-          projectMembers={members}
-          currentUserId={currentUserId}
-          onClose={() => { setSelectedTask(null); router.refresh(); }}
-        />
       )}
     </div>
   );

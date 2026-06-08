@@ -50,7 +50,7 @@ export async function updateSession(request: NextRequest) {
   // 로그인 → auth 페이지 접근 차단
   if (user && (pathname === "/" || pathname.startsWith("/login"))) {
     const url = request.nextUrl.clone();
-    url.pathname = "/attendance";
+    url.pathname = "/projects"; // [DEV] 원래 /attendance — 작업 끝나면 원복
     return NextResponse.redirect(url);
   }
 

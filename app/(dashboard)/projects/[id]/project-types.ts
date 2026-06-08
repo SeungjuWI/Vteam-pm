@@ -21,6 +21,10 @@ export interface Task {
   dueDate: string | null;
 }
 
+export interface MainTask extends Task {
+  subtasks: Task[];
+}
+
 export interface Project {
   id: string;
   name: string;

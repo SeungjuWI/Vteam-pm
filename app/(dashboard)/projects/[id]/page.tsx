@@ -34,7 +34,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       .eq("project_id", id),
     adminClient
       .from("tasks")
-      .select("id, title, description, status, priority, due_date, created_at")
+      .select("id, title, description, status, priority, due_date, created_at, parent_task_id")
       .eq("project_id", id)
       .order("created_at", { ascending: false }),
     adminClient
@@ -78,7 +78,7 @@ export default async function ProjectDetailPage({ params }: Props) {
     }
   }
 
-  const tasks = (tasksRes.data || []).map((t) => ({
+  const allTasks = (tasksRes.data || []).map((t) => ({
     id: t.id,
     title: t.title,
     description: t.description,
@@ -86,7 +86,20 @@ export default async function ProjectDetailPage({ params }: Props) {
     priority: t.priority as "low" | "medium" | "high",
     assignees: taskAssigneesMap[t.id] || [],
     dueDate: t.due_date,
+    parentTaskId: t.parent_task_id as string | null,
   }));
+
+  // 메인(parent 없음) + 서브(parent 있음) 트리 구성
+  const subsByParent: Record<string, typeof allTasks> = {};
+  for (const t of allTasks) {
+    if (t.parentTaskId) (subsByParent[t.parentTaskId] ||= []).push(t);
+  }
+  const mainTasks = allTasks
+    .filter((t) => !t.parentTaskId)
+    .map((t) => ({
+      ...t,
+      subtasks: (subsByParent[t.id] || []).slice().reverse(), // 조회는 desc → 서브는 생성 오름차순
+    }));
 
   // OKR 조회 (목표 + 핵심결과)
   const { data: objectivesData } = await adminClient
@@ -134,7 +147,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       }}
       members={projectMembers}
       allMembers={allMembers}
-      tasks={tasks}
+      mainTasks={mainTasks}
       objectives={objectives}
       currentUserId={user.id}
     />

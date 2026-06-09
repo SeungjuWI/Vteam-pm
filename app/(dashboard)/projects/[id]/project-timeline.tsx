@@ -87,8 +87,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, current
     for (const s of m.subtasks) for (const x of [ymOf(s.startDate), ymOf(s.dueDate)]) if (x !== null) yms.push(x);
   }
   for (const ms of milestones) { const x = ymOf(ms.date); if (x !== null) yms.push(x); }
-  const minYm = yms.length ? Math.min(...yms, nowYm) : nowYm;
-  const maxYm = yms.length ? Math.max(...yms, nowYm) : nowYm;
+  const decYm = now.getFullYear() * 12 + 11; // 기본값: 올해 12월까지 표시
+  const minYm = Math.min(nowYm, ...yms);
+  const maxYm = Math.max(nowYm, decYm, ...yms);
   const N = maxYm - minYm + 1;
   const columns = Array.from({ length: N }, (_, i) => minYm + i);
   const label = (ym: number) => `${(ym % 12) + 1}월`;
@@ -106,12 +107,12 @@ export default function ProjectTimeline({ projectId, mainTasks, members, current
     if (ei < si) ei = si;
     return { left: `calc(${pct(si)}% + 4px)`, width: `calc(${pct(ei - si + 1)}% - 8px)` };
   }
-  function msLeft(date: string) {
+  function msPct(date: string) {
     const dt = new Date(date);
     const ym = dt.getFullYear() * 12 + dt.getMonth();
     const dim = new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate();
     const idx = Math.max(0, Math.min(N - 1, ym - minYm));
-    return `${((idx + (dt.getDate() - 1) / dim) / N) * 100}%`;
+    return ((idx + (dt.getDate() - 1) / dim) / N) * 100;
   }
 
   const Columns = () => (
@@ -227,13 +228,17 @@ export default function ProjectTimeline({ projectId, mainTasks, members, current
         </div>
         <div className="relative h-11 flex-1">
           <Columns />
-          {milestones.map((ms) => (
-            <div key={ms.id} className="group absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-1" style={{ left: msLeft(ms.date) }}>
+          {milestones.map((ms) => {
+            const lp = msPct(ms.date);
+            const align = lp < 12 ? "translate-x-0" : lp > 88 ? "-translate-x-full" : "-translate-x-1/2";
+            return (
+            <div key={ms.id} className={`group absolute top-1/2 flex ${align} -translate-y-1/2 items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-1`} style={{ left: `${lp}%` }}>
               <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1l9 9-9 9-9-9z" /></svg>
               <span className="whitespace-nowrap text-[10px] font-semibold text-white">{ms.title}</span>
               <button onClick={() => { startTx(async () => { await deleteMilestone(ms.id, projectId); router.refresh(); }); }} className="ml-0.5 hidden text-white/80 hover:text-white group-hover:block"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       {addingMs && (

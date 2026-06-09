@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { quickAddTask, updateTaskStatus, addMilestone, deleteMilestone } from "../actions";
+import { quickAddTask, updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
 
@@ -72,6 +72,14 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const [msDate, setMsDate] = useState("");
   const [, startTx] = useTransition();
 
+  // 드래그 상태 (막대/마일스톤 기간 조정)
+  const [dragOverride, setDragOverride] = useState<{ id: string; startDate: string; dueDate: string } | null>(null);
+  const [msOverride, setMsOverride] = useState<{ id: string; date: string } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef<null | { kind: "task" | "ms"; mode: "move" | "l" | "r"; id: string; rect: DOMRect; anchorYm: number; origS: number; origE: number; latest?: { startDate?: string; dueDate?: string; date?: string } }>(null);
+  const moved = useRef(false);
+  useEffect(() => { setDragOverride(null); setMsOverride(null); }, [mainTasks, milestones]);
+
   function toggle(id: string) { setOpen((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
   function toggleDone(task: Task) {
     const next = task.status === "done" ? "todo" : "done";
@@ -121,6 +129,66 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     </div>
   );
 
+  // ── 드래그 (막대 이동/리사이즈, 마일스톤 이동) ──
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const ymToStart = (ym: number) => `${Math.floor(ym / 12)}-${pad((ym % 12) + 1)}-01`;
+  const ymToEnd = (ym: number) => { const y = Math.floor(ym / 12), mo = ym % 12; return `${y}-${pad(mo + 1)}-${pad(new Date(y, mo + 1, 0).getDate())}`; };
+  const ymAt = (clientX: number, rect: DOMRect) => minYm + clamp(Math.floor((clientX - rect.left) / (rect.width / N)), 0, N - 1);
+  const dsv = (task: { id: string; startDate: string | null }) => (dragOverride?.id === task.id ? dragOverride.startDate : task.startDate);
+  const dev = (task: { id: string; dueDate: string | null }) => (dragOverride?.id === task.id ? dragOverride.dueDate : task.dueDate);
+  const msDateOf = (ms: Milestone) => (msOverride?.id === ms.id ? msOverride.date : ms.date);
+
+  function startDrag(e: React.MouseEvent, kind: "task" | "ms", mode: "move" | "l" | "r", item: { id: string; startDate?: string | null; dueDate?: string | null }) {
+    const trackEl = (e.currentTarget as HTMLElement).closest("[data-track]") as HTMLElement | null;
+    if (!trackEl) return;
+    e.preventDefault(); e.stopPropagation();
+    const rect = trackEl.getBoundingClientRect();
+    const anchorYm = ymAt(e.clientX, rect);
+    if (kind === "ms") {
+      drag.current = { kind, mode: "move", id: item.id, rect, anchorYm, origS: 0, origE: 0 };
+    } else {
+      const s = ymOf(item.startDate ?? null) ?? ymOf(item.dueDate ?? null) ?? nowYm;
+      const en = ymOf(item.dueDate ?? null) ?? ymOf(item.startDate ?? null) ?? nowYm;
+      drag.current = { kind, mode, id: item.id, rect, anchorYm, origS: Math.min(s, en), origE: Math.max(s, en) };
+    }
+    moved.current = false;
+    setDragging(true);
+  }
+
+  useEffect(() => {
+    if (!dragging) return;
+    function onMove(e: MouseEvent) {
+      const d = drag.current; if (!d) return;
+      moved.current = true;
+      const ym = ymAt(e.clientX, d.rect);
+      if (d.kind === "ms") { const date = ymToStart(ym); d.latest = { date }; setMsOverride({ id: d.id, date }); return; }
+      let s = d.origS, en = d.origE;
+      if (d.mode === "move") { const w = d.origE - d.origS; s = clamp(d.origS + (ym - d.anchorYm), minYm, maxYm - w); en = s + w; }
+      else if (d.mode === "l") s = Math.min(ym, d.origE);
+      else if (d.mode === "r") en = Math.max(ym, d.origS);
+      const startDate = ymToStart(s), dueDate = ymToEnd(en);
+      d.latest = { startDate, dueDate };
+      setDragOverride({ id: d.id, startDate, dueDate });
+    }
+    function onUp() {
+      const d = drag.current;
+      drag.current = null;
+      setDragging(false);
+      if (!d || !moved.current || !d.latest) return;
+      if (d.kind === "ms" && d.latest.date) {
+        const date = d.latest.date;
+        startTx(async () => { await updateMilestoneDate(d.id, projectId, date); router.refresh(); });
+      } else if (d.latest.startDate && d.latest.dueDate) {
+        const { startDate, dueDate } = d.latest;
+        startTx(async () => { await updateTaskDates(d.id, projectId, startDate, dueDate); router.refresh(); });
+      }
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+  }, [dragging, minYm, maxYm, N, projectId, router]);
+
   async function submitMilestone() {
     if (!msTitle.trim() || !msDate) { setAddingMs(false); return; }
     await addMilestone(projectId, msTitle, msDate);
@@ -166,13 +234,15 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 </button>
                 <button onClick={() => setSelected(row)} className={`truncate text-left text-sm font-medium hover:text-blue-600 ${isDone ? "text-gray-300 line-through" : "text-gray-900"}`}>{row.title}</button>
               </div>
-              <button onClick={() => setSelected(row)} className="relative block h-12 flex-1 cursor-pointer">
+              <button data-track onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className="relative block h-12 flex-1 cursor-pointer">
                 <Columns />
-                <div className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center rounded-lg ring-1 ring-inset ${tn.ring} group-hover:ring-2`} style={span(row.startDate, row.dueDate)}>
+                <div onMouseDown={(e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 cursor-grab items-center rounded-lg ring-1 ring-inset ${tn.ring} group-hover:ring-2 active:cursor-grabbing`} style={span(dsv(row), dev(row))}>
                   <div className={`absolute inset-0 rounded-lg ${tn.soft}`} />
                   <div className={`absolute inset-y-0 left-0 rounded-lg ${tn.solid}`} style={{ width: `${pctV}%` }} />
+                  <span onMouseDown={(e) => startDrag(e, "task", "l", row)} className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-l-lg" />
                   <span className="relative z-10 ml-2.5 text-[11px] font-semibold text-gray-700">{pctV}%</span>
                   {row.assignees[0] && <span className="absolute -right-1 top-1/2 z-10 -translate-y-1/2"><Avatar a={row.assignees[0]} /></span>}
+                  <span onMouseDown={(e) => startDrag(e, "task", "r", row)} className="absolute right-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-r-lg" />
                 </div>
               </button>
             </div>
@@ -188,10 +258,12 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                         <Check done={sDone} onClick={() => toggleDone(sub)} />
                         <button onClick={() => setSelected(sub)} className={`truncate text-left text-[13px] hover:text-blue-600 ${sDone ? "text-gray-300 line-through" : "text-gray-600"}`}>{sub.title}</button>
                       </div>
-                      <button onClick={() => setSelected(sub)} className="relative block h-9 flex-1 cursor-pointer">
+                      <button data-track onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className="relative block h-9 flex-1 cursor-pointer">
                         <Columns />
-                        <div className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center rounded-md ${SUB_SOLID} group-hover:ring-2 ${SUB_RING}`} style={span(sub.startDate, sub.dueDate)}>
+                        <div onMouseDown={(e) => startDrag(e, "task", "move", sub)} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 cursor-grab items-center rounded-md ${SUB_SOLID} group-hover:ring-2 ${SUB_RING} active:cursor-grabbing`} style={span(dsv(sub), dev(sub))}>
+                          <span onMouseDown={(e) => startDrag(e, "task", "l", sub)} className="absolute left-0 top-0 z-20 h-full w-1.5 cursor-ew-resize" />
                           {sub.assignees[0] && <span className="absolute -right-0.5 top-1/2 -translate-y-1/2"><Avatar a={sub.assignees[0]} size="xs" /></span>}
+                          <span onMouseDown={(e) => startDrag(e, "task", "r", sub)} className="absolute right-0 top-0 z-20 h-full w-1.5 cursor-ew-resize" />
                         </div>
                       </button>
                     </div>
@@ -226,16 +298,16 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           <span className="text-xs font-medium text-amber-700">마일스톤</span>
           <button onClick={() => setAddingMs((v) => !v)} className="ml-1 text-amber-500 hover:text-amber-700"><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button>
         </div>
-        <div className="relative h-11 flex-1">
+        <div data-track className="relative h-11 flex-1">
           <Columns />
           {milestones.map((ms) => {
-            const lp = msPct(ms.date);
+            const lp = msPct(msDateOf(ms));
             const align = lp < 12 ? "translate-x-0" : lp > 88 ? "-translate-x-full" : "-translate-x-1/2";
             return (
-            <div key={ms.id} className={`group absolute top-1/2 flex ${align} -translate-y-1/2 items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-1`} style={{ left: `${lp}%` }}>
+            <div key={ms.id} onMouseDown={(e) => startDrag(e, "ms", "move", ms)} className={`group absolute top-1/2 flex ${align} -translate-y-1/2 cursor-grab items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-1 active:cursor-grabbing`} style={{ left: `${lp}%` }}>
               <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1l9 9-9 9-9-9z" /></svg>
               <span className="whitespace-nowrap text-[10px] font-semibold text-white">{ms.title}</span>
-              <button onClick={() => { startTx(async () => { await deleteMilestone(ms.id, projectId); router.refresh(); }); }} className="ml-0.5 hidden text-white/80 hover:text-white group-hover:block"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+              <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); startTx(async () => { await deleteMilestone(ms.id, projectId); router.refresh(); }); }} className="ml-0.5 hidden text-white/80 hover:text-white group-hover:block"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             );
           })}

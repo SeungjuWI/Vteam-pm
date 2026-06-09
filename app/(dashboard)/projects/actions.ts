@@ -542,6 +542,42 @@ export async function deleteTaskComment(commentId: string, projectId: string) {
   return { success: true };
 }
 
+// 드래그로 태스크 기간 변경
+export async function updateTaskDates(taskId: string, projectId: string, startDate: string | null, dueDate: string | null) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  const { error } = await adminClient
+    .from("tasks")
+    .update({ start_date: startDate, due_date: dueDate })
+    .eq("id", taskId);
+
+  if (error) return { error: "기간 변경에 실패했습니다" };
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
+
+// 드래그로 마일스톤 날짜 변경
+export async function updateMilestoneDate(milestoneId: string, projectId: string, date: string) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  const { error } = await adminClient
+    .from("project_milestones")
+    .update({ date })
+    .eq("id", milestoneId);
+
+  if (error) return { error: "마일스톤 변경에 실패했습니다" };
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
+
 export async function addMilestone(projectId: string, title: string, date: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();

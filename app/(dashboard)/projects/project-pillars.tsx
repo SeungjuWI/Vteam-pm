@@ -14,6 +14,7 @@ interface Project {
   id: string;
   name: string;
   status: string;
+  imageUrl: string | null;
   members: PillarMember[];
   nextMilestone: { title: string; date: string } | null;
 }
@@ -82,7 +83,16 @@ export default function ProjectPillars({ projects, members, isAdmin }: { project
                 </button>
               )}
               <div>
-                <h3 className="text-2xl font-semibold tracking-tight text-gray-900">{p.name}</h3>
+                <div className="flex items-center gap-3">
+                  {p.imageUrl ? (
+                    <Image src={p.imageUrl} alt={p.name} width={48} height={48} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                  ) : (
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${accents[idx % accents.length]} text-lg font-semibold text-white`}>
+                      {p.name[0]}
+                    </div>
+                  )}
+                  <h3 className="text-2xl font-semibold tracking-tight text-gray-900">{p.name}</h3>
+                </div>
                 <div className="mt-3 flex items-center gap-2">
                   {p.members.length > 0 ? (
                     <>

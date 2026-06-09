@@ -14,7 +14,7 @@ export default async function ProjectsPage() {
   const [projectsRes, membersRes] = await Promise.all([
     adminClient
       .from("projects")
-      .select("id, name, status, created_at")
+      .select("id, name, status, image_url, created_at")
       .eq("company_id", profile.company_id)
       .order("created_at", { ascending: false }),
     adminClient
@@ -54,6 +54,7 @@ export default async function ProjectsPage() {
     id: p.id,
     name: p.name,
     status: p.status,
+    imageUrl: p.image_url,
     members: pmMap[p.id] || [],
     nextMilestone: nextMsMap[p.id] || null,
   }));

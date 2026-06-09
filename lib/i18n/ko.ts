@@ -322,6 +322,8 @@ const ko = {
   "matrix.empty": "프로젝트가 없습니다",
   "matrix.openProject": "프로젝트 열기",
   "matrix.openHint": "클릭하면 상세",
+  "matrix.open": "열기",
+  "matrix.noMilestone": "예정된 마일스톤 없음",
 
   // OKR
   "okr.title": "OKR",

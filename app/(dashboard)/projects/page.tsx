@@ -1,21 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
-import ProjectTimelineMatrix from "./project-timeline-matrix";
-
-type TaskRow = {
-  id: string;
-  project_id: string;
-  parent_task_id: string | null;
-  status: string;
-  due_date: string | null;
-  title: string;
-};
-
-function monthKey(due: string | null): string {
-  if (!due) return "tbd";
-  const d = new Date(due);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
+import ProjectPillars from "./project-pillars";
 
 export default async function ProjectsPage() {
   const user = await getAuthUser();
@@ -43,95 +28,35 @@ export default async function ProjectsPage() {
 
   const rawProjects = projectsRes.data || [];
   const members = (membersRes.data || []).map((m) => ({
-    id: m.id,
-    name: m.name,
-    email: m.email,
-    avatarUrl: m.avatar_url,
+    id: m.id, name: m.name, email: m.email, avatarUrl: m.avatar_url,
   }));
 
   const projectIds = rawProjects.map((p) => p.id);
-  let tasksData: TaskRow[] = [];
+  let pmMap: Record<string, { name: string; avatarUrl: string | null }[]> = {};
+  let nextMsMap: Record<string, { title: string; date: string }> = {};
+
   if (projectIds.length > 0) {
-    const { data } = await adminClient
-      .from("tasks")
-      .select("id, project_id, parent_task_id, status, due_date, title")
-      .in("project_id", projectIds);
-    tasksData = (data as TaskRow[]) || [];
-  }
-
-  // 서브태스크를 부모별로 묶어 진행률 계산에 사용
-  const subsByParent: Record<string, TaskRow[]> = {};
-  for (const tk of tasksData) {
-    if (tk.parent_task_id) (subsByParent[tk.parent_task_id] ||= []).push(tk);
-  }
-  const completion = (tk: TaskRow): number => {
-    const subs = subsByParent[tk.id] || [];
-    if (subs.length > 0) return subs.filter((s) => s.status === "done").length / subs.length;
-    return tk.status === "done" ? 1 : tk.status === "in_progress" ? 0.5 : 0;
-  };
-
-  const mains = tasksData.filter((tk) => !tk.parent_task_id);
-
-  // 타임라인 컬럼: 마감일이 있는 메인태스크들의 최소~최대 월을 연속으로 채움 + (미정 있으면 마지막)
-  const monthSet = new Set<string>();
-  let hasTbd = false;
-  for (const m of mains) {
-    const k = monthKey(m.due_date);
-    if (k === "tbd") hasTbd = true;
-    else monthSet.add(k);
-  }
-  const columns: string[] = [];
-  if (monthSet.size > 0) {
-    const sorted = [...monthSet].sort();
-    const [minY, minM] = sorted[0].split("-").map(Number);
-    const [maxY, maxM] = sorted[sorted.length - 1].split("-").map(Number);
-    let y = minY, mo = minM;
-    while (y < maxY || (y === maxY && mo <= maxM)) {
-      columns.push(`${y}-${String(mo).padStart(2, "0")}`);
-      mo++;
-      if (mo > 12) { mo = 1; y++; }
+    const today = new Date().toISOString().slice(0, 10);
+    const [pmRes, msRes] = await Promise.all([
+      adminClient.from("project_members").select("project_id, member_id").in("project_id", projectIds),
+      adminClient.from("project_milestones").select("project_id, title, date").in("project_id", projectIds).gte("date", today).order("date", { ascending: true }),
+    ]);
+    for (const pm of pmRes.data || []) {
+      const m = members.find((x) => x.id === pm.member_id);
+      if (m) (pmMap[pm.project_id] ||= []).push({ name: m.name, avatarUrl: m.avatarUrl });
     }
-  } else {
-    const now = new Date();
-    columns.push(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
-  }
-  if (hasTbd) columns.push("tbd");
-
-  const buildCell = (list: TaskRow[]) => {
-    const comps = list.map(completion);
-    const progress = Math.round((comps.reduce((a, b) => a + b, 0) / comps.length) * 100);
-    return {
-      progress,
-      done: comps.filter((c) => c === 1).length,
-      total: list.length,
-      tasks: list.map((m) => ({ id: m.id, title: m.title, completion: Math.round(completion(m) * 100) })),
-    };
-  };
-
-  const projects = rawProjects.map((p) => {
-    const pMains = mains.filter((m) => m.project_id === p.id);
-    const cells: Record<string, ReturnType<typeof buildCell>> = {};
-    for (const k of columns) {
-      const list = pMains.filter((m) => monthKey(m.due_date) === k);
-      if (list.length > 0) cells[k] = buildCell(list);
-    }
-    const overall = pMains.length > 0
-      ? Math.round((pMains.map(completion).reduce((a, b) => a + b, 0) / pMains.length) * 100)
-      : 0;
-    return { id: p.id, name: p.name, status: p.status, overall, cells };
-  });
-
-  // 전체(하단) 행
-  const totals: Record<string, { progress: number; done: number; total: number }> = {};
-  for (const k of columns) {
-    const list = mains.filter((m) => monthKey(m.due_date) === k);
-    if (list.length > 0) {
-      const { progress, done, total } = buildCell(list);
-      totals[k] = { progress, done, total };
+    for (const ms of msRes.data || []) {
+      if (!nextMsMap[ms.project_id]) nextMsMap[ms.project_id] = { title: ms.title, date: ms.date };
     }
   }
 
-  return (
-    <ProjectTimelineMatrix projects={projects} columns={columns} totals={totals} members={members} />
-  );
+  const projects = rawProjects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    status: p.status,
+    members: pmMap[p.id] || [],
+    nextMilestone: nextMsMap[p.id] || null,
+  }));
+
+  return <ProjectPillars projects={projects} members={members} />;
 }

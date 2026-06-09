@@ -324,6 +324,8 @@ const en: Record<TranslationKey, string> = {
   "matrix.empty": "No projects",
   "matrix.openProject": "Open project",
   "matrix.openHint": "Click to open",
+  "matrix.open": "Open",
+  "matrix.noMilestone": "No upcoming milestone",
 
   // OKR
   "okr.title": "OKR",

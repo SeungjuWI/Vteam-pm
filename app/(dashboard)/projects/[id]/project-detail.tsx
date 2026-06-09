@@ -16,11 +16,6 @@ const AddMemberModal = dynamic(() => import("./add-member-modal"));
 const ProjectDiscussionButton = dynamic(() => import("./project-discussion-button"));
 const OkrSection = dynamic(() => import("./okr-section"));
 
-function mainCompletion(t: MainTask): number {
-  if (t.subtasks.length > 0) return t.subtasks.filter((s) => s.status === "done").length / t.subtasks.length;
-  return t.status === "done" ? 1 : t.status === "in_progress" ? 0.5 : 0;
-}
-
 interface Props {
   project: Project;
   members: Member[];
@@ -58,6 +53,7 @@ function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string
 export default function ProjectDetail({ project, members, allMembers, mainTasks, objectives, milestones, currentUserId }: Props) {
   const t = useT();
   const [view, setView] = useState<"timeline" | "board">("timeline");
+  const [showOkr, setShowOkr] = useState(false);
   const sc = statusStyles[project.status] || statusStyles.active;
   const statusLabelMap: Record<string, string> = {
     active: t("projects.active"),
@@ -68,14 +64,6 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
   const [showMembers, setShowMembers] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
-
-  const totalCount = mainTasks.length;
-  const doneCount = mainTasks.filter((m) => mainCompletion(m) === 1).length;
-  const inProgressCount = mainTasks.filter((m) => { const c = mainCompletion(m); return c > 0 && c < 1; }).length;
-  const todoCount = totalCount - doneCount - inProgressCount;
-  const progressPercent = totalCount > 0
-    ? Math.round((mainTasks.reduce((s, m) => s + mainCompletion(m), 0) / totalCount) * 100)
-    : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -173,39 +161,6 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
         </div>
       </div>
 
-      {/* 진행도 대시보드 */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="flex flex-col gap-3 rounded-xl bg-white p-5">
-          <p className="text-xs font-medium text-gray-500">{t("projects.progress")}</p>
-          <div className="flex items-end gap-2">
-            <span className="text-3xl font-semibold text-gray-900">{progressPercent}</span>
-            <span className="mb-1 text-sm text-gray-400">%</span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full rounded-full bg-blue-500 transition-all duration-500" style={{ width: `${progressPercent}%` }} />
-          </div>
-        </div>
-        {([
-          { label: t("tasks.todo"), count: todoCount, dot: "bg-gray-400" },
-          { label: t("tasks.inProgress"), count: inProgressCount, dot: "bg-blue-500" },
-          { label: t("tasks.done"), count: doneCount, dot: "bg-green-500" },
-        ] as const).map((item) => (
-          <div key={item.label} className="flex flex-col gap-3 rounded-xl bg-white p-5">
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${item.dot}`} />
-              <p className="text-xs font-medium text-gray-500">{item.label}</p>
-            </div>
-            <div className="flex items-end gap-2">
-              <span className="text-3xl font-semibold text-gray-900">{item.count}</span>
-              <span className="mb-1 text-sm text-gray-400">{t("tasks.count")}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* OKR 섹션 (월별) */}
-      <OkrSection projectId={project.id} members={members} objectives={objectives} />
-
       {/* 태스크 — 마일스톤(타임라인) / 보드 토글 */}
       <div>
         <div className="mb-4 flex items-center justify-between">
@@ -226,6 +181,19 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
           <ProjectTimeline projectId={project.id} mainTasks={mainTasks} members={members} currentUserId={currentUserId} milestones={milestones} />
         ) : (
           <ProjectBoard projectId={project.id} mainTasks={mainTasks} members={members} currentUserId={currentUserId} />
+        )}
+      </div>
+
+      {/* OKR — 접힌 옵션 (잘 안 보지만 필요할 때 추가) */}
+      <div>
+        <button onClick={() => setShowOkr((v) => !v)} className="flex items-center gap-1.5 text-sm font-medium text-gray-500 transition-colors hover:text-gray-900">
+          <svg className={`h-4 w-4 transition-transform ${showOkr ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+          {t("okr.title")}
+        </button>
+        {showOkr && (
+          <div className="mt-4">
+            <OkrSection projectId={project.id} members={members} objectives={objectives} />
+          </div>
         )}
       </div>
 

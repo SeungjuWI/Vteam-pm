@@ -98,12 +98,17 @@ export async function deleteProject(projectId: string) {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("company_id")
+    .select("company_id, role")
     .eq("id", user.id)
     .single();
 
   if (!profile?.company_id) {
     return { error: "권한이 없습니다" };
+  }
+
+  // 프로젝트 삭제는 관리자(admin)만 — 회사 내 모든 프로젝트 삭제 가능
+  if (profile.role !== "admin") {
+    return { error: "프로젝트 삭제 권한이 없습니다 (관리자 전용)" };
   }
 
   const { data: project } = await adminClient

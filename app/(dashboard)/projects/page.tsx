@@ -58,5 +58,5 @@ export default async function ProjectsPage() {
     nextMilestone: nextMsMap[p.id] || null,
   }));
 
-  return <ProjectPillars projects={projects} members={members} />;
+  return <ProjectPillars projects={projects} members={members} isAdmin={profile.role === "admin"} />;
 }

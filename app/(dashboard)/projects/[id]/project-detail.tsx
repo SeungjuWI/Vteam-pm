@@ -6,14 +6,20 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { removeProjectMember } from "../actions";
 import { useT } from "@/lib/i18n";
-import type { Member, MainTask, Project } from "./project-types";
+import type { Member, MainTask, Project, Milestone } from "./project-types";
 import type { Objective } from "./okr-types";
-import TaskTree, { mainCompletion } from "./task-tree";
+import ProjectTimeline from "./project-timeline";
+import ProjectBoard from "./project-board";
 
 const EditProjectModal = dynamic(() => import("./edit-project-modal"));
 const AddMemberModal = dynamic(() => import("./add-member-modal"));
 const ProjectDiscussionButton = dynamic(() => import("./project-discussion-button"));
 const OkrSection = dynamic(() => import("./okr-section"));
+
+function mainCompletion(t: MainTask): number {
+  if (t.subtasks.length > 0) return t.subtasks.filter((s) => s.status === "done").length / t.subtasks.length;
+  return t.status === "done" ? 1 : t.status === "in_progress" ? 0.5 : 0;
+}
 
 interface Props {
   project: Project;
@@ -21,6 +27,7 @@ interface Props {
   allMembers: Member[];
   mainTasks: MainTask[];
   objectives: Objective[];
+  milestones: Milestone[];
   currentUserId: string;
 }
 
@@ -48,8 +55,9 @@ function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string
   );
 }
 
-export default function ProjectDetail({ project, members, allMembers, mainTasks, objectives, currentUserId }: Props) {
+export default function ProjectDetail({ project, members, allMembers, mainTasks, objectives, milestones, currentUserId }: Props) {
   const t = useT();
+  const [view, setView] = useState<"timeline" | "board">("timeline");
   const sc = statusStyles[project.status] || statusStyles.active;
   const statusLabelMap: Record<string, string> = {
     active: t("projects.active"),
@@ -198,8 +206,28 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
       {/* OKR 섹션 (월별) */}
       <OkrSection projectId={project.id} members={members} objectives={objectives} />
 
-      {/* 메인/서브 태스크 트리 */}
-      <TaskTree projectId={project.id} mainTasks={mainTasks} members={members} currentUserId={currentUserId} />
+      {/* 태스크 — 마일스톤(타임라인) / 보드 토글 */}
+      <div>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">{t("tasks.title")}</h2>
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
+            {([
+              { key: "timeline", label: t("tasks.viewTimeline") },
+              { key: "board", label: t("tasks.viewBoard") },
+            ] as const).map((v) => (
+              <button key={v.key} onClick={() => setView(v.key)}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${view === v.key ? "bg-white text-gray-900" : "text-gray-500 hover:text-gray-700"}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {view === "timeline" ? (
+          <ProjectTimeline projectId={project.id} mainTasks={mainTasks} members={members} currentUserId={currentUserId} milestones={milestones} />
+        ) : (
+          <ProjectBoard projectId={project.id} mainTasks={mainTasks} members={members} currentUserId={currentUserId} />
+        )}
+      </div>
 
       {/* 모달들 (dynamic import) */}
       {showEdit && <EditProjectModal project={project} onClose={() => setShowEdit(false)} />}

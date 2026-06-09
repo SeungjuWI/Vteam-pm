@@ -315,12 +315,15 @@ const en: Record<TranslationKey, string> = {
   "tasks.subPlaceholder": "Subtask title",
   "tasks.emptyMain": "Add a main task to get started",
   "tasks.subCount": " subtasks",
+  "tasks.viewTimeline": "Timeline",
+  "tasks.viewBoard": "Board",
   // Timeline matrix
   "matrix.tbd": "TBD",
   "matrix.total": "Total",
   "matrix.cellTitle": "Main tasks",
   "matrix.empty": "No projects",
   "matrix.openProject": "Open project",
+  "matrix.openHint": "Click to open",
 
   // OKR
   "okr.title": "OKR",

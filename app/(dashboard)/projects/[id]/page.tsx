@@ -34,7 +34,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       .eq("project_id", id),
     adminClient
       .from("tasks")
-      .select("id, title, description, status, priority, due_date, created_at, parent_task_id")
+      .select("id, title, description, status, priority, due_date, start_date, created_at, parent_task_id")
       .eq("project_id", id)
       .order("created_at", { ascending: false }),
     adminClient
@@ -86,6 +86,7 @@ export default async function ProjectDetailPage({ params }: Props) {
     priority: t.priority as "low" | "medium" | "high",
     assignees: taskAssigneesMap[t.id] || [],
     dueDate: t.due_date,
+    startDate: t.start_date as string | null,
     parentTaskId: t.parent_task_id as string | null,
   }));
 
@@ -135,6 +136,15 @@ export default async function ProjectDetailPage({ params }: Props) {
     keyResults: keyResultsMap[o.id] || [],
   }));
 
+  // 마일스톤 조회
+  const { data: msData } = await adminClient
+    .from("project_milestones")
+    .select("id, title, date")
+    .eq("project_id", id)
+    .order("date", { ascending: true });
+
+  const milestones = (msData || []).map((m) => ({ id: m.id, title: m.title, date: m.date }));
+
   return (
     <ProjectDetail
       project={{
@@ -149,6 +159,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       allMembers={allMembers}
       mainTasks={mainTasks}
       objectives={objectives}
+      milestones={milestones}
       currentUserId={user.id}
     />
   );

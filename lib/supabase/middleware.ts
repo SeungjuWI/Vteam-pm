@@ -38,7 +38,8 @@ export async function updateSession(request: NextRequest) {
     pathname === "/" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/callback") ||
-    pathname.startsWith("/invite");
+    pathname.startsWith("/invite") ||
+    pathname.startsWith("/preview"); // [DEV] 로그인 없이 UI 미리보기
 
   // 비로그인 → 공개 페이지만
   if (!user && !isPublic) {
@@ -50,7 +51,7 @@ export async function updateSession(request: NextRequest) {
   // 로그인 → auth 페이지 접근 차단
   if (user && (pathname === "/" || pathname.startsWith("/login"))) {
     const url = request.nextUrl.clone();
-    url.pathname = "/projects"; // [DEV] 원래 /attendance — 작업 끝나면 원복
+    url.pathname = "/attendance";
     return NextResponse.redirect(url);
   }
 

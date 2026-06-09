@@ -537,6 +537,37 @@ export async function deleteTaskComment(commentId: string, projectId: string) {
   return { success: true };
 }
 
+export async function addMilestone(projectId: string, title: string, date: string) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+  if (!title.trim() || !date) return { error: "제목과 날짜를 입력해주세요" };
+
+  const { error } = await adminClient
+    .from("project_milestones")
+    .insert({ project_id: projectId, title: title.trim(), date });
+
+  if (error) return { error: "마일스톤 추가에 실패했습니다" };
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
+
+export async function deleteMilestone(milestoneId: string, projectId: string) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  await adminClient.from("project_milestones").delete().eq("id", milestoneId);
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
+
 export async function updateProjectStatus(projectId: string, status: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();

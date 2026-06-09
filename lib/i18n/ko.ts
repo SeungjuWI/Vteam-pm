@@ -313,12 +313,15 @@ const ko = {
   "tasks.subPlaceholder": "서브 태스크 제목",
   "tasks.emptyMain": "메인 태스크를 추가해 시작하세요",
   "tasks.subCount": "개 서브",
+  "tasks.viewTimeline": "마일스톤",
+  "tasks.viewBoard": "보드",
   // 타임라인 매트릭스
   "matrix.tbd": "미정",
   "matrix.total": "전체",
   "matrix.cellTitle": "메인 태스크",
   "matrix.empty": "프로젝트가 없습니다",
   "matrix.openProject": "프로젝트 열기",
+  "matrix.openHint": "클릭하면 상세",
 
   // OKR
   "okr.title": "OKR",

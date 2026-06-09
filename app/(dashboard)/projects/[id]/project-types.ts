@@ -19,10 +19,17 @@ export interface Task {
   priority: "low" | "medium" | "high";
   assignees: TaskAssignee[];
   dueDate: string | null;
+  startDate: string | null;
 }
 
 export interface MainTask extends Task {
   subtasks: Task[];
+}
+
+export interface Milestone {
+  id: string;
+  title: string;
+  date: string;
 }
 
 export interface Project {

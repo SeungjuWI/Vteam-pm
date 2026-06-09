@@ -38,6 +38,7 @@ interface Props {
   columns: string[];
   totals: Record<string, { progress: number; done: number; total: number }>;
   members: Member[];
+  basePath?: string; // 프로젝트 상세 링크 베이스 (기본 /projects, 프리뷰는 /preview)
 }
 
 // 진행률 → 셀 색상
@@ -47,7 +48,7 @@ function cellTone(progress: number): { text: string; bar: string } {
   return { text: "text-gray-400", bar: "bg-gray-300" };
 }
 
-export default function ProjectTimelineMatrix({ projects, columns, totals, members }: Props) {
+export default function ProjectTimelineMatrix({ projects, columns, totals, members, basePath = "/projects" }: Props) {
   const t = useT();
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState<string>("all");
@@ -103,7 +104,7 @@ export default function ProjectTimelineMatrix({ projects, columns, totals, membe
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="sticky left-0 z-10 bg-white px-4 py-3 text-left text-xs font-medium text-gray-400">
-                  {t("projects.title")}
+                  {t("projects.title")} <span className="font-normal text-gray-300">· {t("matrix.openHint")}</span>
                 </th>
                 {columns.map((c) => (
                   <th key={c} className="min-w-[72px] px-2 py-3 text-center text-xs font-medium text-gray-500">
@@ -119,6 +120,7 @@ export default function ProjectTimelineMatrix({ projects, columns, totals, membe
                   project={p}
                   columns={columns}
                   colLabel={colLabel}
+                  basePath={basePath}
                   selected={selected}
                   onSelect={(col) =>
                     setSelected((cur) =>
@@ -159,10 +161,11 @@ export default function ProjectTimelineMatrix({ projects, columns, totals, membe
   );
 }
 
-function ProjectRow({ project, columns, colLabel, selected, onSelect }: {
+function ProjectRow({ project, columns, colLabel, basePath, selected, onSelect }: {
   project: MatrixProject;
   columns: string[];
   colLabel: (key: string) => string;
+  basePath: string;
   selected: { projectId: string; col: string } | null;
   onSelect: (col: string) => void;
 }) {
@@ -173,10 +176,19 @@ function ProjectRow({ project, columns, colLabel, selected, onSelect }: {
   return (
     <>
       <tr className="border-b border-gray-50">
-        <th className="sticky left-0 z-10 bg-white px-4 py-3 text-left font-normal">
-          <Link href={`/projects/${project.id}`} className="block">
-            <span className="text-sm font-medium text-gray-900 hover:text-blue-600">{project.name}</span>
-            <span className="mt-0.5 block text-[11px] text-gray-400 tabular-nums">{project.overall}%</span>
+        <th className="sticky left-0 z-10 bg-white px-2 py-2 text-left font-normal">
+          <Link href={`${basePath}/${project.id}`} className="group/link -mx-1 flex items-center gap-2 rounded-xl px-3 py-2 transition-colors hover:bg-blue-50">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1">
+                <span className="truncate text-[15px] font-semibold text-gray-900 group-hover/link:text-blue-600">{project.name}</span>
+              </div>
+              <span className="mt-0.5 block text-[11px] text-gray-400 tabular-nums">
+                {project.overall}% · <span className="text-blue-500 opacity-0 transition-opacity group-hover/link:opacity-100">열기</span>
+              </span>
+            </div>
+            <svg className="h-4 w-4 shrink-0 text-gray-300 transition-all group-hover/link:translate-x-0.5 group-hover/link:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
           </Link>
         </th>
         {columns.map((c) => {
@@ -216,7 +228,7 @@ function ProjectRow({ project, columns, colLabel, selected, onSelect }: {
               {openCell.tasks.map((task) => (
                 <Link
                   key={task.id}
-                  href={`/projects/${project.id}`}
+                  href={`${basePath}/${project.id}`}
                   className="flex items-center gap-2.5 rounded-lg bg-white px-3 py-2 transition-colors hover:bg-gray-50"
                 >
                   <span className={`w-9 shrink-0 text-right text-[11px] font-medium tabular-nums ${cellTone(task.completion).text}`}>

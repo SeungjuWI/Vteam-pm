@@ -71,13 +71,16 @@ export default function ProjectPillars({ projects, members, isAdmin }: { project
               href={`/projects/${p.id}`}
               className="group relative flex h-56 flex-col justify-between overflow-hidden rounded-3xl p-6 transition-all hover:ring-4 hover:ring-blue-100"
             >
-              {/* 배경: 이미지 or 그라데이션 */}
+              {/* 배경: 이미지(흐린 채움 + 원본 통째로) or 그라데이션 */}
               {p.imageUrl ? (
-                <Image src={p.imageUrl} alt={p.name} fill sizes="(max-width:1024px) 50vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                <>
+                  <Image src={p.imageUrl} alt="" fill sizes="(max-width:1024px) 50vw, 33vw" className="scale-110 object-cover blur-2xl" />
+                  <Image src={p.imageUrl} alt={p.name} fill sizes="(max-width:1024px) 50vw, 33vw" className="object-contain p-3 transition-transform duration-500 group-hover:scale-105" />
+                </>
               ) : (
                 <div className={`absolute inset-0 bg-gradient-to-br ${accents[idx % accents.length]}`} />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-black/45" />
 
               {isAdmin && (
                 <button

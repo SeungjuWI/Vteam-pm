@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { updateTask, deleteTask, getTaskComments, createTaskComment, deleteTaskComment } from "../actions";
+import { updateTask, updateTaskStatus, deleteTask, getTaskComments, createTaskComment, deleteTaskComment } from "../actions";
 import { useT, type TFunction } from "@/lib/i18n";
 import type { Member, Task } from "./project-types";
-import { priorityConfig } from "./project-types";
 
 /* ── 댓글 목록 (스크롤 영역 안) ── */
 interface Comment {
@@ -291,17 +290,15 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   task: Task; projectId: string; allMembers: Member[]; projectMembers: Member[]; currentUserId: string; onClose: () => void;
 }) {
   const t = useT();
-  const [editing, setEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
-  const [showMenu, setShowMenu] = useState(false);
 
-  // 수정 폼 state
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
   const [priority, setPriority] = useState(task.priority);
   const [dueDate, setDueDate] = useState(task.dueDate || "");
+  const [status, setStatus] = useState(task.status);
   const [selectedIds, setSelectedIds] = useState<string[]>(
     allMembers.filter((m) => task.assignees.some((a) => a.name === m.name)).map((m) => m.id)
   );
@@ -316,17 +313,31 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
 
   const statusLabels: Record<string, string> = { todo: t("tasks.todo"), in_progress: t("tasks.inProgress"), done: t("tasks.done") };
   const statusDots: Record<string, string> = { todo: "bg-gray-400", in_progress: "bg-blue-500", done: "bg-green-500" };
-  const statusChips: Record<string, string> = { todo: "bg-gray-100 text-gray-600", in_progress: "bg-blue-50 text-blue-600", done: "bg-green-50 text-green-600" };
-  const pc = priorityConfig[task.priority];
+  const statusChips: Record<string, string> = { todo: "text-gray-600", in_progress: "text-blue-600", done: "text-green-600" };
+  const prioOpts = [
+    { key: "low", label: "Low", active: "bg-gray-100 text-gray-700" },
+    { key: "medium", label: "Medium", active: "bg-amber-50 text-amber-700" },
+    { key: "high", label: "High", active: "bg-red-50 text-red-600" },
+  ] as const;
 
-  async function handleSave() {
-    setLoading(true);
-    setError("");
-    const result = await updateTask(task.id, projectId, title, description, priority, dueDate, selectedIds);
-    if (result?.error) { setError(result.error); setLoading(false); }
-    else onClose();
+  // 인라인 자동 저장
+  async function persist(next?: Partial<{ title: string; description: string; priority: "low" | "medium" | "high"; dueDate: string; selectedIds: string[] }>) {
+    setSaving(true);
+    const r = await updateTask(
+      task.id, projectId,
+      (next?.title ?? title).trim() || task.title,
+      next?.description ?? description,
+      next?.priority ?? priority,
+      next?.dueDate ?? dueDate,
+      next?.selectedIds ?? selectedIds,
+    );
+    setSaving(false);
+    setError(r?.error || "");
   }
-
+  async function changeStatus(s: "todo" | "in_progress" | "done") {
+    setStatus(s);
+    await updateTaskStatus(task.id, s, projectId);
+  }
   async function handleDelete() {
     if (!confirm(t("tasks.deleteConfirm"))) return;
     setDeleting(true);
@@ -335,222 +346,107 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     else onClose();
   }
 
-  // 보기 모드
-  if (!editing) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-        <div className="relative flex h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white">
-          {/* 헤더 */}
-          <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 rounded-full ${statusChips[task.status]} px-2.5 py-0.5 text-xs font-medium`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${statusDots[task.status]}`} />
-                {statusLabels[task.status]}
-              </span>
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${pc.bg} ${pc.text}`}>{pc.label}</span>
-            </div>
-            <div className="relative">
-              <button
-                onClick={() => setShowMenu(!showMenu)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-              >
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                </svg>
-              </button>
-              {showMenu && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                  <div className="absolute top-full right-0 z-20 mt-1 w-28 rounded-lg border border-gray-200 bg-white py-1">
-                    <button onClick={() => { setShowMenu(false); setEditing(true); }} className="w-full px-3.5 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                      {t("common.edit")}
-                    </button>
-                    <button onClick={() => { setShowMenu(false); handleDelete(); }} disabled={deleting} className="w-full px-3.5 py-2 text-left text-sm text-red-500 hover:bg-red-50 disabled:opacity-50">
-                      {t("common.delete")}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-          {/* 제목 + 정보 */}
-          <div className="px-6 pt-5">
-            <h2 className="text-lg font-semibold text-gray-900">{task.title}</h2>
-
-            <div className="mt-4 flex flex-col gap-3">
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.assignee")}</span>
-                {task.assignees.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {task.assignees.map((a, i) => (
-                      <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 py-1 pr-2.5 pl-1">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-[10px] font-medium text-gray-600">
-                          {a.avatarUrl ? <Image src={a.avatarUrl} alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" /> : a.name[0]}
-                        </span>
-                        <span className="text-xs font-medium text-gray-700">{a.name}</span>
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-sm text-gray-300">-</span>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.dueDate")}</span>
-                <span className="text-sm text-gray-700">
-                  {task.dueDate
-                    ? new Date(task.dueDate).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
-                    : "-"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* 본문 */}
-          <div className="px-6 pb-3 pt-5">
-            <p className="mb-2 text-xs font-medium text-gray-400">{t("tasks.content")}</p>
-            {task.description ? (
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">{task.description}</p>
-            ) : (
-              <p className="text-sm text-gray-300">{t("tasks.noContent")}</p>
-            )}
-          </div>
-
-          {/* 댓글 목록 */}
-          <TaskCommentList
-            taskId={task.id}
-            projectMembers={projectMembers}
-            currentUserId={currentUserId}
-            projectId={projectId}
-          />
-          </div>
-
-          {/* 댓글 입력 - 하단 고정 */}
-          <TaskCommentInput
-            taskId={task.id}
-            projectId={projectId}
-            projectMembers={projectMembers}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // 수정 모드
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">{t("tasks.edit")}</h2>
-          <button onClick={() => setEditing(false)} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+      <div className="relative flex h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white">
+        {/* 헤더: 상태 토글 + 저장표시 + 삭제 + 닫기 */}
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-3.5">
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
+            {(["todo", "in_progress", "done"] as const).map((s) => (
+              <button key={s} onClick={() => changeStatus(s)}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${status === s ? `bg-white ${statusChips[s]}` : "text-gray-500 hover:text-gray-700"}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${statusDots[s]}`} />{statusLabels[s]}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1">
+            {saving && <span className="mr-1 text-[11px] text-gray-300">{t("common.saving")}</span>}
+            <button onClick={handleDelete} disabled={deleting} title={t("common.delete")} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+            </button>
+            <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.taskTitle")} <span className="text-red-400">*</span></label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
-          </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-6 pt-5">
+            {/* 제목 (인라인) */}
+            <input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => persist()} placeholder={t("tasks.taskTitle")}
+              className="-mx-2 w-[calc(100%+1rem)] rounded-lg px-2 py-1 text-lg font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
 
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.content")}</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full resize-none rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none" />
-          </div>
-
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.priority")}</label>
-              <div className="flex gap-1.5">
-                {([
-                  { key: "low", label: "Low", active: "bg-gray-100 text-gray-700" },
-                  { key: "medium", label: "Medium", active: "bg-amber-50 text-amber-700" },
-                  { key: "high", label: "High", active: "bg-red-50 text-red-600" },
-                ] as const).map((p) => (
-                  <button key={p.key} type="button" onClick={() => setPriority(p.key)} className={`flex-1 rounded-lg py-2 text-xs font-medium transition-colors ${priority === p.key ? p.active : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}>
-                    {p.label}
-                  </button>
-                ))}
+            <div className="mt-4 flex flex-col gap-3">
+              {/* 우선순위 */}
+              <div className="flex items-center gap-3">
+                <span className="w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.priority")}</span>
+                <div className="flex gap-1.5">
+                  {prioOpts.map((p) => (
+                    <button key={p.key} type="button" onClick={() => { setPriority(p.key); persist({ priority: p.key }); }} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${priority === p.key ? p.active : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}>{p.label}</button>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.dueDate")}</label>
-              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
-            </div>
-          </div>
-
-          {/* 담당자 */}
-          <div className="relative">
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.assignee")}</label>
-            {selectedIds.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1.5">
-                {selectedIds.map((mid) => {
-                  const m = allMembers.find((member) => member.id === mid);
-                  if (!m) return null;
-                  return (
-                    <span key={mid} className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 py-1 pr-2 pl-1.5">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[9px] font-medium text-blue-600">
-                        {m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={20} height={20} className="h-5 w-5 rounded-full object-cover" /> : m.name[0]}
-                      </span>
-                      <span className="text-xs font-medium text-blue-700">{m.name}</span>
-                      <button type="button" onClick={() => setSelectedIds((prev) => prev.filter((id) => id !== mid))} className="text-blue-400 hover:text-blue-600">
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                      </button>
-                    </span>
-                  );
-                })}
+              {/* 마감일 */}
+              <div className="flex items-center gap-3">
+                <span className="w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.dueDate")}</span>
+                <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); persist({ dueDate: e.target.value }); }} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
               </div>
-            )}
-            <input
-              ref={searchRef}
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
-              onFocus={() => setShowDropdown(true)}
-              placeholder={selectedIds.length > 0 ? t("common.searchMore") : t("common.searchPlaceholder")}
-              className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
-            />
-            {showDropdown && (
-              <>
-                <div className="fixed inset-0 z-[5]" onClick={() => setShowDropdown(false)} />
-                <div className="absolute top-full left-0 z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1">
-                  {filtered.length === 0 ? (
-                    <p className="px-3.5 py-2 text-sm text-gray-400">{t("common.noResults")}</p>
-                  ) : (
-                    filtered.map((m) => (
-                      <button key={m.id} type="button" onClick={() => { setSelectedIds((prev) => [...prev, m.id]); setSearch(""); setShowDropdown(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors hover:bg-gray-50">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-600">
-                          {m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : m.name[0]}
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-900">{m.name}</p>
-                          <p className="text-[11px] text-gray-400">{m.position || m.email}</p>
-                        </div>
-                      </button>
-                    ))
+              {/* 담당자 (인라인) */}
+              <div className="flex items-start gap-3">
+                <span className="mt-2 w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.assignee")}</span>
+                <div className="relative flex-1">
+                  {selectedIds.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {selectedIds.map((mid) => {
+                        const m = allMembers.find((x) => x.id === mid);
+                        if (!m) return null;
+                        return (
+                          <span key={mid} className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 py-1 pr-2 pl-1.5">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[9px] font-medium text-blue-600">{m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={20} height={20} className="h-5 w-5 rounded-full object-cover" /> : m.name[0]}</span>
+                            <span className="text-xs font-medium text-blue-700">{m.name}</span>
+                            <button type="button" onClick={() => { const ids = selectedIds.filter((id) => id !== mid); setSelectedIds(ids); persist({ selectedIds: ids }); }} className="text-blue-400 hover:text-blue-600"><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <input ref={searchRef} type="text" value={search} onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }} onFocus={() => setShowDropdown(true)} placeholder={selectedIds.length > 0 ? t("common.searchMore") : t("common.searchPlaceholder")} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none" />
+                  {showDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-[5]" onClick={() => setShowDropdown(false)} />
+                      <div className="absolute top-full left-0 z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1">
+                        {filtered.length === 0 ? (
+                          <p className="px-3.5 py-2 text-sm text-gray-400">{t("common.noResults")}</p>
+                        ) : (
+                          filtered.map((m) => (
+                            <button key={m.id} type="button" onClick={() => { const ids = [...selectedIds, m.id]; setSelectedIds(ids); setSearch(""); setShowDropdown(false); persist({ selectedIds: ids }); }} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors hover:bg-gray-50">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-600">{m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : m.name[0]}</div>
+                              <div><p className="text-sm text-gray-900">{m.name}</p><p className="text-[11px] text-gray-400">{m.position || m.email}</p></div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
-              </>
-            )}
+              </div>
+            </div>
           </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
-
-          <div className="mt-1 flex gap-2">
-            <button type="button" onClick={() => setEditing(false)} className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
-              {t("common.cancel")}
-            </button>
-            <button onClick={handleSave} disabled={loading} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50">
-              {loading ? t("common.saving") : t("common.save")}
-            </button>
+          {/* 설명 (인라인) */}
+          <div className="px-6 pb-3 pt-5">
+            <p className="mb-2 text-xs font-medium text-gray-400">{t("tasks.content")}</p>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} onBlur={() => persist()} rows={4} placeholder={t("tasks.contentPlaceholder")} className="w-full resize-none rounded-lg bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
+            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
           </div>
+
+          {/* 댓글 목록 */}
+          <TaskCommentList taskId={task.id} projectMembers={projectMembers} currentUserId={currentUserId} projectId={projectId} />
         </div>
+
+        {/* 댓글 입력 - 하단 고정 */}
+        <TaskCommentInput taskId={task.id} projectId={projectId} projectMembers={projectMembers} />
       </div>
     </div>
   );

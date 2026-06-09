@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import Link from "next/link";
+import { useState, useEffect, useRef, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import CreateProjectModal from "./create-project-modal";
-import { deleteProject } from "./actions";
+import { deleteProject, reorderProjects } from "./actions";
 import { useT } from "@/lib/i18n";
 
 interface Member { id: string; name: string; email: string; avatarUrl: string | null; }
@@ -39,6 +38,14 @@ export default function ProjectPillars({ projects, members, isAdmin }: { project
   const [showModal, setShowModal] = useState(false);
   const [pending, startTx] = useTransition();
 
+  const [items, setItems] = useState(projects);
+  useEffect(() => { setItems(projects); }, [projects]);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const dragId = useRef<string | null>(null);
+  const dragged = useRef(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
   function handleDelete(e: React.MouseEvent, p: Project) {
     e.preventDefault();
     e.stopPropagation();
@@ -50,6 +57,29 @@ export default function ProjectPillars({ projects, members, isAdmin }: { project
     });
   }
 
+  function onDragEnter(targetId: string) {
+    const from = dragId.current;
+    if (!from || from === targetId) return;
+    setItems((prev) => {
+      const arr = [...prev];
+      const fi = arr.findIndex((x) => x.id === from);
+      const ti = arr.findIndex((x) => x.id === targetId);
+      if (fi < 0 || ti < 0) return prev;
+      const [m] = arr.splice(fi, 1);
+      arr.splice(ti, 0, m);
+      return arr;
+    });
+  }
+  function onDragEnd() {
+    dragId.current = null;
+    setDraggingId(null);
+    startTx(async () => { await reorderProjects(itemsRef.current.map((i) => i.id)); });
+  }
+  function navigate(id: string) {
+    if (dragged.current) { dragged.current = false; return; }
+    router.push(`/projects/${id}`);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -59,17 +89,22 @@ export default function ProjectPillars({ projects, members, isAdmin }: { project
         </button>
       </div>
 
-      {projects.length === 0 ? (
+      {items.length === 0 ? (
         <div className="flex items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-white py-20">
           <p className="text-sm text-gray-400">{t("projects.empty")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p, idx) => (
-            <Link
+          {items.map((p, idx) => (
+            <div
               key={p.id}
-              href={`/projects/${p.id}`}
-              className="group relative flex h-56 flex-col justify-between overflow-hidden rounded-3xl p-6 transition-all hover:ring-4 hover:ring-blue-100"
+              draggable={isAdmin}
+              onDragStart={() => { dragId.current = p.id; dragged.current = true; setDraggingId(p.id); }}
+              onDragEnter={() => onDragEnter(p.id)}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnd={onDragEnd}
+              onClick={() => navigate(p.id)}
+              className={`group relative flex h-56 cursor-pointer flex-col justify-between overflow-hidden rounded-3xl p-6 transition-all hover:ring-4 hover:ring-blue-100 ${draggingId === p.id ? "opacity-40" : ""}`}
             >
               {/* 배경: 이미지(흐린 채움 + 원본 통째로) or 그라데이션 */}
               {p.imageUrl ? (
@@ -126,9 +161,13 @@ export default function ProjectPillars({ projects, members, isAdmin }: { project
                   <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </span>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
+      )}
+
+      {isAdmin && items.length > 1 && (
+        <p className="text-center text-xs text-gray-300">카드를 드래그해 순서를 바꿀 수 있습니다</p>
       )}
 
       {showModal && <CreateProjectModal members={members} onClose={() => setShowModal(false)} />}

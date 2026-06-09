@@ -609,6 +609,32 @@ export async function deleteMilestone(milestoneId: string, projectId: string) {
   return { success: true };
 }
 
+// 프로젝트 순서 변경 (드래그 정렬)
+export async function reorderProjects(orderedIds: string[]) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("company_id")
+    .eq("id", user.id)
+    .single();
+  if (!profile?.company_id) return { error: "권한이 없습니다" };
+
+  for (let i = 0; i < orderedIds.length; i++) {
+    await adminClient
+      .from("projects")
+      .update({ sort_order: i })
+      .eq("id", orderedIds[i])
+      .eq("company_id", profile.company_id);
+  }
+
+  revalidatePath("/projects");
+  return { success: true };
+}
+
 export async function updateProjectStatus(projectId: string, status: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();

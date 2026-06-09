@@ -69,57 +69,56 @@ export default function ProjectPillars({ projects, members, isAdmin }: { project
             <Link
               key={p.id}
               href={`/projects/${p.id}`}
-              className="group relative flex h-56 flex-col justify-between overflow-hidden rounded-3xl border border-gray-100 bg-white p-6 transition-all hover:border-blue-200 hover:ring-4 hover:ring-blue-50"
+              className="group relative flex h-56 flex-col justify-between overflow-hidden rounded-3xl p-6 transition-all hover:ring-4 hover:ring-blue-100"
             >
-              <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${accents[idx % accents.length]}`} />
+              {/* 배경: 이미지 or 그라데이션 */}
+              {p.imageUrl ? (
+                <Image src={p.imageUrl} alt={p.name} fill sizes="(max-width:1024px) 50vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+              ) : (
+                <div className={`absolute inset-0 bg-gradient-to-br ${accents[idx % accents.length]}`} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />
+
               {isAdmin && (
                 <button
                   onClick={(e) => handleDelete(e, p)}
                   disabled={pending}
                   title={t("common.delete")}
-                  className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 disabled:opacity-50"
+                  className="absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 text-white/80 backdrop-blur-md transition-all hover:bg-white/30 hover:text-white disabled:opacity-50"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                 </button>
               )}
-              <div>
-                <div className="flex items-center gap-3">
-                  {p.imageUrl ? (
-                    <Image src={p.imageUrl} alt={p.name} width={48} height={48} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
-                  ) : (
-                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${accents[idx % accents.length]} text-lg font-semibold text-white`}>
-                      {p.name[0]}
-                    </div>
-                  )}
-                  <h3 className="text-2xl font-semibold tracking-tight text-gray-900">{p.name}</h3>
-                </div>
-                <div className="mt-3 flex items-center gap-2">
+
+              <div className="relative z-10">
+                <h3 className="text-2xl font-semibold tracking-tight text-white drop-shadow-sm">{p.name}</h3>
+                <div className="mt-2 flex items-center gap-2">
                   {p.members.length > 0 ? (
                     <>
                       <div className="flex -space-x-2">
                         {p.members.slice(0, 4).map((m, i) => (
-                          <span key={i} className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-[11px] font-medium text-gray-600 ring-2 ring-white">
+                          <span key={i} className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-white/20 text-[11px] font-medium text-white ring-2 ring-white/40 backdrop-blur-sm">
                             {m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : m.name[0]}
                           </span>
                         ))}
                       </div>
-                      <span className="text-xs text-gray-400">{p.members.length}{t("projects.members")}</span>
+                      <span className="text-xs text-white/70">{p.members.length}{t("projects.members")}</span>
                     </>
                   ) : (
-                    <span className="text-xs text-gray-300">{t("projects.noMembers")}</span>
+                    <span className="text-xs text-white/50">{t("projects.noMembers")}</span>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-end justify-between">
+              <div className="relative z-10 flex items-end justify-between">
                 {p.nextMilestone ? (
-                  <div className="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1">
-                    <svg className="h-2.5 w-2.5 text-amber-500" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1l9 9-9 9-9-9z" /></svg>
-                    <span className="text-[11px] font-medium text-amber-700">{p.nextMilestone.title} · {fmtDate(p.nextMilestone.date)}</span>
+                  <div className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-md">
+                    <svg className="h-2.5 w-2.5 text-amber-300" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1l9 9-9 9-9-9z" /></svg>
+                    <span className="text-[11px] font-medium text-white">{p.nextMilestone.title} · {fmtDate(p.nextMilestone.date)}</span>
                   </div>
-                ) : <span className="text-[11px] text-gray-300">{t("matrix.noMilestone")}</span>}
+                ) : <span className="text-[11px] text-white/50">{t("matrix.noMilestone")}</span>}
 
-                <span className="flex items-center gap-1 text-sm font-medium text-gray-300 transition-colors group-hover:text-blue-500">
+                <span className="flex items-center gap-1 text-sm font-medium text-white/80 transition-colors group-hover:text-white">
                   {t("matrix.open")}
                   <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </span>

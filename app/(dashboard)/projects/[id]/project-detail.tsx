@@ -178,9 +178,9 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
           </div>
         </div>
         {view === "timeline" ? (
-          <ProjectTimeline projectId={project.id} mainTasks={mainTasks} members={members} currentUserId={currentUserId} milestones={milestones} />
+          <ProjectTimeline projectId={project.id} mainTasks={mainTasks} members={members} allMembers={allMembers} currentUserId={currentUserId} milestones={milestones} />
         ) : (
-          <ProjectBoard projectId={project.id} mainTasks={mainTasks} members={members} currentUserId={currentUserId} />
+          <ProjectBoard projectId={project.id} mainTasks={mainTasks} members={members} allMembers={allMembers} currentUserId={currentUserId} />
         )}
       </div>
 

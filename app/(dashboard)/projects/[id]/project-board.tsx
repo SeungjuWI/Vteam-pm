@@ -12,8 +12,8 @@ import { priorityConfig } from "./project-types";
 const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
 const CreateTaskModal = dynamic(() => import("./create-task-modal"));
 
-export default function ProjectBoard({ projectId, mainTasks, members, currentUserId }: {
-  projectId: string; mainTasks: MainTask[]; members: Member[]; currentUserId: string;
+export default function ProjectBoard({ projectId, mainTasks, members, allMembers, currentUserId }: {
+  projectId: string; mainTasks: MainTask[]; members: Member[]; allMembers: Member[]; currentUserId: string;
 }) {
   const t = useT();
   const router = useRouter();
@@ -98,10 +98,10 @@ export default function ProjectBoard({ projectId, mainTasks, members, currentUse
       })}
 
       {showCreate && (
-        <CreateTaskModal projectId={projectId} initialStatus={showCreate} allMembers={members} onClose={() => { setShowCreate(null); router.refresh(); }} />
+        <CreateTaskModal projectId={projectId} initialStatus={showCreate} allMembers={allMembers} onClose={() => { setShowCreate(null); router.refresh(); }} />
       )}
       {selected && (
-        <TaskDetailModal task={selected} projectId={projectId} allMembers={members} projectMembers={members} currentUserId={currentUserId} onClose={() => { setSelected(null); router.refresh(); }} />
+        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} onClose={() => { setSelected(null); router.refresh(); }} />
       )}
     </div>
   );

@@ -58,8 +58,8 @@ function QuickAdd({ projectId, parentId, placeholder, onDone }: { projectId: str
     placeholder={placeholder} className="w-full rounded-lg border border-blue-200 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-50" />;
 }
 
-export default function ProjectTimeline({ projectId, mainTasks, members, currentUserId, milestones }: {
-  projectId: string; mainTasks: MainTask[]; members: Member[]; currentUserId: string; milestones: Milestone[];
+export default function ProjectTimeline({ projectId, mainTasks, members, allMembers, currentUserId, milestones }: {
+  projectId: string; mainTasks: MainTask[]; members: Member[]; allMembers: Member[]; currentUserId: string; milestones: Milestone[];
 }) {
   const t = useT();
   const router = useRouter();
@@ -161,8 +161,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, current
             <div className="group flex items-center transition-colors hover:bg-gray-50/40">
               <div className="flex w-60 shrink-0 items-center gap-2 px-5 py-3">
                 <Check done={row.status === "done"} onClick={() => toggleDone(row)} />
-                <button onClick={() => toggle(row.id)} className="shrink-0 text-gray-300 hover:text-gray-500">
-                  {row.subtasks.length > 0 ? <svg className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg> : <span className="block w-4" />}
+                <button onClick={() => toggle(row.id)} className="shrink-0 text-gray-300 hover:text-gray-500" title={t("tasks.addSub")}>
+                  <svg className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>
                 <button onClick={() => setSelected(row)} className={`truncate text-left text-sm font-medium hover:text-blue-600 ${isDone ? "text-gray-300 line-through" : "text-gray-900"}`}>{row.title}</button>
               </div>
@@ -177,9 +177,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, current
               </button>
             </div>
 
-            {isOpen && row.subtasks.length > 0 && (
+            {isOpen && (
               <div className="relative">
-                <span className="pointer-events-none absolute left-[31px] top-0 bottom-3 w-px bg-gray-200" />
+                {row.subtasks.length > 0 && <span className="pointer-events-none absolute left-[31px] top-0 bottom-3 w-px bg-gray-200" />}
                 {row.subtasks.map((sub) => {
                   const sDone = sub.status === "done";
                   return (
@@ -250,7 +250,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, current
       )}
 
       {selected && (
-        <TaskDetailModal task={selected} projectId={projectId} allMembers={members} projectMembers={members} currentUserId={currentUserId} onClose={() => { setSelected(null); router.refresh(); }} />
+        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} onClose={() => { setSelected(null); router.refresh(); }} />
       )}
     </div>
   );

@@ -76,7 +76,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const [dragOverride, setDragOverride] = useState<{ id: string; startDate: string; dueDate: string } | null>(null);
   const [msOverride, setMsOverride] = useState<{ id: string; date: string } | null>(null);
   const [dragging, setDragging] = useState(false);
-  const drag = useRef<null | { kind: "task" | "ms"; mode: "move" | "l" | "r"; id: string; rect: DOMRect; anchorYm: number; origS: number; origE: number; latest?: { startDate?: string; dueDate?: string; date?: string } }>(null);
+  const drag = useRef<null | { kind: "task" | "ms"; mode: "move" | "l" | "r"; id: string; rect: DOMRect; anchorDay: number; origS: number; origE: number; latest?: { startDate?: string; dueDate?: string; date?: string } }>(null);
   const moved = useRef(false);
   useEffect(() => { setDragOverride(null); setMsOverride(null); }, [mainTasks, milestones]);
 
@@ -101,19 +101,17 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const N = maxYm - minYm + 1;
   const columns = Array.from({ length: N }, (_, i) => minYm + i);
   const label = (ym: number) => `${(ym % 12) + 1}월`;
-  const pct = (i: number) => (i / N) * 100;
 
   const todayIdx = nowYm - minYm;
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const todayPct = ((todayIdx + (now.getDate() - 1) / daysInMonth) / N) * 100;
 
   function span(startDate: string | null, dueDate: string | null) {
-    let s = ymOf(startDate) ?? ymOf(dueDate) ?? nowYm;
-    let e = ymOf(dueDate) ?? ymOf(startDate) ?? nowYm;
-    let si = Math.max(0, Math.min(N - 1, s - minYm));
-    let ei = Math.max(0, Math.min(N - 1, e - minYm));
-    if (ei < si) ei = si;
-    return { left: `calc(${pct(si)}% + 4px)`, width: `calc(${pct(ei - si + 1)}% - 8px)` };
+    const s = startDate ?? dueDate ?? todayStr;
+    const e = dueDate ?? startDate ?? todayStr;
+    const left = posOf(s, false);
+    const width = Math.max(posOf(e, true) - left, 1.4);
+    return { left: `${left}%`, width: `${width}%` };
   }
   function msPct(date: string) {
     const dt = new Date(date);
@@ -129,12 +127,31 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     </div>
   );
 
-  // ── 드래그 (막대 이동/리사이즈, 마일스톤 이동) ──
+  // ── 드래그 (일 단위) ──
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
   const pad = (n: number) => String(n).padStart(2, "0");
-  const ymToStart = (ym: number) => `${Math.floor(ym / 12)}-${pad((ym % 12) + 1)}-01`;
-  const ymToEnd = (ym: number) => { const y = Math.floor(ym / 12), mo = ym % 12; return `${y}-${pad(mo + 1)}-${pad(new Date(y, mo + 1, 0).getDate())}`; };
-  const ymAt = (clientX: number, rect: DOMRect) => minYm + clamp(Math.floor((clientX - rect.left) / (rect.width / N)), 0, N - 1);
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const daysInM = (y: number, m0: number) => new Date(y, m0 + 1, 0).getDate();
+  const ymToStartStr = (ym: number) => `${Math.floor(ym / 12)}-${pad((ym % 12) + 1)}-01`;
+  const ymToEndStr = (ym: number) => { const y = Math.floor(ym / 12), mo = ym % 12; return `${y}-${pad(mo + 1)}-${pad(daysInM(y, mo))}`; };
+  const posOf = (str: string, end: boolean) => {
+    const dt = new Date(str); const y = dt.getFullYear(), m0 = dt.getMonth(), d = dt.getDate();
+    const col = clamp(y * 12 + m0 - minYm, 0, N - 1);
+    const dim = daysInM(y, m0);
+    return ((col + (end ? d : d - 1) / dim) / N) * 100;
+  };
+  const dateAt = (clientX: number, rect: DOMRect) => {
+    const frac = clamp((clientX - rect.left) / rect.width, 0, 0.999999);
+    const colFloat = frac * N;
+    const col = clamp(Math.floor(colFloat), 0, N - 1);
+    const ym = minYm + col, y = Math.floor(ym / 12), m0 = ym % 12, dim = daysInM(y, m0);
+    const day = clamp(Math.floor((colFloat - col) * dim) + 1, 1, dim);
+    return `${y}-${pad(m0 + 1)}-${pad(day)}`;
+  };
+  const dayNum = (str: string) => { const dt = new Date(str); return Math.floor(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()) / 86400000); };
+  const fromDayNum = (n: number) => { const dt = new Date(n * 86400000); return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`; };
+  const minDay = dayNum(ymToStartStr(minYm));
+  const maxDay = dayNum(ymToEndStr(maxYm));
   const dsv = (task: { id: string; startDate: string | null }) => (dragOverride?.id === task.id ? dragOverride.startDate : task.startDate);
   const dev = (task: { id: string; dueDate: string | null }) => (dragOverride?.id === task.id ? dragOverride.dueDate : task.dueDate);
   const msDateOf = (ms: Milestone) => (msOverride?.id === ms.id ? msOverride.date : ms.date);
@@ -144,13 +161,14 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     if (!trackEl) return;
     e.preventDefault(); e.stopPropagation();
     const rect = trackEl.getBoundingClientRect();
-    const anchorYm = ymAt(e.clientX, rect);
+    const anchorDay = dayNum(dateAt(e.clientX, rect));
     if (kind === "ms") {
-      drag.current = { kind, mode: "move", id: item.id, rect, anchorYm, origS: 0, origE: 0 };
+      drag.current = { kind, mode: "move", id: item.id, rect, anchorDay, origS: 0, origE: 0 };
     } else {
-      const s = ymOf(item.startDate ?? null) ?? ymOf(item.dueDate ?? null) ?? nowYm;
-      const en = ymOf(item.dueDate ?? null) ?? ymOf(item.startDate ?? null) ?? nowYm;
-      drag.current = { kind, mode, id: item.id, rect, anchorYm, origS: Math.min(s, en), origE: Math.max(s, en) };
+      let sd = dayNum(item.startDate ?? item.dueDate ?? todayStr);
+      let ed = dayNum(item.dueDate ?? item.startDate ?? todayStr);
+      if (ed < sd) { const tmp = sd; sd = ed; ed = tmp; }
+      drag.current = { kind, mode, id: item.id, rect, anchorDay, origS: sd, origE: ed };
     }
     moved.current = false;
     setDragging(true);
@@ -161,13 +179,13 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     function onMove(e: MouseEvent) {
       const d = drag.current; if (!d) return;
       moved.current = true;
-      const ym = ymAt(e.clientX, d.rect);
-      if (d.kind === "ms") { const date = ymToStart(ym); d.latest = { date }; setMsOverride({ id: d.id, date }); return; }
+      const cur = dayNum(dateAt(e.clientX, d.rect));
+      if (d.kind === "ms") { const date = fromDayNum(cur); d.latest = { date }; setMsOverride({ id: d.id, date }); return; }
       let s = d.origS, en = d.origE;
-      if (d.mode === "move") { const w = d.origE - d.origS; s = clamp(d.origS + (ym - d.anchorYm), minYm, maxYm - w); en = s + w; }
-      else if (d.mode === "l") s = Math.min(ym, d.origE);
-      else if (d.mode === "r") en = Math.max(ym, d.origS);
-      const startDate = ymToStart(s), dueDate = ymToEnd(en);
+      if (d.mode === "move") { const w = d.origE - d.origS; s = clamp(d.origS + (cur - d.anchorDay), minDay, maxDay - w); en = s + w; }
+      else if (d.mode === "l") s = clamp(Math.min(cur, d.origE), minDay, d.origE);
+      else if (d.mode === "r") en = clamp(Math.max(cur, d.origS), d.origS, maxDay);
+      const startDate = fromDayNum(s), dueDate = fromDayNum(en);
       d.latest = { startDate, dueDate };
       setDragOverride({ id: d.id, startDate, dueDate });
     }
@@ -187,7 +205,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-  }, [dragging, minYm, maxYm, N, projectId, router]);
+  }, [dragging, minDay, maxDay, N, projectId, router]);
 
   async function submitMilestone() {
     if (!msTitle.trim() || !msDate) { setAddingMs(false); return; }

@@ -305,6 +305,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const dirty = useRef(false);
 
   const filtered = allMembers.filter(
     (m) => !selectedIds.includes(m.id) &&
@@ -338,6 +339,11 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     setStatus(s);
     await updateTaskStatus(task.id, s, projectId);
   }
+  // 닫을 때 미저장 변경을 끝까지 저장(저장-닫기 race 방지)
+  async function flushClose() {
+    if (dirty.current) { dirty.current = false; await persist(); }
+    onClose();
+  }
   async function handleDelete() {
     if (!confirm(t("tasks.deleteConfirm"))) return;
     setDeleting(true);
@@ -348,7 +354,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30" onClick={flushClose} />
       <div className="relative flex h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white">
         {/* 헤더: 상태 토글 + 저장표시 + 삭제 + 닫기 */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-3.5">
@@ -365,7 +371,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
             <button onClick={handleDelete} disabled={deleting} title={t("common.delete")} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
             </button>
-            <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+            <button onClick={flushClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
@@ -374,7 +380,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 pt-5">
             {/* 제목 (인라인) */}
-            <input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => persist()} placeholder={t("tasks.taskTitle")}
+            <input value={title} onChange={(e) => { setTitle(e.target.value); dirty.current = true; }} onBlur={() => persist()} placeholder={t("tasks.taskTitle")}
               className="-mx-2 w-[calc(100%+1rem)] rounded-lg px-2 py-1 text-lg font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
 
             <div className="mt-4 flex flex-col gap-3">
@@ -437,7 +443,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
           {/* 설명 (인라인) */}
           <div className="px-6 pb-3 pt-5">
             <p className="mb-2 text-xs font-medium text-gray-400">{t("tasks.content")}</p>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} onBlur={() => persist()} rows={4} placeholder={t("tasks.contentPlaceholder")} className="w-full resize-none rounded-lg bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
+            <textarea value={description} onChange={(e) => { setDescription(e.target.value); dirty.current = true; }} onBlur={() => persist()} rows={4} placeholder={t("tasks.contentPlaceholder")} className="w-full resize-none rounded-lg bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
             {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
           </div>
 

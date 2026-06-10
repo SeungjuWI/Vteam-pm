@@ -145,6 +145,7 @@ const ko = {
   // Attendance
   "attendance.title": "출퇴근",
   "attendance.working": "근무중",
+  "attendance.late": "지각",
   "attendance.clockIn": "출근",
   "attendance.clockOut": "퇴근",
   "attendance.record": "출퇴근 기록",

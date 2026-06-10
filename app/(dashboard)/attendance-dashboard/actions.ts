@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kstStartOfToday, kstAddDays, kstStartOfMonth, toKstParts } from "@/lib/date";
+import { isLateClockIn } from "@/lib/attendance";
 
 export async function getAttendanceDashboardData() {
   const supabase = await createClient();
@@ -102,23 +103,17 @@ export async function getAttendanceDashboardData() {
   // 근무시간 설정
   const { data: workSettings } = await adminClient
     .from("company_work_settings")
-    .select("required_hours, fixed_start")
+    .select("required_hours, work_type, fixed_start, flexible_end, core_time_enabled, core_time_start")
     .eq("company_id", companyId)
     .single();
 
   const requiredHours = Number(workSettings?.required_hours ?? 8);
 
-  // 지각자 (고정 출근시간 기준)
+  // 지각자 (근무유형별 출근 마감 기준, KST)
   let lateCount = 0;
-  if (workSettings?.fixed_start) {
-    const [h, m] = (workSettings.fixed_start as string).split(":").map(Number);
-    todayRecords?.forEach((r) => {
-      const clockIn = toKstParts(new Date(r.clock_in));
-      if (clockIn.getUTCHours() > h || (clockIn.getUTCHours() === h && clockIn.getUTCMinutes() > m)) {
-        lateCount++;
-      }
-    });
-  }
+  todayRecords?.forEach((r) => {
+    if (isLateClockIn(r.clock_in, workSettings)) lateCount++;
+  });
 
   // 평균 근무시간 (이번 달)
   let totalWorkHours = 0;
@@ -153,6 +148,10 @@ export async function getAttendanceDashboardData() {
         todayRecords?.find((r) => r.employee_id === m.id)?.clock_in ?? null,
       clockOut:
         todayRecords?.find((r) => r.employee_id === m.id)?.clock_out ?? null,
+      isLate: (() => {
+        const ci = todayRecords?.find((r) => r.employee_id === m.id)?.clock_in;
+        return ci ? isLateClockIn(ci, workSettings) : false;
+      })(),
     })) ?? [];
 
   return {

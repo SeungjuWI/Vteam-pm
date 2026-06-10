@@ -147,6 +147,7 @@ const en: Record<TranslationKey, string> = {
   // Attendance
   "attendance.title": "Attendance",
   "attendance.working": "Working",
+  "attendance.late": "Late",
   "attendance.clockIn": "Clock In",
   "attendance.clockOut": "Clock Out",
   "attendance.record": "Attendance Record",

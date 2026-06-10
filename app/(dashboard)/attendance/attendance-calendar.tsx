@@ -6,6 +6,7 @@ import { useT } from "@/lib/i18n";
 type AttendanceRecord = {
   clock_in: string;
   clock_out: string | null;
+  is_late?: boolean;
 };
 
 type LeaveRecord = {
@@ -59,6 +60,7 @@ type DayInfo = {
   totalMs: number;
   isWorking: boolean;
   isMissing: boolean;
+  isLate: boolean;
   isLeave: boolean;
   leaveType: string | null;
   isToday: boolean;
@@ -97,7 +99,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
   const requiredMs = requiredHours * 3600000;
 
   const dayMap = useMemo(() => {
-    const map = new Map<string, { totalMs: number; isWorking: boolean; isMissing: boolean }>();
+    const map = new Map<string, { totalMs: number; isWorking: boolean; isMissing: boolean; isLate: boolean }>();
     for (const r of records) {
       const clockIn = new Date(r.clock_in);
       const key = `${clockIn.getFullYear()}-${clockIn.getMonth()}-${clockIn.getDate()}`;
@@ -113,13 +115,15 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
           ? clockIn.getTime()
           : (now || clockIn.getTime());
       const ms = end - clockIn.getTime();
+      const late = !!r.is_late;
       const existing = map.get(key);
       if (existing) {
         existing.totalMs += ms;
         if (open && !isPastOpen) existing.isWorking = true;
         if (isPastOpen) existing.isMissing = true;
+        if (late) existing.isLate = true;
       } else {
-        map.set(key, { totalMs: ms, isWorking: open && !isPastOpen, isMissing: isPastOpen });
+        map.set(key, { totalMs: ms, isWorking: open && !isPastOpen, isMissing: isPastOpen, isLate: late });
       }
     }
     return map;
@@ -149,6 +153,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
       totalMs,
       isWorking: attendance?.isWorking ?? false,
       isMissing: attendance?.isMissing ?? false,
+      isLate: attendance?.isLate ?? false,
       isLeave: !!leave,
       leaveType: leave?.type ?? null,
       isToday: isSameDay(date, today),
@@ -373,6 +378,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
                     >
                       {day.date.getDate()}
                     </span>
+                    {day.isLate && !day.isLeave && <span className="rounded bg-red-50 px-1 py-0.5 text-[9px] font-semibold text-red-500">{t("attendance.late")}</span>}
                     {day.isOvertime && !day.isLeave && <span className="text-xs">🔥</span>}
                   </div>
 

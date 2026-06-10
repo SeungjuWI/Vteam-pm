@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import { kstStartOfToday, kstAddDays } from "@/lib/date";
+import { isLateClockIn } from "@/lib/attendance";
 import ClockButton from "./clock-button";
 import AttendanceCalendar from "./attendance-calendar";
 import { getT } from "@/lib/i18n/server";
@@ -53,13 +54,20 @@ export default async function AttendancePage() {
       .lte("start_date", rangeEnd.toISOString().split("T")[0]),
     adminClient
       .from("company_work_settings")
-      .select("required_hours")
+      .select("required_hours, work_type, fixed_start, flexible_end, core_time_enabled, core_time_start")
       .eq("company_id", profile.company_id)
       .single(),
   ]);
 
   const isClockedIn = todayRecord ? !todayRecord.clock_out : false;
   const requiredHours = workSettings?.required_hours ? Number(workSettings.required_hours) : 8;
+
+  // 지각 판별(KST)을 서버에서 레코드별로 계산해 전달
+  const records = (calendarRecords || []).map((r) => ({
+    clock_in: r.clock_in,
+    clock_out: r.clock_out,
+    is_late: isLateClockIn(r.clock_in, workSettings),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,7 +78,7 @@ export default async function AttendancePage() {
       </div>
 
       <AttendanceCalendar
-        records={calendarRecords || []}
+        records={records}
         leaves={leaveRecords || []}
         requiredHours={requiredHours}
       />

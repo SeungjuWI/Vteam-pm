@@ -17,6 +17,7 @@ interface MemberStatus {
   status: "working" | "done" | "absent";
   clockIn: string | null;
   clockOut: string | null;
+  isLate: boolean;
 }
 
 interface DashboardData {
@@ -231,6 +232,9 @@ export default function AttendanceDashboardView({
                   )}
                 </div>
                 <div className="flex items-center gap-4">
+                  {m.isLate && (
+                    <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-500">지각</span>
+                  )}
                   <div className="text-right text-xs text-gray-500">
                     <span>출근 {formatTime(m.clockIn)}</span>
                     <span className="mx-1 text-gray-300">|</span>

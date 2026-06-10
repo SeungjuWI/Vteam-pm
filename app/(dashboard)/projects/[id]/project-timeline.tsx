@@ -160,6 +160,19 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const dev = (task: { id: string; dueDate: string | null }) => (dragOverride?.id === task.id ? dragOverride.dueDate : task.dueDate);
   const msDateOf = (ms: Milestone) => (msOverride?.id === ms.id ? msOverride.date : ms.date);
 
+  // 메인 막대 = 하위 막대들의 전체 범위(합). 하위 없으면 자기 날짜.
+  const rollupSpan = (row: MainTask) => {
+    if (row.subtasks.length === 0) return span(dsv(row), dev(row));
+    let minL = Infinity, maxR = -Infinity;
+    for (const s of row.subtasks) {
+      const sp = span(dsv(s), dev(s));
+      const l = parseFloat(sp.left), w = parseFloat(sp.width);
+      if (!isNaN(l) && !isNaN(w)) { minL = Math.min(minL, l); maxR = Math.max(maxR, l + w); }
+    }
+    if (minL === Infinity) return span(dsv(row), dev(row));
+    return { left: `${minL}%`, width: `${maxR - minL}%` };
+  };
+
   function startDrag(e: React.MouseEvent, kind: "task" | "ms", mode: "move" | "l" | "r", item: { id: string; startDate?: string | null; dueDate?: string | null }) {
     const trackEl = (e.currentTarget as HTMLElement).closest("[data-track]") as HTMLElement | null;
     if (!trackEl) return;
@@ -246,6 +259,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         const isOpen = open.has(row.id);
         const isDone = mainCompletion(row) === 1;
         const pctV = Math.round(mainCompletion(row) * 100);
+        const hasSubs = row.subtasks.length > 0;
+        const barStyle = rollupSpan(row);
         return (
           <div key={row.id}>
             <div className="group flex items-center transition-colors hover:bg-gray-50/40">
@@ -258,13 +273,13 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
               </div>
               <button data-track onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className="relative block h-12 flex-1 cursor-pointer">
                 <Columns />
-                <div onMouseDown={(e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 cursor-grab items-center rounded-lg ring-1 ring-inset ${tn.ring} group-hover:ring-2 active:cursor-grabbing`} style={span(dsv(row), dev(row))}>
+                <div onMouseDown={hasSubs ? undefined : (e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center rounded-lg ring-1 ring-inset ${tn.ring} group-hover:ring-2 ${hasSubs ? "" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
                   <div className={`absolute inset-0 rounded-lg ${tn.soft}`} />
                   <div className={`absolute inset-y-0 left-0 rounded-lg ${tn.solid}`} style={{ width: `${pctV}%` }} />
-                  <span onMouseDown={(e) => startDrag(e, "task", "l", row)} className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-l-lg" />
+                  {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "l", row)} className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-l-lg" />}
                   <span className="relative z-10 ml-2.5 text-[11px] font-semibold text-gray-700">{pctV}%</span>
                   {row.assignees[0] && <span className="absolute -right-1 top-1/2 z-10 -translate-y-1/2"><Avatar a={row.assignees[0]} /></span>}
-                  <span onMouseDown={(e) => startDrag(e, "task", "r", row)} className="absolute right-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-r-lg" />
+                  {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "r", row)} className="absolute right-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-r-lg" />}
                 </div>
               </button>
             </div>
@@ -323,13 +338,18 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         <div data-track className="relative h-11 flex-1">
           <Columns />
           {milestones.map((ms) => {
-            const lp = msPct(msDateOf(ms));
-            const align = lp < 12 ? "translate-x-0" : lp > 88 ? "-translate-x-full" : "-translate-x-1/2";
+            const d = msDateOf(ms);
+            const lp = msPct(d);
+            const dt = new Date(d);
+            const onRight = lp > 72;
             return (
-            <div key={ms.id} onMouseDown={(e) => startDrag(e, "ms", "move", ms)} className={`group absolute top-1/2 flex ${align} -translate-y-1/2 cursor-grab items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-1 active:cursor-grabbing`} style={{ left: `${lp}%` }}>
-              <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1l9 9-9 9-9-9z" /></svg>
-              <span className="whitespace-nowrap text-[10px] font-semibold text-white">{ms.title}</span>
-              <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); startTx(async () => { await deleteMilestone(ms.id, projectId); router.refresh(); }); }} className="ml-0.5 hidden text-white/80 hover:text-white group-hover:block"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <div key={ms.id} onMouseDown={(e) => startDrag(e, "ms", "move", ms)}
+              className={`group absolute top-1/2 z-10 flex -translate-y-1/2 cursor-grab items-center gap-1 active:cursor-grabbing ${onRight ? "-translate-x-full flex-row-reverse" : ""}`}
+              style={{ left: `${lp}%` }}>
+              {/* 다이아몬드 = 정확한 날짜 지점 */}
+              <svg className={`h-3 w-3 shrink-0 text-amber-500 ${onRight ? "translate-x-1/2" : "-translate-x-1/2"}`} viewBox="0 0 20 20" fill="currentColor"><path d="M10 1l9 9-9 9-9-9z" /></svg>
+              <span className="whitespace-nowrap rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-semibold text-white">{ms.title} · {dt.getMonth() + 1}/{dt.getDate()}</span>
+              <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); startTx(async () => { await deleteMilestone(ms.id, projectId); router.refresh(); }); }} className="hidden text-amber-400 hover:text-amber-600 group-hover:block"><svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             );
           })}

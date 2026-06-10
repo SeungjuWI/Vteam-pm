@@ -364,7 +364,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       )}
 
       {selected && (
-        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} onClose={() => { setSelected(null); router.refresh(); }} />
+        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} onClose={() => setSelected(null)} />
       )}
     </div>
   );

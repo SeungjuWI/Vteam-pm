@@ -101,7 +101,7 @@ export default function ProjectBoard({ projectId, mainTasks, members, allMembers
         <CreateTaskModal projectId={projectId} initialStatus={showCreate} allMembers={allMembers} onClose={() => { setShowCreate(null); router.refresh(); }} />
       )}
       {selected && (
-        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} onClose={() => { setSelected(null); router.refresh(); }} />
+        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} onClose={() => setSelected(null)} />
       )}
     </div>
   );

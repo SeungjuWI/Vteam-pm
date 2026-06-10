@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { updateTask, updateTaskStatus, deleteTask, getTaskComments, createTaskComment, deleteTaskComment } from "../actions";
 import { useT, type TFunction } from "@/lib/i18n";
 import type { Member, Task } from "./project-types";
@@ -290,6 +291,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   task: Task; projectId: string; allMembers: Member[]; projectMembers: Member[]; currentUserId: string; onClose: () => void;
 }) {
   const t = useT();
+  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
@@ -339,10 +341,17 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     setStatus(s);
     await updateTaskStatus(task.id, s, projectId);
   }
-  // 닫을 때 미저장 변경을 끝까지 저장(저장-닫기 race 방지)
-  async function flushClose() {
-    if (dirty.current) { dirty.current = false; await persist(); }
+  // 즉시 닫고, 미저장 변경은 백그라운드로 저장 후 새로고침
+  function closeSave() {
+    const wasDirty = dirty.current;
+    dirty.current = false;
     onClose();
+    (async () => {
+      if (wasDirty) {
+        await updateTask(task.id, projectId, title.trim() || task.title, description, priority, dueDate, selectedIds);
+      }
+      router.refresh();
+    })();
   }
   async function handleDelete() {
     if (!confirm(t("tasks.deleteConfirm"))) return;
@@ -354,7 +363,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/30" onClick={flushClose} />
+      <div className="absolute inset-0 bg-black/30" onClick={closeSave} />
       <div className="relative flex h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white">
         {/* 헤더: 상태 토글 + 저장표시 + 삭제 + 닫기 */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-3.5">
@@ -370,7 +379,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
             <button onClick={handleDelete} disabled={deleting} title={t("common.delete")} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
             </button>
-            <button onClick={flushClose} disabled={saving} className="rounded-lg bg-blue-500 px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-60">
+            <button onClick={closeSave} disabled={saving} className="rounded-lg bg-blue-500 px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-60">
               {saving ? t("common.saving") : t("common.save")}
             </button>
           </div>

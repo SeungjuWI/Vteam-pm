@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { quickAddTask, updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate } from "../actions";
+import { quickAddTask, updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
 
@@ -79,6 +79,32 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const drag = useRef<null | { kind: "task" | "ms"; mode: "move" | "l" | "r"; id: string; rect: DOMRect; anchorDay: number; origS: number; origE: number; latest?: { startDate?: string; dueDate?: string; date?: string } }>(null);
   const moved = useRef(false);
   useEffect(() => { setDragOverride(null); setMsOverride(null); }, [mainTasks, milestones]);
+
+  // 메인태스크 행 순서(드래그 정렬)
+  const [order, setOrder] = useState(mainTasks);
+  useEffect(() => { setOrder(mainTasks); }, [mainTasks]);
+  const orderRef = useRef(order);
+  orderRef.current = order;
+  const rowDrag = useRef<string | null>(null);
+  const [rowDragging, setRowDragging] = useState<string | null>(null);
+  function onRowDragEnter(targetId: string) {
+    const from = rowDrag.current;
+    if (!from || from === targetId) return;
+    setOrder((prev) => {
+      const arr = [...prev];
+      const fi = arr.findIndex((x) => x.id === from);
+      const ti = arr.findIndex((x) => x.id === targetId);
+      if (fi < 0 || ti < 0) return prev;
+      const [m] = arr.splice(fi, 1);
+      arr.splice(ti, 0, m);
+      return arr;
+    });
+  }
+  function onRowDragEnd() {
+    rowDrag.current = null;
+    setRowDragging(null);
+    startTx(async () => { await reorderTasks(projectId, orderRef.current.map((i) => i.id)); router.refresh(); });
+  }
 
   function toggle(id: string) { setOpen((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
   function toggleDone(task: Task) {
@@ -252,9 +278,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         </div>
       </div>
 
-      {mainTasks.length === 0 && !addingMain ? (
+      {order.length === 0 && !addingMain ? (
         <div className="py-12 text-center text-sm text-gray-300">{t("tasks.emptyMain")}</div>
-      ) : mainTasks.map((row) => {
+      ) : order.map((row) => {
         const tn = tone[row.status];
         const isOpen = open.has(row.id);
         const isDone = mainCompletion(row) === 1;
@@ -263,8 +289,11 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         const barStyle = rollupSpan(row);
         return (
           <div key={row.id}>
-            <div className="group flex items-center transition-colors hover:bg-gray-50/40">
-              <div className="flex w-60 shrink-0 items-center gap-2 px-5 py-3">
+            <div onDragEnter={() => onRowDragEnter(row.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center transition-colors hover:bg-gray-50/40 ${rowDragging === row.id ? "opacity-40" : ""}`}>
+              <div className="flex w-60 shrink-0 items-center gap-1.5 px-3 py-3">
+                <span draggable onDragStart={() => { rowDrag.current = row.id; setRowDragging(row.id); }} onDragEnd={onRowDragEnd} title="드래그로 순서 변경" className="shrink-0 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
+                </span>
                 <Check done={row.status === "done"} onClick={() => toggleDone(row)} />
                 <button onClick={() => toggle(row.id)} className="shrink-0 text-gray-300 hover:text-gray-500" title={t("tasks.addSub")}>
                   <svg className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>

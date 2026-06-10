@@ -36,6 +36,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       .from("tasks")
       .select("id, title, description, status, priority, due_date, start_date, created_at, parent_task_id")
       .eq("project_id", id)
+      .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false }),
     adminClient
       .from("profiles")

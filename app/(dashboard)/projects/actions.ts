@@ -609,6 +609,25 @@ export async function deleteMilestone(milestoneId: string, projectId: string) {
   return { success: true };
 }
 
+// 메인태스크 순서 변경 (드래그 정렬)
+export async function reorderTasks(projectId: string, orderedIds: string[]) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  for (let i = 0; i < orderedIds.length; i++) {
+    await adminClient
+      .from("tasks")
+      .update({ sort_order: i })
+      .eq("id", orderedIds[i])
+      .eq("project_id", projectId);
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
+
 // 프로젝트 순서 변경 (드래그 정렬)
 export async function reorderProjects(orderedIds: string[]) {
   const supabase = await createClient();

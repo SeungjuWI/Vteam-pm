@@ -298,6 +298,12 @@ export async function createTask(
 
   if (!title.trim()) return { error: "제목을 입력해주세요" };
 
+  const { data: authorProfile } = await adminClient
+    .from("profiles")
+    .select("language")
+    .eq("id", user.id)
+    .single();
+
   const { data: task, error } = await adminClient
     .from("tasks")
     .insert({
@@ -308,6 +314,7 @@ export async function createTask(
       priority,
       due_date: dueDate || null,
       parent_task_id: parentTaskId,
+      source_language: authorProfile?.language || "ko",
     })
     .select("id")
     .single();
@@ -384,6 +391,12 @@ export async function updateTask(
 
   if (!title.trim()) return { error: "제목을 입력해주세요" };
 
+  const { data: editorProfile } = await adminClient
+    .from("profiles")
+    .select("language")
+    .eq("id", user.id)
+    .single();
+
   const { error } = await adminClient
     .from("tasks")
     .update({
@@ -391,10 +404,14 @@ export async function updateTask(
       description: description.trim() || null,
       priority,
       due_date: dueDate || null,
+      source_language: editorProfile?.language || "ko",
     })
     .eq("id", taskId);
 
   if (error) return { error: "수정에 실패했습니다" };
+
+  // 내용 변경 → 기존 번역 캐시 무효화(다음 조회 시 재번역)
+  await adminClient.from("task_translations").delete().eq("task_id", taskId);
 
   // 담당자 교체: 기존 삭제 → 새로 추가
   await adminClient.from("task_assignees").delete().eq("task_id", taskId);

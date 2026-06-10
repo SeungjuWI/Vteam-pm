@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
+import { translateTasks } from "@/lib/translate-tasks";
 import { notFound } from "next/navigation";
 import ProjectDetail from "./project-detail";
 
@@ -34,7 +35,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       .eq("project_id", id),
     adminClient
       .from("tasks")
-      .select("id, title, description, status, priority, due_date, start_date, created_at, parent_task_id")
+      .select("id, title, description, status, priority, due_date, start_date, created_at, parent_task_id, source_language")
       .eq("project_id", id)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false }),
@@ -89,7 +90,22 @@ export default async function ProjectDetailPage({ params }: Props) {
     dueDate: t.due_date,
     startDate: t.start_date as string | null,
     parentTaskId: t.parent_task_id as string | null,
+    sourceLanguage: (t.source_language as string) || "ko",
   }));
+
+  // 보는 사람 언어로 태스크 제목/설명 번역 (작성자 언어와 다를 때만, 캐시 재사용)
+  const myLang = profile.language || "ko";
+  if (allTasks.some((t) => t.sourceLanguage !== myLang)) {
+    const trMap = await translateTasks(
+      adminClient,
+      allTasks.map((t) => ({ id: t.id, title: t.title, description: t.description, sourceLanguage: t.sourceLanguage })),
+      myLang,
+    );
+    for (const t of allTasks) {
+      const tr = trMap.get(t.id);
+      if (tr) { t.title = tr.title; t.description = tr.description; }
+    }
+  }
 
   // 메인(parent 없음) + 서브(parent 있음) 트리 구성
   const subsByParent: Record<string, typeof allTasks> = {};

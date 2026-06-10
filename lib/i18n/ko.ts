@@ -297,6 +297,7 @@ const ko = {
   "tasks.content": "작업 내용",
   "tasks.contentPlaceholder": "작업에 대해 설명해주세요",
   "tasks.noContent": "작업 내용 없음",
+  "tasks.status": "상태",
   "tasks.priority": "우선순위",
   "tasks.dueDate": "마감일",
   "tasks.assignee": "담당자",

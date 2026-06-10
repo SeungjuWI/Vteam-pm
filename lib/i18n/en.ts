@@ -299,6 +299,7 @@ const en: Record<TranslationKey, string> = {
   "tasks.content": "Description",
   "tasks.contentPlaceholder": "Describe the task",
   "tasks.noContent": "No description",
+  "tasks.status": "Status",
   "tasks.priority": "Priority",
   "tasks.dueDate": "Due Date",
   "tasks.assignee": "Assignee",

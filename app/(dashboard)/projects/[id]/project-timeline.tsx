@@ -107,10 +107,14 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const todayPct = ((todayIdx + (now.getDate() - 1) / daysInMonth) / N) * 100;
 
   function span(startDate: string | null, dueDate: string | null) {
-    const s = startDate ?? dueDate ?? todayStr;
-    const e = dueDate ?? startDate ?? todayStr;
-    const left = posOf(s, false);
-    const width = Math.max(posOf(e, true) - left, 1.4);
+    // 시작일 없으면 마감월 전체를 막대로(보이게), 있으면 일 단위 정밀
+    const anchor = new Date(dueDate ?? startDate ?? todayStr);
+    const ay = anchor.getFullYear(), am = anchor.getMonth();
+    const monthStart = `${ay}-${pad(am + 1)}-01`;
+    const monthEnd = `${ay}-${pad(am + 1)}-${pad(daysInM(ay, am))}`;
+    const left = posOf(startDate ?? monthStart, false);
+    const right = posOf(startDate ? (dueDate ?? startDate) : monthEnd, true);
+    const width = Math.max(right - left, 3);
     return { left: `${left}%`, width: `${width}%` };
   }
   function msPct(date: string) {

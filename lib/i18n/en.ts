@@ -308,6 +308,7 @@ const en: Record<TranslationKey, string> = {
   "tasks.status": "Status",
   "tasks.output": "Output",
   "tasks.outputPlaceholder": "What deliverable should this task produce?",
+  "tasks.addOutput": "Add output",
   "tasks.priority": "Priority",
   "tasks.dueDate": "Due Date",
   "tasks.assignee": "Assignee",

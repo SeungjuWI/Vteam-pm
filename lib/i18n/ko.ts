@@ -306,6 +306,7 @@ const ko = {
   "tasks.status": "상태",
   "tasks.output": "결과물",
   "tasks.outputPlaceholder": "이 태스크로 내야 할 결과물(산출물)을 적어주세요",
+  "tasks.addOutput": "결과물 추가",
   "tasks.priority": "우선순위",
   "tasks.dueDate": "마감일",
   "tasks.assignee": "담당자",

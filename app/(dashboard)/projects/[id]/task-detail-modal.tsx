@@ -279,12 +279,10 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
             onKeyDown={handleKeyDown}
             placeholder={t("comments.placeholder")}
             rows={1}
-            className="relative w-full resize-none rounded-lg border border-gray-200 bg-transparent px-3.5 py-2.5 text-sm text-transparent caret-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+            className="relative w-full resize-none rounded-lg border border-gray-200 bg-transparent px-3.5 py-2.5 pr-16 text-sm text-transparent caret-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
           />
+          <span className="pointer-events-none absolute bottom-2 right-3 text-[10px] text-gray-300">{sending ? "..." : "Enter ↵"}</span>
         </div>
-        <button onClick={handleSend} disabled={sending || !input.trim()} className="shrink-0 rounded-lg bg-blue-500 px-3.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-40">
-          {sending ? "..." : t("common.send")}
-        </button>
       </div>
     </div>
   );
@@ -302,8 +300,11 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
 
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
-  const [output, setOutput] = useState(task.output || "");
-  const [editingOutput, setEditingOutput] = useState(!(task.output || "").trim());
+  const [outputs, setOutputs] = useState<string[]>(() => {
+    const arr = (task.output || "").split("\n").map((s) => s.trim()).filter(Boolean);
+    return arr.length ? arr : [""];
+  });
+  const outputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [progress, setProgress] = useState(task.progress ?? 0);
   const [priority, setPriority] = useState(task.priority);
   const [dueDate, setDueDate] = useState(task.dueDate || "");
@@ -324,6 +325,8 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
 
   const statusLabels: Record<string, string> = { todo: t("tasks.todo"), in_progress: t("tasks.inProgress"), pending: t("tasks.pending"), done: t("tasks.done") };
 
+  const outputJoined = outputs.map((s) => s.trim()).filter(Boolean).join("\n");
+
   // 인라인 자동 저장
   async function persist(next?: Partial<{ title: string; description: string; priority: "low" | "medium" | "high"; dueDate: string; startDate: string; selectedIds: string[]; output: string; progress: number }>) {
     setSaving(true);
@@ -334,13 +337,29 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
       next?.priority ?? priority,
       next?.dueDate ?? dueDate,
       next?.selectedIds ?? selectedIds,
-      next?.output ?? output,
+      next?.output ?? outputJoined,
       next?.startDate ?? startDate,
       next?.progress ?? progress,
     );
     setSaving(false);
     setError(errOf(r) || "");
     dirty.current = false;
+  }
+  // 결과물 목록 핸들러
+  function saveOutputs(arr?: string[]) {
+    dirty.current = true;
+    persist({ output: (arr ?? outputs).map((s) => s.trim()).filter(Boolean).join("\n") });
+  }
+  function removeOutput(i: number) {
+    const arr = outputs.filter((_, idx) => idx !== i);
+    const next = arr.length ? arr : [""];
+    setOutputs(next);
+    saveOutputs(next);
+  }
+  function addOutput() {
+    setOutputs((prev) => [...prev, ""]);
+    const idx = outputs.length;
+    requestAnimationFrame(() => outputRefs.current[idx]?.focus());
   }
   async function changeStatus(s: "todo" | "in_progress" | "pending" | "done") {
     setStatus(s);
@@ -353,7 +372,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     onClose();
     (async () => {
       if (wasDirty) {
-        await updateTask(task.id, projectId, title.trim() || task.title, description, priority, dueDate, selectedIds, output, startDate, progress);
+        await updateTask(task.id, projectId, title.trim() || task.title, description, priority, dueDate, selectedIds, outputJoined, startDate, progress);
       }
       router.refresh();
     })();
@@ -382,12 +401,11 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
         {/* 헤더: 상태 토글 + 저장표시 + 삭제 + 닫기 */}
         <div className="flex items-center justify-end border-b border-gray-100 px-6 py-3.5">
           <div className="flex items-center gap-1.5">
-            <span className={`mr-1 text-xs text-gray-400 transition-opacity ${saving ? "opacity-100" : "opacity-0"}`}>{t("common.saving")}</span>
             <button onClick={handleDelete} disabled={deleting} title={t("common.delete")} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
             </button>
-            <button onClick={closeSave} title={t("common.close")} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            <button onClick={closeSave} disabled={saving} className="rounded-lg bg-blue-500 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-60">
+              {saving ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </div>
@@ -401,22 +419,30 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
             {/* ① 무엇을 — 결과물 + 진도율 (핵심) */}
             <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
               <p className="mb-2 text-xs font-semibold text-blue-600">① {t("tasks.what")}</p>
-              {editingOutput ? (
-                <textarea autoFocus value={output} onChange={(e) => { setOutput(e.target.value); dirty.current = true; }} onBlur={() => { persist(); setEditingOutput(false); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur(); } }} rows={2} placeholder={t("tasks.outputPlaceholder")}
-                  className="w-full resize-none rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100" />
-              ) : (
-                <button type="button" onClick={() => setEditingOutput(true)} className="group flex w-full items-start gap-2 rounded-lg border border-blue-100 bg-white px-3 py-2 text-left transition-colors hover:border-blue-300">
-                  {output.trim() ? (
-                    <>
-                      <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 011.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" /></svg>
-                      <span className="flex-1 whitespace-pre-wrap text-sm text-gray-900">{output}</span>
-                      <svg className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
-                    </>
-                  ) : (
-                    <span className="text-sm text-gray-400">+ {t("tasks.outputPlaceholder")}</span>
-                  )}
+              <div className="flex flex-col gap-1.5">
+                {outputs.map((o, i) => (
+                  <div key={i} className="group flex items-center gap-2">
+                    <svg className="h-4 w-4 shrink-0 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 011.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" /></svg>
+                    <input ref={(el) => { outputRefs.current[i] = el; }} value={o}
+                      onChange={(e) => { const v = e.target.value; setOutputs((prev) => prev.map((x, idx) => (idx === i ? v : x))); dirty.current = true; }}
+                      onBlur={() => saveOutputs()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); saveOutputs(); if (o.trim()) addOutput(); else e.currentTarget.blur(); }
+                        else if (e.key === "Backspace" && o === "" && outputs.length > 1) { e.preventDefault(); removeOutput(i); requestAnimationFrame(() => outputRefs.current[Math.max(0, i - 1)]?.focus()); }
+                      }}
+                      placeholder={t("tasks.outputPlaceholder")}
+                      className="flex-1 rounded-lg border border-blue-100 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                    {outputs.length > 1 && (
+                      <button type="button" onClick={() => removeOutput(i)} className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={addOutput} className="mt-0.5 flex items-center gap-1 self-start text-xs font-medium text-blue-500 hover:text-blue-600">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addOutput")}
                 </button>
-              )}
+              </div>
               <div className="mt-3 flex items-center gap-3">
                 <span className="shrink-0 text-xs font-medium text-gray-500">{t("tasks.progress")}</span>
                 <input type="range" min={0} max={100} step={5} value={progress} onChange={(e) => { const v = Number(e.target.value); setProgress(v); dirty.current = true; }} onMouseUp={async () => { await persist(); router.refresh(); }} onTouchEnd={async () => { await persist(); router.refresh(); }} className="h-1.5 flex-1 accent-blue-500" />

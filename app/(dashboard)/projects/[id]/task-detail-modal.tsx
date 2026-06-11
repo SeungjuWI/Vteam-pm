@@ -300,10 +300,9 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
 
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
-  const [outputs, setOutputs] = useState<string[]>(() => {
-    const arr = (task.output || "").split("\n").map((s) => s.trim()).filter(Boolean);
-    return arr.length ? arr : [""];
-  });
+  const [outputs, setOutputs] = useState<string[]>(() =>
+    (task.output || "").split("\n").map((s) => s.trim()).filter(Boolean)
+  );
   const outputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [progress, setProgress] = useState(task.progress ?? 0);
   const [priority, setPriority] = useState(task.priority);
@@ -351,8 +350,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     persist({ output: (arr ?? outputs).map((s) => s.trim()).filter(Boolean).join("\n") });
   }
   function removeOutput(i: number) {
-    const arr = outputs.filter((_, idx) => idx !== i);
-    const next = arr.length ? arr : [""];
+    const next = outputs.filter((_, idx) => idx !== i);
     setOutputs(next);
     saveOutputs(next);
   }
@@ -428,15 +426,13 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                       onBlur={() => saveOutputs()}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") { e.preventDefault(); saveOutputs(); if (o.trim()) addOutput(); else e.currentTarget.blur(); }
-                        else if (e.key === "Backspace" && o === "" && outputs.length > 1) { e.preventDefault(); removeOutput(i); requestAnimationFrame(() => outputRefs.current[Math.max(0, i - 1)]?.focus()); }
+                        else if (e.key === "Backspace" && o === "") { e.preventDefault(); removeOutput(i); requestAnimationFrame(() => outputRefs.current[Math.max(0, i - 1)]?.focus()); }
                       }}
                       placeholder={t("tasks.outputPlaceholder")}
                       className="flex-1 rounded-lg border border-blue-100 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100" />
-                    {outputs.length > 1 && (
-                      <button type="button" onClick={() => removeOutput(i)} className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100">
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                      </button>
-                    )}
+                    <button type="button" onClick={() => removeOutput(i)} className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
                   </div>
                 ))}
                 <button type="button" onClick={addOutput} className="mt-0.5 flex items-center gap-1 self-start text-xs font-medium text-blue-500 hover:text-blue-600">

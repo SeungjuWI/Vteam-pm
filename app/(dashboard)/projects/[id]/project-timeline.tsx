@@ -186,12 +186,16 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const dev = (task: { id: string; dueDate: string | null }) => (dragOverride?.id === task.id ? dragOverride.dueDate : task.dueDate);
   const msDateOf = (ms: Milestone) => (msOverride?.id === ms.id ? msOverride.date : ms.date);
 
-  // 메인 막대 = 하위 막대들의 전체 범위(합). 하위 없으면 자기 날짜.
+  // 메인 막대 = 메인 자체 기간 ∪ 하위 막대들의 범위(합집합). 날짜 없는 하위는 제외.
   const rollupSpan = (row: MainTask) => {
-    if (row.subtasks.length === 0) return span(dsv(row), dev(row));
-    let minL = Infinity, maxR = -Infinity;
+    const spans: { left: string; width: string }[] = [];
+    if (dsv(row) || dev(row)) spans.push(span(dsv(row), dev(row)));
     for (const s of row.subtasks) {
-      const sp = span(dsv(s), dev(s));
+      if (dsv(s) || dev(s)) spans.push(span(dsv(s), dev(s)));
+    }
+    if (spans.length === 0) return span(dsv(row), dev(row));
+    let minL = Infinity, maxR = -Infinity;
+    for (const sp of spans) {
       const l = parseFloat(sp.left), w = parseFloat(sp.width);
       if (!isNaN(l) && !isNaN(w)) { minL = Math.min(minL, l); maxR = Math.max(maxR, l + w); }
     }

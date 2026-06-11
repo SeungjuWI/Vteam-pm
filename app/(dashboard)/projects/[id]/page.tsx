@@ -35,7 +35,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       .eq("project_id", id),
     adminClient
       .from("tasks")
-      .select("id, title, description, output, progress, status, priority, due_date, start_date, created_at, parent_task_id, source_language")
+      .select("id, title, description, output, progress, status, priority, due_date, start_date, created_at, parent_task_id, source_language, sort_order")
       .eq("project_id", id)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false }),
@@ -93,6 +93,8 @@ export default async function ProjectDetailPage({ params }: Props) {
     startDate: t.start_date as string | null,
     parentTaskId: t.parent_task_id as string | null,
     sourceLanguage: (t.source_language as string) || "ko",
+    sortOrder: t.sort_order as number | null,
+    createdAt: t.created_at as string,
   }));
 
   // 보는 사람 언어로 태스크 제목/설명/결과물 번역 (작성자 언어와 다를 때만, 캐시 재사용)
@@ -118,7 +120,14 @@ export default async function ProjectDetailPage({ params }: Props) {
     .filter((t) => !t.parentTaskId)
     .map((t) => ({
       ...t,
-      subtasks: (subsByParent[t.id] || []).slice().reverse(), // 조회는 desc → 서브는 생성 오름차순
+      // 서브태스크 정렬: 수동정렬(sort_order) 우선, 없으면 생성 오름차순(기존 동작 유지)
+      subtasks: (subsByParent[t.id] || []).slice().sort((a, b) => {
+        const sa = a.sortOrder, sb = b.sortOrder;
+        if (sa != null && sb != null) return sa - sb;
+        if (sa != null) return -1;
+        if (sb != null) return 1;
+        return (a.createdAt ?? "") < (b.createdAt ?? "") ? -1 : 1;
+      }),
     }));
 
   // OKR 조회 (목표 + 핵심결과)

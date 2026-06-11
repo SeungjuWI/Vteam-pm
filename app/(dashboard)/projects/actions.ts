@@ -714,6 +714,29 @@ export async function reorderTasks(projectId: string, orderedIds: string[]) {
   return { success: true };
 }
 
+// 서브태스크 순서 변경 (드래그 정렬) — 같은 부모 안에서만 정렬
+export async function reorderSubtasks(projectId: string, parentTaskId: string, orderedIds: string[]) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await projectInCompany(adminClient, projectId, companyId))) return DENY;
+
+  for (let i = 0; i < orderedIds.length; i++) {
+    await adminClient
+      .from("tasks")
+      .update({ sort_order: i })
+      .eq("id", orderedIds[i])
+      .eq("project_id", projectId)
+      .eq("parent_task_id", parentTaskId);
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
+
 // 프로젝트 순서 변경 (드래그 정렬)
 export async function reorderProjects(orderedIds: string[]) {
   const supabase = await createClient();

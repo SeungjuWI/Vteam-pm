@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { quickAddTask, updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks } from "../actions";
+import { quickAddTask, updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
 
@@ -103,7 +103,48 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     startTx(async () => { await reorderTasks(projectId, orderRef.current.map((i) => i.id)); router.refresh(); });
   }
 
+  // 서브태스크 행 순서(드래그 정렬) — 같은 부모 안에서만
+  const subDrag = useRef<{ parentId: string; id: string } | null>(null);
+  const [subDragging, setSubDragging] = useState<string | null>(null);
+  function onSubDragEnter(parentId: string, targetId: string) {
+    const d = subDrag.current;
+    if (!d || d.parentId !== parentId || d.id === targetId) return;
+    setOrder((prev) => prev.map((row) => {
+      if (row.id !== parentId) return row;
+      const arr = [...row.subtasks];
+      const fi = arr.findIndex((x) => x.id === d.id);
+      const ti = arr.findIndex((x) => x.id === targetId);
+      if (fi < 0 || ti < 0) return row;
+      const [m] = arr.splice(fi, 1);
+      arr.splice(ti, 0, m);
+      return { ...row, subtasks: arr };
+    }));
+  }
+  function onSubDragEnd(parentId: string) {
+    subDrag.current = null;
+    setSubDragging(null);
+    const row = orderRef.current.find((r) => r.id === parentId);
+    if (!row) return;
+    const ids = row.subtasks.map((s) => s.id);
+    startTx(async () => { await reorderSubtasks(projectId, parentId, ids); router.refresh(); });
+  }
+
   function toggle(id: string) { setOpen((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
+  const expandableIds = mainTasks.filter((m) => m.subtasks.length > 0).map((m) => m.id);
+  const allOpen = expandableIds.length > 0 && expandableIds.every((id) => open.has(id));
+  function toggleAll() { setOpen(allOpen ? new Set() : new Set(expandableIds)); }
+
+  // 펼침/접힘 상태를 프로젝트별로 localStorage에 저장·복원 (새로고침해도 유지)
+  const storeKey = `vteam:timeline-open:${projectId}`;
+  const skipSave = useRef(true);
+  useEffect(() => {
+    skipSave.current = true;
+    try { const raw = localStorage.getItem(storeKey); if (raw) setOpen(new Set(JSON.parse(raw))); } catch {}
+  }, [storeKey]);
+  useEffect(() => {
+    if (skipSave.current) { skipSave.current = false; return; }
+    try { localStorage.setItem(storeKey, JSON.stringify([...open])); } catch {}
+  }, [open, storeKey]);
   function toggleDone(task: Task) {
     const next = task.status === "done" ? "todo" : "done";
     startTx(async () => { await updateTaskStatus(task.id, next, projectId); router.refresh(); });
@@ -183,12 +224,16 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const dev = (task: { id: string; dueDate: string | null }) => (dragOverride?.id === task.id ? dragOverride.dueDate : task.dueDate);
   const msDateOf = (ms: Milestone) => (msOverride?.id === ms.id ? msOverride.date : ms.date);
 
-  // 메인 막대 = 하위 막대들의 전체 범위(합). 하위 없으면 자기 날짜.
+  // 메인 막대 = 메인 자체 기간 ∪ 하위 막대들의 범위(합집합). 날짜 없는 하위는 제외.
   const rollupSpan = (row: MainTask) => {
-    if (row.subtasks.length === 0) return span(dsv(row), dev(row));
-    let minL = Infinity, maxR = -Infinity;
+    const spans: { left: string; width: string }[] = [];
+    if (dsv(row) || dev(row)) spans.push(span(dsv(row), dev(row)));
     for (const s of row.subtasks) {
-      const sp = span(dsv(s), dev(s));
+      if (dsv(s) || dev(s)) spans.push(span(dsv(s), dev(s)));
+    }
+    if (spans.length === 0) return span(dsv(row), dev(row));
+    let minL = Infinity, maxR = -Infinity;
+    for (const sp of spans) {
       const l = parseFloat(sp.left), w = parseFloat(sp.width);
       if (!isNaN(l) && !isNaN(w)) { minL = Math.min(minL, l); maxR = Math.max(maxR, l + w); }
     }
@@ -257,7 +302,15 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
       {/* 헤더 */}
       <div className="flex items-stretch border-b border-gray-100 bg-gray-50/30">
-        <div className="flex w-60 shrink-0 items-end px-5 pb-3"><span className="text-xs font-medium text-gray-400">{t("tasks.mainTasks")}</span></div>
+        <div className="flex w-60 shrink-0 items-end justify-between px-5 pb-3">
+          <span className="text-xs font-medium text-gray-400">{t("tasks.mainTasks")}</span>
+          {expandableIds.length > 0 && (
+            <button onClick={toggleAll} title={allOpen ? "모두 접기" : "모두 펼치기"} className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-blue-500">
+              <svg className={`h-3.5 w-3.5 transition-transform ${allOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+              {allOpen ? "접기" : "펼치기"}
+            </button>
+          )}
+        </div>
         <div className="relative flex flex-1 pt-7">
           {columns.map((ym, i) => (
             <div key={ym} className="flex-1 px-2 pb-3 text-center"><span className={`text-xs font-medium ${i === todayIdx ? "text-rose-500" : "text-gray-500"}`}>{label(ym)}</span></div>
@@ -312,12 +365,15 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
 
             {isOpen && (
               <div className="relative">
-                {row.subtasks.length > 0 && <span className="pointer-events-none absolute left-[31px] top-0 bottom-3 w-px bg-gray-200" />}
+                {row.subtasks.length > 0 && <span className="pointer-events-none absolute left-[16px] top-0 bottom-3 w-px bg-gray-200" />}
                 {row.subtasks.map((sub) => {
                   const sDone = sub.status === "done";
                   return (
-                    <div key={sub.id} className="group flex items-center hover:bg-gray-50/40">
-                      <div className="flex w-60 shrink-0 items-center gap-2 py-2 pr-4 pl-[44px]">
+                    <div key={sub.id} onDragEnter={() => onSubDragEnter(row.id, sub.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center hover:bg-gray-50/40 ${subDragging === sub.id ? "opacity-40" : ""}`}>
+                      <div className="flex w-60 shrink-0 items-center gap-1.5 py-2 pr-4 pl-[26px]">
+                        <span draggable onDragStart={() => { subDrag.current = { parentId: row.id, id: sub.id }; setSubDragging(sub.id); }} onDragEnd={() => onSubDragEnd(row.id)} title="드래그로 순서 변경" className="shrink-0 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
+                        </span>
                         <Check done={sDone} onClick={() => toggleDone(sub)} />
                         <button onClick={() => setSelected(sub)} title={sub.title} className={`truncate text-left text-[13px] hover:text-blue-600 ${sDone ? "text-gray-300 line-through" : "text-gray-600"}`}>{sub.title}</button>
                       </div>

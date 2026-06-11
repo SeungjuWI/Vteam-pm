@@ -10,14 +10,9 @@ import type { Member, Task, MainTask, Milestone } from "./project-types";
 
 const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
 
-const SUB_SOLID = "bg-slate-300";
+// 메인=파랑 한 색, 서브=슬레이트 한 색. 상태 구분 없이 진도율(%)로만 채움/진하기 베리에이션.
+const SUB_TRACK = "bg-slate-200";
 const SUB_RING = "ring-slate-200";
-const tone: Record<string, { soft: string; solid: string; grad: string; ring: string }> = {
-  done: { soft: "bg-emerald-100", solid: "bg-emerald-500", grad: "from-emerald-300 to-emerald-500", ring: "ring-emerald-200" },
-  in_progress: { soft: "bg-blue-100", solid: "bg-blue-500", grad: "from-blue-300 to-blue-600", ring: "ring-blue-200" },
-  pending: { soft: "bg-amber-100", solid: "bg-amber-400", grad: "from-amber-200 to-amber-500", ring: "ring-amber-200" },
-  todo: { soft: "bg-slate-100", solid: "bg-slate-300", grad: "from-slate-200 to-slate-400", ring: "ring-slate-200" },
-};
 
 function ymOf(d: string | null): number | null {
   if (!d) return null;
@@ -331,7 +326,6 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       {order.length === 0 && !addingMain ? (
         <div className="py-12 text-center text-sm text-gray-300">{t("tasks.emptyMain")}</div>
       ) : order.map((row) => {
-        const tn = tone[row.status];
         const isOpen = open.has(row.id);
         const isDone = row.status === "done";
         const pctV = Math.max(0, Math.min(100, row.progress ?? 0));
@@ -352,11 +346,10 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
               </div>
               <button data-track onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className="relative block h-12 flex-1 cursor-pointer">
                 <Columns />
-                <div onMouseDown={hasSubs ? undefined : (e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center rounded-lg ring-1 ring-inset ${tn.ring} group-hover:ring-2 ${hasSubs ? "" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
-                  <div className={`absolute inset-0 rounded-lg ${tn.soft}`} />
-                  <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${tn.grad} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
+                <div onMouseDown={hasSubs ? undefined : (e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg bg-blue-100 ring-1 ring-inset ring-blue-200 group-hover:ring-2 ${hasSubs ? "" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
+                  <div className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-blue-300 to-blue-600 transition-[width] duration-300" style={{ width: `${pctV}%` }} />
                   {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "l", row)} className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-l-lg" />}
-                  <span className="relative z-10 ml-2.5 text-[11px] font-semibold text-gray-700">{pctV}%</span>
+                  <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-blue-900"}`}>{pctV}%</span>
                   {row.assignees[0] && <span className="absolute -right-1 top-1/2 z-10 -translate-y-1/2"><Avatar a={row.assignees[0]} /></span>}
                   {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "r", row)} className="absolute right-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-r-lg" />}
                 </div>
@@ -368,6 +361,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 {row.subtasks.length > 0 && <span className="pointer-events-none absolute left-[16px] top-0 bottom-3 w-px bg-gray-200" />}
                 {row.subtasks.map((sub) => {
                   const sDone = sub.status === "done";
+                  const subPct = Math.max(0, Math.min(100, sub.progress ?? 0));
                   return (
                     <div key={sub.id} onDragEnter={() => onSubDragEnter(row.id, sub.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center hover:bg-gray-50/40 ${subDragging === sub.id ? "opacity-40" : ""}`}>
                       <div className="flex w-60 shrink-0 items-center gap-1.5 py-2 pr-4 pl-[26px]">
@@ -379,7 +373,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                       </div>
                       <button data-track onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className="relative block h-9 flex-1 cursor-pointer">
                         <Columns />
-                        <div onMouseDown={(e) => startDrag(e, "task", "move", sub)} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 cursor-grab items-center rounded-md ${SUB_SOLID} group-hover:ring-2 ${SUB_RING} active:cursor-grabbing`} style={span(dsv(sub), dev(sub))}>
+                        <div onMouseDown={(e) => startDrag(e, "task", "move", sub)} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 cursor-grab items-center overflow-hidden rounded-md ${SUB_TRACK} group-hover:ring-2 ${SUB_RING} active:cursor-grabbing`} style={span(dsv(sub), dev(sub))}>
+                          <div className="absolute inset-y-0 left-0 rounded-md bg-gradient-to-r from-slate-400 to-slate-600 transition-[width] duration-300" style={{ width: `${subPct}%` }} />
                           <span onMouseDown={(e) => startDrag(e, "task", "l", sub)} className="absolute left-0 top-0 z-20 h-full w-1.5 cursor-ew-resize" />
                           {sub.assignees[0] && <span className="absolute -right-0.5 top-1/2 -translate-y-1/2"><Avatar a={sub.assignees[0]} size="xs" /></span>}
                           <span onMouseDown={(e) => startDrag(e, "task", "r", sub)} className="absolute right-0 top-0 z-20 h-full w-1.5 cursor-ew-resize" />

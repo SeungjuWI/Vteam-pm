@@ -419,7 +419,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
               )}
               <div className="mt-3 flex items-center gap-3">
                 <span className="shrink-0 text-xs font-medium text-gray-500">{t("tasks.progress")}</span>
-                <input type="range" min={0} max={100} step={5} value={progress} onChange={(e) => { const v = Number(e.target.value); setProgress(v); dirty.current = true; }} onMouseUp={() => persist()} onTouchEnd={() => persist()} className="h-1.5 flex-1 accent-blue-500" />
+                <input type="range" min={0} max={100} step={5} value={progress} onChange={(e) => { const v = Number(e.target.value); setProgress(v); dirty.current = true; }} onMouseUp={async () => { await persist(); router.refresh(); }} onTouchEnd={async () => { await persist(); router.refresh(); }} className="h-1.5 flex-1 accent-blue-500" />
                 <span className="w-10 text-right text-sm font-semibold text-blue-600 tabular-nums">{progress}%</span>
               </div>
             </div>

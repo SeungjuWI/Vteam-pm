@@ -288,7 +288,12 @@ const en: Record<TranslationKey, string> = {
 
   // Tasks
   "tasks.title": "Tasks",
-  "tasks.todo": "To Do",
+  "tasks.todo": "Not started",
+  "tasks.pending": "Pending",
+  "tasks.progress": "Progress",
+  "tasks.startDate": "Start date",
+  "tasks.what": "What · Output",
+  "tasks.when": "By when · Timeline",
   "tasks.inProgress": "In Progress",
   "tasks.done": "Done",
   "tasks.count": "",

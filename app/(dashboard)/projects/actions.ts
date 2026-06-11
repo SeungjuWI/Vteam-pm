@@ -413,6 +413,8 @@ export async function updateTask(
   dueDate: string,
   assigneeIds: string[],
   output: string = "",
+  startDate: string | null = null,
+  progress: number = 0,
 ) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -437,8 +439,10 @@ export async function updateTask(
       title: title.trim(),
       description: description.trim() || null,
       output: output.trim() || null,
+      progress: Math.max(0, Math.min(100, Math.round(progress) || 0)),
       priority,
       due_date: dueDate || null,
+      start_date: startDate || null,
       source_language: editorProfile?.language || "ko",
     })
     .eq("id", taskId);

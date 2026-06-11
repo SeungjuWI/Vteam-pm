@@ -286,7 +286,12 @@ const ko = {
 
   // Tasks
   "tasks.title": "태스크",
-  "tasks.todo": "할 일",
+  "tasks.todo": "시작 전",
+  "tasks.pending": "펜딩",
+  "tasks.progress": "진도율",
+  "tasks.startDate": "시작일",
+  "tasks.what": "무엇을 · 결과물",
+  "tasks.when": "언제까지 · 기간",
   "tasks.inProgress": "진행 중",
   "tasks.done": "완료",
   "tasks.count": "개",

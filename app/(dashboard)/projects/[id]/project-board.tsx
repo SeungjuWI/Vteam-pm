@@ -26,6 +26,7 @@ export default function ProjectBoard({ projectId, mainTasks, members, allMembers
   const cols = [
     { key: "todo" as const, label: t("tasks.todo"), dot: "bg-slate-400" },
     { key: "in_progress" as const, label: t("tasks.inProgress"), dot: "bg-blue-500" },
+    { key: "pending" as const, label: t("tasks.pending"), dot: "bg-amber-400" },
     { key: "done" as const, label: t("tasks.done"), dot: "bg-emerald-500" },
   ];
 
@@ -40,7 +41,7 @@ export default function ProjectBoard({ projectId, mainTasks, members, allMembers
   }
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {cols.map((col) => {
         const cards = mainTasks.filter((m) => m.status === col.key);
         const over = dragOver === col.key;

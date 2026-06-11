@@ -35,7 +35,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       .eq("project_id", id),
     adminClient
       .from("tasks")
-      .select("id, title, description, output, status, priority, due_date, start_date, created_at, parent_task_id, source_language")
+      .select("id, title, description, output, progress, status, priority, due_date, start_date, created_at, parent_task_id, source_language")
       .eq("project_id", id)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false }),
@@ -85,7 +85,8 @@ export default async function ProjectDetailPage({ params }: Props) {
     title: t.title,
     description: t.description,
     output: t.output as string | null,
-    status: t.status as "todo" | "in_progress" | "done",
+    progress: (t.progress as number) ?? 0,
+    status: t.status as "todo" | "in_progress" | "pending" | "done",
     priority: t.priority as "low" | "medium" | "high",
     assignees: taskAssigneesMap[t.id] || [],
     dueDate: t.due_date,

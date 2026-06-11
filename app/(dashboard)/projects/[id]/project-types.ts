@@ -16,7 +16,8 @@ export interface Task {
   title: string;
   description: string | null;
   output: string | null;
-  status: "todo" | "in_progress" | "done";
+  progress: number;
+  status: "todo" | "in_progress" | "pending" | "done";
   priority: "low" | "medium" | "high";
   assignees: TaskAssignee[];
   dueDate: string | null;
@@ -42,7 +43,7 @@ export interface Project {
   createdAt: string;
 }
 
-export type TaskStatus = "todo" | "in_progress" | "done";
+export type TaskStatus = "todo" | "in_progress" | "pending" | "done";
 
 export const priorityConfig: Record<string, { label: string; bg: string; text: string }> = {
   high: { label: "High", bg: "bg-red-50", text: "text-red-500" },

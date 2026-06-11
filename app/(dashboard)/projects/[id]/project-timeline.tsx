@@ -15,6 +15,7 @@ const SUB_RING = "ring-slate-200";
 const tone: Record<string, { soft: string; solid: string; ring: string }> = {
   done: { soft: "bg-emerald-100", solid: "bg-emerald-500", ring: "ring-emerald-200" },
   in_progress: { soft: "bg-blue-100", solid: "bg-blue-500", ring: "ring-blue-200" },
+  pending: { soft: "bg-amber-100", solid: "bg-amber-400", ring: "ring-amber-200" },
   todo: { soft: "bg-slate-100", solid: "bg-slate-300", ring: "ring-slate-200" },
 };
 
@@ -22,10 +23,6 @@ function ymOf(d: string | null): number | null {
   if (!d) return null;
   const dt = new Date(d);
   return dt.getFullYear() * 12 + dt.getMonth();
-}
-function mainCompletion(t: MainTask): number {
-  if (t.subtasks.length > 0) return t.subtasks.filter((s) => s.status === "done").length / t.subtasks.length;
-  return t.status === "done" ? 1 : t.status === "in_progress" ? 0.5 : 0;
 }
 
 function Avatar({ a, size = "sm" }: { a: { name: string; avatarUrl: string | null }; size?: "sm" | "xs" }) {
@@ -283,8 +280,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       ) : order.map((row) => {
         const tn = tone[row.status];
         const isOpen = open.has(row.id);
-        const isDone = mainCompletion(row) === 1;
-        const pctV = Math.round(mainCompletion(row) * 100);
+        const isDone = row.status === "done";
+        const pctV = Math.max(0, Math.min(100, row.progress ?? 0));
         const hasSubs = row.subtasks.length > 0;
         const barStyle = rollupSpan(row);
         return (

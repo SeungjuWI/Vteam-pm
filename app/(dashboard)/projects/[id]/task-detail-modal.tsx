@@ -303,8 +303,10 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
   const [output, setOutput] = useState(task.output || "");
+  const [progress, setProgress] = useState(task.progress ?? 0);
   const [priority, setPriority] = useState(task.priority);
   const [dueDate, setDueDate] = useState(task.dueDate || "");
+  const [startDate, setStartDate] = useState(task.startDate || "");
   const [status, setStatus] = useState(task.status);
   const [selectedIds, setSelectedIds] = useState<string[]>(
     allMembers.filter((m) => task.assignees.some((a) => a.name === m.name)).map((m) => m.id)
@@ -319,10 +321,10 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
       (m.name.toLowerCase().includes(search.toLowerCase()) || m.email.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const statusLabels: Record<string, string> = { todo: t("tasks.todo"), in_progress: t("tasks.inProgress"), done: t("tasks.done") };
+  const statusLabels: Record<string, string> = { todo: t("tasks.todo"), in_progress: t("tasks.inProgress"), pending: t("tasks.pending"), done: t("tasks.done") };
 
   // 인라인 자동 저장
-  async function persist(next?: Partial<{ title: string; description: string; priority: "low" | "medium" | "high"; dueDate: string; selectedIds: string[]; output: string }>) {
+  async function persist(next?: Partial<{ title: string; description: string; priority: "low" | "medium" | "high"; dueDate: string; startDate: string; selectedIds: string[]; output: string; progress: number }>) {
     setSaving(true);
     const r = await updateTask(
       task.id, projectId,
@@ -332,11 +334,13 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
       next?.dueDate ?? dueDate,
       next?.selectedIds ?? selectedIds,
       next?.output ?? output,
+      next?.startDate ?? startDate,
+      next?.progress ?? progress,
     );
     setSaving(false);
     setError(errOf(r) || "");
   }
-  async function changeStatus(s: "todo" | "in_progress" | "done") {
+  async function changeStatus(s: "todo" | "in_progress" | "pending" | "done") {
     setStatus(s);
     await updateTaskStatus(task.id, s, projectId);
   }
@@ -347,7 +351,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     onClose();
     (async () => {
       if (wasDirty) {
-        await updateTask(task.id, projectId, title.trim() || task.title, description, priority, dueDate, selectedIds, output);
+        await updateTask(task.id, projectId, title.trim() || task.title, description, priority, dueDate, selectedIds, output, startDate, progress);
       }
       router.refresh();
     })();
@@ -391,21 +395,39 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
             <input value={title} onChange={(e) => { setTitle(e.target.value); dirty.current = true; }} onBlur={() => persist()} placeholder={t("tasks.taskTitle")}
               className="-mx-2 w-[calc(100%+1rem)] rounded-lg px-2 py-1 text-lg font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
 
-            {/* 결과물 (Output) — 이 태스크로 내야 할 산출물 */}
-            <div className="mt-3">
-              <p className="mb-1.5 text-xs font-semibold text-blue-500">{t("tasks.output")}</p>
+            {/* ① 무엇을 — 결과물 + 진도율 (핵심) */}
+            <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+              <p className="mb-2 text-xs font-semibold text-blue-600">① {t("tasks.what")}</p>
               <textarea value={output} onChange={(e) => { setOutput(e.target.value); dirty.current = true; }} onBlur={() => persist()} rows={2} placeholder={t("tasks.outputPlaceholder")}
-                className="w-full resize-none rounded-lg border border-blue-100 bg-blue-50/40 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                className="w-full resize-none rounded-lg border border-blue-100 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+              <div className="mt-3 flex items-center gap-3">
+                <span className="shrink-0 text-xs font-medium text-gray-500">{t("tasks.progress")}</span>
+                <input type="range" min={0} max={100} step={5} value={progress} onChange={(e) => { const v = Number(e.target.value); setProgress(v); dirty.current = true; }} onMouseUp={() => persist()} onTouchEnd={() => persist()} className="h-1.5 flex-1 accent-blue-500" />
+                <span className="w-10 text-right text-sm font-semibold text-blue-600 tabular-nums">{progress}%</span>
+              </div>
+            </div>
+
+            {/* ② 언제까지 — 기간 (핵심) */}
+            <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+              <p className="mb-2 text-xs font-semibold text-gray-600">② {t("tasks.when")}</p>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-xs text-gray-400">{t("tasks.startDate")}</span>
+                <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); persist({ startDate: e.target.value }); }} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
+                <span className="text-gray-300">→</span>
+                <span className="text-xs text-gray-400">{t("tasks.dueDate")}</span>
+                <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); persist({ dueDate: e.target.value }); }} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
+              </div>
             </div>
 
             <div className="mt-4 flex flex-col gap-3">
-              {/* 상태 + 우선순위 (드롭다운) */}
+              {/* 상태 + 우선순위 (보조, 드롭다운) */}
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-10 shrink-0 text-xs font-medium text-gray-400">{t("tasks.status")}</span>
-                  <select value={status} onChange={(e) => changeStatus(e.target.value as "todo" | "in_progress" | "done")} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none">
+                  <select value={status} onChange={(e) => changeStatus(e.target.value as "todo" | "in_progress" | "pending" | "done")} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none">
                     <option value="todo">{statusLabels.todo}</option>
                     <option value="in_progress">{statusLabels.in_progress}</option>
+                    <option value="pending">{statusLabels.pending}</option>
                     <option value="done">{statusLabels.done}</option>
                   </select>
                 </div>
@@ -417,11 +439,6 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                     <option value="high">High</option>
                   </select>
                 </div>
-              </div>
-              {/* 마감일 */}
-              <div className="flex items-center gap-3">
-                <span className="w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.dueDate")}</span>
-                <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); persist({ dueDate: e.target.value }); }} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
               </div>
               {/* 담당자 (인라인) */}
               <div className="flex items-start gap-3">

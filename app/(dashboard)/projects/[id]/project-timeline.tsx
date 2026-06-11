@@ -107,6 +107,21 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   }
 
   function toggle(id: string) { setOpen((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
+  const expandableIds = mainTasks.filter((m) => m.subtasks.length > 0).map((m) => m.id);
+  const allOpen = expandableIds.length > 0 && expandableIds.every((id) => open.has(id));
+  function toggleAll() { setOpen(allOpen ? new Set() : new Set(expandableIds)); }
+
+  // 펼침/접힘 상태를 프로젝트별로 localStorage에 저장·복원 (새로고침해도 유지)
+  const storeKey = `vteam:timeline-open:${projectId}`;
+  const skipSave = useRef(true);
+  useEffect(() => {
+    skipSave.current = true;
+    try { const raw = localStorage.getItem(storeKey); if (raw) setOpen(new Set(JSON.parse(raw))); } catch {}
+  }, [storeKey]);
+  useEffect(() => {
+    if (skipSave.current) { skipSave.current = false; return; }
+    try { localStorage.setItem(storeKey, JSON.stringify([...open])); } catch {}
+  }, [open, storeKey]);
   function toggleDone(task: Task) {
     const next = task.status === "done" ? "todo" : "done";
     startTx(async () => { await updateTaskStatus(task.id, next, projectId); router.refresh(); });
@@ -264,7 +279,15 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
       {/* 헤더 */}
       <div className="flex items-stretch border-b border-gray-100 bg-gray-50/30">
-        <div className="flex w-60 shrink-0 items-end px-5 pb-3"><span className="text-xs font-medium text-gray-400">{t("tasks.mainTasks")}</span></div>
+        <div className="flex w-60 shrink-0 items-end justify-between px-5 pb-3">
+          <span className="text-xs font-medium text-gray-400">{t("tasks.mainTasks")}</span>
+          {expandableIds.length > 0 && (
+            <button onClick={toggleAll} title={allOpen ? "모두 접기" : "모두 펼치기"} className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-blue-500">
+              <svg className={`h-3.5 w-3.5 transition-transform ${allOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+              {allOpen ? "접기" : "펼치기"}
+            </button>
+          )}
+        </div>
         <div className="relative flex flex-1 pt-7">
           {columns.map((ym, i) => (
             <div key={ym} className="flex-1 px-2 pb-3 text-center"><span className={`text-xs font-medium ${i === todayIdx ? "text-rose-500" : "text-gray-500"}`}>{label(ym)}</span></div>

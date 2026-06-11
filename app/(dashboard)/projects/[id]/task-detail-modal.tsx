@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { updateTask, updateTaskStatus, deleteTask, getTaskComments, createTaskComment, deleteTaskComment } from "../actions";
+import { updateTask, updateTaskStatus, updateTaskChecklist, deleteTask, getTaskComments, createTaskComment, deleteTaskComment } from "../actions";
 import { useT, type TFunction } from "@/lib/i18n";
-import type { Member, Task } from "./project-types";
+import type { Member, Task, ChecklistItem } from "./project-types";
 
 function errOf(r: unknown): string | undefined {
   return (r as { error?: string } | null | undefined)?.error;
@@ -304,6 +304,8 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     (task.output || "").split("\n").map((s) => s.trim()).filter(Boolean)
   );
   const outputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(task.checklist ?? []);
+  const checklistRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [progress, setProgress] = useState(task.progress ?? 0);
   const [priority, setPriority] = useState(task.priority);
   const [dueDate, setDueDate] = useState(task.dueDate || "");
@@ -358,6 +360,29 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     setOutputs((prev) => [...prev, ""]);
     const idx = outputs.length;
     requestAnimationFrame(() => outputRefs.current[idx]?.focus());
+  }
+  // 체크리스트(세부 할일) — 별도 경량 저장
+  function saveChecklist(arr: ChecklistItem[]) {
+    updateTaskChecklist(task.id, projectId, arr);
+  }
+  function toggleCheck(id: string) {
+    const next = checklist.map((it) => (it.id === id ? { ...it, done: !it.done } : it));
+    setChecklist(next);
+    saveChecklist(next);
+  }
+  function editCheck(id: string, text: string) {
+    setChecklist((prev) => prev.map((it) => (it.id === id ? { ...it, text } : it)));
+  }
+  function removeCheck(id: string) {
+    const next = checklist.filter((it) => it.id !== id);
+    setChecklist(next);
+    saveChecklist(next);
+  }
+  function addCheck() {
+    const item: ChecklistItem = { id: crypto.randomUUID(), text: "", done: false };
+    setChecklist((prev) => [...prev, item]);
+    const idx = checklist.length;
+    requestAnimationFrame(() => checklistRefs.current[idx]?.focus());
   }
   async function changeStatus(s: "todo" | "in_progress" | "pending" | "done") {
     setStatus(s);
@@ -518,6 +543,43 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* 체크리스트 (세부 할일) */}
+          <div className="px-6 pt-5">
+            <div className="mb-2 flex items-center gap-2">
+              <p className="text-xs font-medium text-gray-400">{t("tasks.checklist")}</p>
+              {checklist.length > 0 && <span className="text-[11px] font-medium text-gray-400">{checklist.filter((c) => c.done).length}/{checklist.length}</span>}
+            </div>
+            {checklist.length > 0 && (
+              <div className="mb-2 h-1 w-full overflow-hidden rounded-full bg-gray-100">
+                <div className="h-full rounded-full bg-emerald-400 transition-all duration-300" style={{ width: `${Math.round((checklist.filter((c) => c.done).length / checklist.length) * 100)}%` }} />
+              </div>
+            )}
+            <div className="flex flex-col gap-0.5">
+              {checklist.map((it, i) => (
+                <div key={it.id} className="group flex items-center gap-2">
+                  <button type="button" onClick={() => toggleCheck(it.id)} className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${it.done ? "border-emerald-500 bg-emerald-500" : "border-gray-300 hover:border-emerald-400"}`}>
+                    {it.done && <svg className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 011.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" /></svg>}
+                  </button>
+                  <input ref={(el) => { checklistRefs.current[i] = el; }} value={it.text}
+                    onChange={(e) => editCheck(it.id, e.target.value)}
+                    onBlur={() => saveChecklist(checklist)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); saveChecklist(checklist); if (it.text.trim()) addCheck(); else e.currentTarget.blur(); }
+                      else if (e.key === "Backspace" && it.text === "") { e.preventDefault(); removeCheck(it.id); requestAnimationFrame(() => checklistRefs.current[Math.max(0, i - 1)]?.focus()); }
+                    }}
+                    placeholder={t("tasks.checklistPlaceholder")}
+                    className={`flex-1 bg-transparent py-1 text-sm focus:outline-none placeholder:text-gray-300 ${it.done ? "text-gray-400 line-through" : "text-gray-800"}`} />
+                  <button type="button" onClick={() => removeCheck(it.id)} className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              ))}
+              <button type="button" onClick={addCheck} className="mt-1 flex items-center gap-1 self-start text-xs font-medium text-blue-500 hover:text-blue-600">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addChecklistItem")}
+              </button>
             </div>
           </div>
 

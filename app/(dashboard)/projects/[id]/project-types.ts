@@ -11,6 +11,12 @@ export interface TaskAssignee {
   avatarUrl: string | null;
 }
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -20,6 +26,7 @@ export interface Task {
   status: "todo" | "in_progress" | "pending" | "done";
   priority: "low" | "medium" | "high";
   assignees: TaskAssignee[];
+  checklist: ChecklistItem[];
   dueDate: string | null;
   startDate: string | null;
   sortOrder?: number | null;

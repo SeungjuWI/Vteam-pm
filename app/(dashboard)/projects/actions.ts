@@ -464,6 +464,32 @@ export async function updateTask(
   return { success: true };
 }
 
+export async function updateTaskChecklist(
+  taskId: string,
+  projectId: string,
+  items: { id: string; text: string; done: boolean }[],
+) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await taskInCompany(adminClient, taskId, companyId))) return DENY;
+
+  // 입력 정제: 빈 항목 제거, 필드만 추림
+  const clean = (Array.isArray(items) ? items : [])
+    .map((it) => ({ id: String(it.id || ""), text: String(it.text || "").slice(0, 500), done: !!it.done }))
+    .filter((it) => it.id && it.text.trim());
+
+  const { error } = await adminClient.from("tasks").update({ checklist: clean }).eq("id", taskId);
+  if (error) return { error: "저장에 실패했습니다" };
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
+
 export async function deleteTask(taskId: string, projectId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();

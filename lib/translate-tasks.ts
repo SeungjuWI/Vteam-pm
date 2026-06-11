@@ -1,7 +1,7 @@
 import { translateText } from "./translate";
 
 type SupaClient = { from: (t: string) => any };
-type TaskLike = { id: string; title: string; description: string | null; sourceLanguage: string };
+type TaskLike = { id: string; title: string; description: string | null; output: string | null; sourceLanguage: string };
 
 /**
  * 보는 사람 언어(viewerLang)로 태스크 제목/설명을 번역해 적용한 결과 맵 반환.
@@ -12,8 +12,8 @@ export async function translateTasks(
   admin: SupaClient,
   tasks: TaskLike[],
   viewerLang: string,
-): Promise<Map<string, { title: string; description: string | null }>> {
-  const result = new Map<string, { title: string; description: string | null }>();
+): Promise<Map<string, { title: string; description: string | null; output: string | null }>> {
+  const result = new Map<string, { title: string; description: string | null; output: string | null }>();
   const ids = tasks.map((t) => t.id);
   if (ids.length === 0 || !viewerLang) return result;
 
@@ -34,6 +34,7 @@ export async function translateTasks(
     const fields: { field: string; text: string }[] = [
       { field: "title", text: t.title || "" },
       { field: "description", text: t.description || "" },
+      { field: "output", text: t.output || "" },
     ];
     for (const { field, text } of fields) {
       if (!text.trim()) continue;
@@ -57,6 +58,7 @@ export async function translateTasks(
     result.set(t.id, {
       title: cache.get(`${t.id}|title`) ?? t.title,
       description: cache.has(`${t.id}|description`) ? cache.get(`${t.id}|description`)! : t.description,
+      output: cache.has(`${t.id}|output`) ? cache.get(`${t.id}|output`)! : t.output,
     });
   }
   return result;

@@ -139,11 +139,14 @@ export async function rejectLeave(leaveId: string) {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("role")
+    .select("role, company_id")
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin" || !profile.company_id) return { error: "권한이 없습니다" };
+
+  const { data: leave } = await adminClient.from("leaves").select("company_id").eq("id", leaveId).single();
+  if (!leave || leave.company_id !== profile.company_id) return { error: "권한이 없습니다" };
 
   await adminClient
     .from("leaves")
@@ -162,15 +165,23 @@ export async function adjustBalance(formData: FormData) {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("role")
+    .select("role, company_id")
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "admin") return { error: "권한이 없습니다" };
+  if (profile?.role !== "admin" || !profile.company_id) return { error: "권한이 없습니다" };
 
   const employeeId = formData.get("employeeId") as string;
   const total = Number(formData.get("total"));
   const year = new Date().getFullYear();
+
+  // 대상 직원이 같은 회사인지 검증
+  const { data: emp } = await adminClient
+    .from("profiles")
+    .select("company_id")
+    .eq("id", employeeId)
+    .single();
+  if (!emp || emp.company_id !== profile.company_id) return { error: "권한이 없습니다" };
 
   const { data: existing } = await adminClient
     .from("leave_balances")
@@ -185,15 +196,9 @@ export async function adjustBalance(formData: FormData) {
       .update({ total })
       .eq("id", existing.id);
   } else {
-    const { data: emp } = await adminClient
-      .from("profiles")
-      .select("company_id")
-      .eq("id", employeeId)
-      .single();
-
     await adminClient.from("leave_balances").insert({
       employee_id: employeeId,
-      company_id: emp!.company_id,
+      company_id: emp.company_id,
       year,
       total,
       used: 0,

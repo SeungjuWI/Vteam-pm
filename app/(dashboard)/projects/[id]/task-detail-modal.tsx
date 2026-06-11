@@ -7,6 +7,10 @@ import { updateTask, updateTaskStatus, deleteTask, getTaskComments, createTaskCo
 import { useT, type TFunction } from "@/lib/i18n";
 import type { Member, Task } from "./project-types";
 
+function errOf(r: unknown): string | undefined {
+  return (r as { error?: string } | null | undefined)?.error;
+}
+
 /* ── 댓글 목록 (스크롤 영역 안) ── */
 interface Comment {
   id: string;
@@ -163,7 +167,7 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
     const mentionedIds = projectMembers.filter((m) => mentionedNames.includes(m.name)).map((m) => m.id);
 
     const result = await createTaskComment(taskId, projectId, input, mentionedIds, isAll);
-    if (result?.error) { alert(result.error); }
+    if (errOf(result)) { alert(errOf(result)); }
     else {
       setInput("");
       window.dispatchEvent(new Event(`comment-refresh-${taskId}`));
@@ -298,6 +302,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
 
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
+  const [output, setOutput] = useState(task.output || "");
   const [priority, setPriority] = useState(task.priority);
   const [dueDate, setDueDate] = useState(task.dueDate || "");
   const [status, setStatus] = useState(task.status);
@@ -315,16 +320,9 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   );
 
   const statusLabels: Record<string, string> = { todo: t("tasks.todo"), in_progress: t("tasks.inProgress"), done: t("tasks.done") };
-  const statusDots: Record<string, string> = { todo: "bg-gray-400", in_progress: "bg-blue-500", done: "bg-green-500" };
-  const statusActive: Record<string, string> = { todo: "bg-gray-100 text-gray-700", in_progress: "bg-blue-50 text-blue-600", done: "bg-emerald-50 text-emerald-600" };
-  const prioOpts = [
-    { key: "low", label: "Low", active: "bg-gray-100 text-gray-700" },
-    { key: "medium", label: "Medium", active: "bg-amber-50 text-amber-700" },
-    { key: "high", label: "High", active: "bg-red-50 text-red-600" },
-  ] as const;
 
   // 인라인 자동 저장
-  async function persist(next?: Partial<{ title: string; description: string; priority: "low" | "medium" | "high"; dueDate: string; selectedIds: string[] }>) {
+  async function persist(next?: Partial<{ title: string; description: string; priority: "low" | "medium" | "high"; dueDate: string; selectedIds: string[]; output: string }>) {
     setSaving(true);
     const r = await updateTask(
       task.id, projectId,
@@ -333,9 +331,10 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
       next?.priority ?? priority,
       next?.dueDate ?? dueDate,
       next?.selectedIds ?? selectedIds,
+      next?.output ?? output,
     );
     setSaving(false);
-    setError(r?.error || "");
+    setError(errOf(r) || "");
   }
   async function changeStatus(s: "todo" | "in_progress" | "done") {
     setStatus(s);
@@ -348,7 +347,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     onClose();
     (async () => {
       if (wasDirty) {
-        await updateTask(task.id, projectId, title.trim() || task.title, description, priority, dueDate, selectedIds);
+        await updateTask(task.id, projectId, title.trim() || task.title, description, priority, dueDate, selectedIds, output);
       }
       router.refresh();
     })();
@@ -366,7 +365,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     if (!confirm(t("tasks.deleteConfirm"))) return;
     setDeleting(true);
     const result = await deleteTask(task.id, projectId);
-    if (result?.error) { alert(result.error); setDeleting(false); }
+    if (errOf(result)) { alert(errOf(result)); setDeleting(false); }
     else onClose();
   }
 
@@ -392,26 +391,31 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
             <input value={title} onChange={(e) => { setTitle(e.target.value); dirty.current = true; }} onBlur={() => persist()} placeholder={t("tasks.taskTitle")}
               className="-mx-2 w-[calc(100%+1rem)] rounded-lg px-2 py-1 text-lg font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
 
+            {/* 결과물 (Output) — 이 태스크로 내야 할 산출물 */}
+            <div className="mt-3">
+              <p className="mb-1.5 text-xs font-semibold text-blue-500">{t("tasks.output")}</p>
+              <textarea value={output} onChange={(e) => { setOutput(e.target.value); dirty.current = true; }} onBlur={() => persist()} rows={2} placeholder={t("tasks.outputPlaceholder")}
+                className="w-full resize-none rounded-lg border border-blue-100 bg-blue-50/40 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
+            </div>
+
             <div className="mt-4 flex flex-col gap-3">
-              {/* 상태 */}
-              <div className="flex items-center gap-3">
-                <span className="w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.status")}</span>
-                <div className="flex gap-1.5">
-                  {(["todo", "in_progress", "done"] as const).map((s) => (
-                    <button key={s} type="button" onClick={() => changeStatus(s)}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${status === s ? statusActive[s] : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${statusDots[s]}`} />{statusLabels[s]}
-                    </button>
-                  ))}
+              {/* 상태 + 우선순위 (드롭다운) */}
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-10 shrink-0 text-xs font-medium text-gray-400">{t("tasks.status")}</span>
+                  <select value={status} onChange={(e) => changeStatus(e.target.value as "todo" | "in_progress" | "done")} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none">
+                    <option value="todo">{statusLabels.todo}</option>
+                    <option value="in_progress">{statusLabels.in_progress}</option>
+                    <option value="done">{statusLabels.done}</option>
+                  </select>
                 </div>
-              </div>
-              {/* 우선순위 */}
-              <div className="flex items-center gap-3">
-                <span className="w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.priority")}</span>
-                <div className="flex gap-1.5">
-                  {prioOpts.map((p) => (
-                    <button key={p.key} type="button" onClick={() => { setPriority(p.key); persist({ priority: p.key }); }} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${priority === p.key ? p.active : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}>{p.label}</button>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 text-xs font-medium text-gray-400">{t("tasks.priority")}</span>
+                  <select value={priority} onChange={(e) => { const p = e.target.value as "low" | "medium" | "high"; setPriority(p); persist({ priority: p }); }} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
                 </div>
               </div>
               {/* 마감일 */}

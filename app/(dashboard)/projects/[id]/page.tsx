@@ -35,7 +35,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       .eq("project_id", id),
     adminClient
       .from("tasks")
-      .select("id, title, description, status, priority, due_date, start_date, created_at, parent_task_id, source_language")
+      .select("id, title, description, output, status, priority, due_date, start_date, created_at, parent_task_id, source_language")
       .eq("project_id", id)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false }),
@@ -84,6 +84,7 @@ export default async function ProjectDetailPage({ params }: Props) {
     id: t.id,
     title: t.title,
     description: t.description,
+    output: t.output as string | null,
     status: t.status as "todo" | "in_progress" | "done",
     priority: t.priority as "low" | "medium" | "high",
     assignees: taskAssigneesMap[t.id] || [],
@@ -93,17 +94,17 @@ export default async function ProjectDetailPage({ params }: Props) {
     sourceLanguage: (t.source_language as string) || "ko",
   }));
 
-  // 보는 사람 언어로 태스크 제목/설명 번역 (작성자 언어와 다를 때만, 캐시 재사용)
+  // 보는 사람 언어로 태스크 제목/설명/결과물 번역 (작성자 언어와 다를 때만, 캐시 재사용)
   const myLang = profile.language || "ko";
   if (allTasks.some((t) => t.sourceLanguage !== myLang)) {
     const trMap = await translateTasks(
       adminClient,
-      allTasks.map((t) => ({ id: t.id, title: t.title, description: t.description, sourceLanguage: t.sourceLanguage })),
+      allTasks.map((t) => ({ id: t.id, title: t.title, description: t.description, output: t.output, sourceLanguage: t.sourceLanguage })),
       myLang,
     );
     for (const t of allTasks) {
       const tr = trMap.get(t.id);
-      if (tr) { t.title = tr.title; t.description = tr.description; }
+      if (tr) { t.title = tr.title; t.description = tr.description; t.output = tr.output; }
     }
   }
 

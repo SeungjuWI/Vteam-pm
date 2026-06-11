@@ -5,6 +5,28 @@ import { createClient } from "@/lib/supabase/server";
 import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// ── 회사 소유권 검증 (멀티테넌트 격리: 다른 회사 리소스 접근 차단) ──
+type Admin = ReturnType<typeof createAdminClient>;
+async function getCompanyId(adminClient: Admin, userId: string): Promise<string | null> {
+  const { data } = await adminClient.from("profiles").select("company_id").eq("id", userId).single();
+  return (data?.company_id as string) ?? null;
+}
+async function projectInCompany(adminClient: Admin, projectId: string, companyId: string): Promise<boolean> {
+  const { data } = await adminClient.from("projects").select("company_id").eq("id", projectId).single();
+  return !!data && data.company_id === companyId;
+}
+async function taskInCompany(adminClient: Admin, taskId: string, companyId: string): Promise<boolean> {
+  const { data: task } = await adminClient.from("tasks").select("project_id").eq("id", taskId).single();
+  if (!task) return false;
+  return projectInCompany(adminClient, task.project_id as string, companyId);
+}
+async function milestoneInCompany(adminClient: Admin, milestoneId: string, companyId: string): Promise<boolean> {
+  const { data: ms } = await adminClient.from("project_milestones").select("project_id").eq("id", milestoneId).single();
+  if (!ms) return false;
+  return projectInCompany(adminClient, ms.project_id as string, companyId);
+}
+const DENY = { error: "권한이 없습니다" };
+
 export async function createProject(formData: FormData) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -262,6 +284,8 @@ export async function removeProjectMember(projectId: string, memberId: string) {
     return { error: "권한이 없습니다" };
   }
 
+  if (!(await projectInCompany(adminClient, projectId, profile.company_id))) return DENY;
+
   await adminClient
     .from("project_members")
     .delete()
@@ -297,6 +321,9 @@ export async function createTask(
   if (!profile?.company_id) return { error: "권한이 없습니다" };
 
   if (!title.trim()) return { error: "제목을 입력해주세요" };
+
+  if (!(await projectInCompany(adminClient, projectId, profile.company_id))) return { error: "프로젝트를 찾을 수 없습니다" };
+  if (parentTaskId && !(await taskInCompany(adminClient, parentTaskId, profile.company_id))) return { error: "부모 태스크를 찾을 수 없습니다" };
 
   const { data: authorProfile } = await adminClient
     .from("profiles")
@@ -363,6 +390,9 @@ export async function updateTaskStatus(taskId: string, status: string, projectId
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await taskInCompany(adminClient, taskId, companyId))) return DENY;
+
   const { error } = await adminClient
     .from("tasks")
     .update({ status })
@@ -382,6 +412,7 @@ export async function updateTask(
   priority: string,
   dueDate: string,
   assigneeIds: string[],
+  output: string = "",
 ) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -390,6 +421,9 @@ export async function updateTask(
   if (!user) return { error: "로그인이 필요합니다" };
 
   if (!title.trim()) return { error: "제목을 입력해주세요" };
+
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await taskInCompany(adminClient, taskId, companyId))) return DENY;
 
   const { data: editorProfile } = await adminClient
     .from("profiles")
@@ -402,6 +436,7 @@ export async function updateTask(
     .update({
       title: title.trim(),
       description: description.trim() || null,
+      output: output.trim() || null,
       priority,
       due_date: dueDate || null,
       source_language: editorProfile?.language || "ko",
@@ -432,6 +467,9 @@ export async function deleteTask(taskId: string, projectId: string) {
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await taskInCompany(adminClient, taskId, companyId))) return DENY;
+
   // task_assignees는 on delete cascade
   await adminClient.from("tasks").delete().eq("id", taskId);
 
@@ -440,7 +478,12 @@ export async function deleteTask(taskId: string, projectId: string) {
 }
 
 export async function getTaskComments(taskId: string) {
+  const supabase = await createClient();
   const adminClient = createAdminClient();
+  const user = await getClaimsUser(supabase);
+  if (!user) return [];
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await taskInCompany(adminClient, taskId, companyId))) return [];
 
   const { data } = await adminClient
     .from("task_comments")
@@ -491,7 +534,10 @@ export async function createTaskComment(
     .eq("id", user.id)
     .single();
 
-  if (!profile) return { error: "프로필을 찾을 수 없습니다" };
+  if (!profile?.company_id) return { error: "프로필을 찾을 수 없습니다" };
+
+  const { data: tk } = await adminClient.from("tasks").select("project_id").eq("id", taskId).single();
+  if (!tk || tk.project_id !== projectId || !(await projectInCompany(adminClient, projectId, profile.company_id))) return DENY;
 
   const { error } = await adminClient.from("task_comments").insert({
     task_id: taskId,
@@ -548,6 +594,10 @@ export async function deleteTaskComment(commentId: string, projectId: string) {
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
+  const companyId = await getCompanyId(adminClient, user.id);
+  const { data: c } = await adminClient.from("task_comments").select("task_id").eq("id", commentId).single();
+  if (!companyId || !c || !(await taskInCompany(adminClient, c.task_id as string, companyId))) return DENY;
+
   // 본인 댓글만 삭제
   await adminClient
     .from("task_comments")
@@ -566,6 +616,9 @@ export async function updateTaskDates(taskId: string, projectId: string, startDa
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await taskInCompany(adminClient, taskId, companyId))) return DENY;
+
   const { error } = await adminClient
     .from("tasks")
     .update({ start_date: startDate, due_date: dueDate })
@@ -583,6 +636,9 @@ export async function updateMilestoneDate(milestoneId: string, projectId: string
   const adminClient = createAdminClient();
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
+
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await milestoneInCompany(adminClient, milestoneId, companyId))) return DENY;
 
   const { error } = await adminClient
     .from("project_milestones")
@@ -603,6 +659,9 @@ export async function addMilestone(projectId: string, title: string, date: strin
   if (!user) return { error: "로그인이 필요합니다" };
   if (!title.trim() || !date) return { error: "제목과 날짜를 입력해주세요" };
 
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await projectInCompany(adminClient, projectId, companyId))) return DENY;
+
   const { error } = await adminClient
     .from("project_milestones")
     .insert({ project_id: projectId, title: title.trim(), date });
@@ -620,6 +679,9 @@ export async function deleteMilestone(milestoneId: string, projectId: string) {
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await milestoneInCompany(adminClient, milestoneId, companyId))) return DENY;
+
   await adminClient.from("project_milestones").delete().eq("id", milestoneId);
 
   revalidatePath(`/projects/${projectId}`);
@@ -632,6 +694,9 @@ export async function reorderTasks(projectId: string, orderedIds: string[]) {
   const adminClient = createAdminClient();
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
+
+  const companyId = await getCompanyId(adminClient, user.id);
+  if (!companyId || !(await projectInCompany(adminClient, projectId, companyId))) return DENY;
 
   for (let i = 0; i < orderedIds.length; i++) {
     await adminClient

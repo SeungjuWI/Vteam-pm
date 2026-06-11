@@ -224,10 +224,14 @@ export async function cancelInvitation(invitationId: string) {
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
+  const { data: profile } = await adminClient.from("profiles").select("role, company_id").eq("id", user.id).single();
+  if (profile?.role !== "admin" || !profile.company_id) return { error: "권한이 없습니다" };
+
   await adminClient
     .from("invitations")
     .update({ status: "expired" })
-    .eq("id", invitationId);
+    .eq("id", invitationId)
+    .eq("company_id", profile.company_id);
 
   revalidatePath("/settings/members");
 }

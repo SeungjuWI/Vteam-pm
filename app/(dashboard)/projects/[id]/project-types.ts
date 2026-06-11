@@ -15,6 +15,7 @@ export interface Task {
   id: string;
   title: string;
   description: string | null;
+  output: string | null;
   status: "todo" | "in_progress" | "done";
   priority: "low" | "medium" | "high";
   assignees: TaskAssignee[];

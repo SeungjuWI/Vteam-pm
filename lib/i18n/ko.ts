@@ -299,6 +299,8 @@ const ko = {
   "tasks.contentPlaceholder": "작업에 대해 설명해주세요",
   "tasks.noContent": "작업 내용 없음",
   "tasks.status": "상태",
+  "tasks.output": "결과물",
+  "tasks.outputPlaceholder": "이 태스크로 내야 할 결과물(산출물)을 적어주세요",
   "tasks.priority": "우선순위",
   "tasks.dueDate": "마감일",
   "tasks.assignee": "담당자",

@@ -3,7 +3,7 @@ import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import { kstStartOfToday, kstAddDays } from "@/lib/date";
 import TeamTimeline from "../attendance/team-timeline";
 import Board from "./board";
-import TeamDeadlines, { type DeadlineGroup, type DeadlineTask } from "./team-deadlines";
+import TeamDeadlines, { type DeadlineGroup, type DeadlineTask, type DeadlineMain } from "./team-deadlines";
 import { translateTasks } from "@/lib/translate-tasks";
 import { getT } from "@/lib/i18n/server";
 
@@ -64,24 +64,38 @@ export default async function DashboardPage() {
   let deadlineGroups: DeadlineGroup[] = [];
   const projIds = (projRows || []).map((p) => p.id);
   if (projIds.length > 0) {
+    type Row = { id: string; title: string; description: string | null; output: string | null; due_date: string | null; project_id: string; parent_task_id: string | null; source_language: string | null };
+    const taskCols = "id, title, description, output, due_date, project_id, parent_task_id, source_language";
+
     const { data: dueTasks } = await adminClient
       .from("tasks")
-      .select("id, title, description, output, due_date, project_id, source_language")
+      .select(taskCols)
       .in("project_id", projIds)
       .neq("status", "done")
       .not("due_date", "is", null)
       .order("due_date", { ascending: true });
 
-    const tasks = dueTasks || [];
-    const taskIds = tasks.map((tk) => tk.id);
+    const tasks = (dueTasks || []) as Row[];
+    const taskById = new Map(tasks.map((tk) => [tk.id, tk]));
+
+    // 서브의 부모가 마감목록에 없으면(부모가 마감없음/완료) 트리 헤더용으로 별도 조회
+    const orphanParentIds = [...new Set(
+      tasks.filter((tk) => tk.parent_task_id && !taskById.has(tk.parent_task_id)).map((tk) => tk.parent_task_id as string),
+    )];
+    let parentHeaders: Row[] = [];
+    if (orphanParentIds.length > 0) {
+      const { data } = await adminClient.from("tasks").select(taskCols).in("id", orphanParentIds);
+      parentHeaders = (data || []) as Row[];
+    }
+
+    const allRows = [...tasks, ...parentHeaders];
+    const srcById = new Map(allRows.map((r) => [r.id, r]));
 
     // 담당자
     const assigneeMap: Record<string, { name: string; avatarUrl: string | null }[]> = {};
-    if (taskIds.length > 0) {
-      const { data: taData } = await adminClient
-        .from("task_assignees")
-        .select("task_id, member_id")
-        .in("task_id", taskIds);
+    const allIds = allRows.map((r) => r.id);
+    if (allIds.length > 0) {
+      const { data: taData } = await adminClient.from("task_assignees").select("task_id, member_id").in("task_id", allIds);
       const mById = new Map((companyMembers || []).map((m) => [m.id, m]));
       for (const ta of taData || []) {
         const m = mById.get(ta.member_id);
@@ -92,31 +106,53 @@ export default async function DashboardPage() {
     // 보는 사람 언어로 제목 번역 (작성자 언어와 다를 때만, 캐시 재사용)
     const myLang = profile.language || "ko";
     const titleMap = new Map<string, string>();
-    if (tasks.some((tk) => (tk.source_language || "ko") !== myLang)) {
+    if (allRows.some((r) => (r.source_language || "ko") !== myLang)) {
       const tr = await translateTasks(
         adminClient,
-        tasks.map((tk) => ({ id: tk.id, title: tk.title, description: tk.description, output: tk.output as string | null, sourceLanguage: (tk.source_language as string) || "ko" })),
+        allRows.map((r) => ({ id: r.id, title: r.title, description: r.description, output: r.output, sourceLanguage: r.source_language || "ko" })),
         myLang,
       );
-      for (const tk of tasks) { const x = tr.get(tk.id); if (x) titleMap.set(tk.id, x.title); }
+      for (const r of allRows) { const x = tr.get(r.id); if (x) titleMap.set(r.id, x.title); }
     }
+    const titleOf = (r: Row) => titleMap.get(r.id) || r.title;
 
     const projName = new Map((projRows || []).map((p) => [p.id, p.name]));
-    const byProj: Record<string, DeadlineTask[]> = {};
+
+    // 메인 후보 = 마감 있는 parent-null 태스크 + orphan 부모 헤더
+    const mainMap = new Map<string, DeadlineMain>();
+    const makeMain = (r: Row, withDue: boolean): DeadlineMain => {
+      const info = withDue && r.due_date ? dueInfo(r.due_date) : null;
+      return {
+        id: r.id, title: titleOf(r),
+        dueDate: withDue ? r.due_date : null,
+        days: info ? info.days : null,
+        bucket: info ? info.bucket : null,
+        assignees: assigneeMap[r.id] || [],
+        subtasks: [],
+      };
+    };
+    for (const tk of tasks) if (!tk.parent_task_id) mainMap.set(tk.id, makeMain(tk, true));
+    for (const p of parentHeaders) if (!mainMap.has(p.id)) mainMap.set(p.id, makeMain(p, !!p.due_date));
+
+    // 서브 부착 (부모를 못 찾으면 안전망으로 메인 승격)
     for (const tk of tasks) {
-      const { days, bucket } = dueInfo(tk.due_date as string);
-      (byProj[tk.project_id] ||= []).push({
-        id: tk.id,
-        title: titleMap.get(tk.id) || tk.title,
-        dueDate: tk.due_date as string,
-        days,
-        bucket,
-        assignees: assigneeMap[tk.id] || [],
-      });
+      if (!tk.parent_task_id) continue;
+      const info = dueInfo(tk.due_date as string);
+      const sub: DeadlineTask = { id: tk.id, title: titleOf(tk), dueDate: tk.due_date as string, days: info.days, bucket: info.bucket, assignees: assigneeMap[tk.id] || [] };
+      const parent = mainMap.get(tk.parent_task_id);
+      if (parent) parent.subtasks.push(sub);
+      else mainMap.set(tk.id, makeMain(tk, true));
+    }
+
+    const sortKey = (m?: DeadlineMain) => (m ? Math.min(m.days ?? 9999, ...m.subtasks.map((s) => s.days), 9999) : 9999);
+    const byProj: Record<string, DeadlineMain[]> = {};
+    for (const m of mainMap.values()) {
+      const pid = srcById.get(m.id)?.project_id;
+      if (pid) (byProj[pid] ||= []).push(m);
     }
     deadlineGroups = Object.entries(byProj)
-      .map(([pid, ts]) => ({ projectId: pid, projectName: projName.get(pid) || "", tasks: ts.sort((a, b) => a.days - b.days) }))
-      .sort((a, b) => (a.tasks[0]?.days ?? 9999) - (b.tasks[0]?.days ?? 9999));
+      .map(([pid, mains]) => ({ projectId: pid, projectName: projName.get(pid) || "", mains: mains.sort((a, b) => sortKey(a) - sortKey(b)) }))
+      .sort((a, b) => sortKey(a.mains[0]) - sortKey(b.mains[0]));
   }
 
   type TeamRecord = { id: string; clock_in: string; clock_out: string | null; profiles: { name: string; email: string; avatar_url: string | null; position: string | null } };

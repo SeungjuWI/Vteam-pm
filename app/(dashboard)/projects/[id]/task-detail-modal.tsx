@@ -353,6 +353,15 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
       router.refresh();
     })();
   }
+
+  // ESC로 닫기 (최신 closeSave 참조)
+  const escRef = useRef<() => void>(() => {});
+  escRef.current = closeSave;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") escRef.current(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   async function handleDelete() {
     if (!confirm(t("tasks.deleteConfirm"))) return;
     setDeleting(true);

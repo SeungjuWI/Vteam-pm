@@ -10,8 +10,27 @@ import type { Member, Task, MainTask, Milestone } from "./project-types";
 
 const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
 
-// 메인=파랑 한 색, 서브=슬레이트 한 색. 상태 구분 없이 진도율(%)로만 채움/진하기 베리에이션.
-const SUB_TRACK = "bg-slate-200";
+// 상태별 막대 색 (차분하게). 진도율(%)만큼 그라데이션으로 채움.
+const STATUS_FILL: Record<string, string> = {
+  todo: "from-slate-300 to-slate-400",
+  in_progress: "from-blue-300 to-blue-600",
+  pending: "from-amber-300 to-amber-500",
+  done: "from-emerald-300 to-emerald-500",
+};
+const STATUS_TRACK: Record<string, string> = {
+  todo: "bg-slate-100",
+  in_progress: "bg-blue-100",
+  pending: "bg-amber-50",
+  done: "bg-emerald-100",
+};
+const STATUS_RING: Record<string, string> = {
+  todo: "ring-slate-200",
+  in_progress: "ring-blue-200",
+  pending: "ring-amber-200",
+  done: "ring-emerald-200",
+};
+// 펜딩(멈춤) 빗금 패턴
+const STRIPE = "repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,.55) 4px, rgba(255,255,255,.55) 8px)";
 const SUB_RING = "ring-slate-200";
 
 function ymOf(d: string | null): number | null {
@@ -147,6 +166,13 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
 
   // 월 컬럼 범위 산출
   const now = new Date();
+  const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  // 시작일이 지났는데 아직 시작 전(0%)이거나, 마감일이 지났는데 미완료 → 경고
+  const isLate = (status: string, progress: number, startDate: string | null, dueDate: string | null) => {
+    const lateStart = status === "todo" && (progress ?? 0) === 0 && !!startDate && Date.parse(startDate) < todayMid;
+    const overdue = status !== "done" && !!dueDate && Date.parse(dueDate) < todayMid;
+    return lateStart || overdue;
+  };
   const nowYm = now.getFullYear() * 12 + now.getMonth();
   const yms: number[] = [];
   for (const m of mainTasks) {
@@ -331,6 +357,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         const pctV = Math.max(0, Math.min(100, row.progress ?? 0));
         const hasSubs = row.subtasks.length > 0;
         const barStyle = rollupSpan(row);
+        const warn = isLate(row.status, pctV, row.startDate, row.dueDate);
         return (
           <div key={row.id}>
             <div onDragEnter={() => onRowDragEnter(row.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center transition-colors hover:bg-gray-50/40 ${rowDragging === row.id ? "opacity-40" : ""}`}>
@@ -342,14 +369,16 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 <button onClick={() => toggle(row.id)} className="shrink-0 text-gray-300 hover:text-gray-500" title={t("tasks.addSub")}>
                   <svg className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>
-                <button onClick={() => setSelected(row)} title={row.title} className={`truncate text-left text-sm font-medium hover:text-blue-600 ${isDone ? "text-gray-300 line-through" : "text-gray-900"}`}>{row.title}</button>
+                {warn && <span title="시작일이 지났는데 시작 전이거나 마감이 지났어요" className="shrink-0 text-red-500"><svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg></span>}
+                <button onClick={() => setSelected(row)} title={row.title} className={`truncate text-left text-sm font-medium hover:text-blue-600 ${isDone ? "text-gray-300 line-through" : warn ? "text-red-700" : "text-gray-900"}`}>{row.title}</button>
               </div>
               <button data-track onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className="relative block h-12 flex-1 cursor-pointer">
                 <Columns />
-                <div onMouseDown={hasSubs ? undefined : (e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg bg-blue-100 ring-1 ring-inset ring-blue-200 group-hover:ring-2 ${hasSubs ? "" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
-                  <div className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-blue-300 to-blue-600 transition-[width] duration-300" style={{ width: `${pctV}%` }} />
+                <div onMouseDown={hasSubs ? undefined : (e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${STATUS_TRACK[row.status]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[row.status]}`} ${hasSubs ? "" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
+                  <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${STATUS_FILL[row.status]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
+                  {row.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
                   {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "l", row)} className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-l-lg" />}
-                  <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-blue-900"}`}>{pctV}%</span>
+                  <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-gray-700"}`}>{pctV}%</span>
                   {row.assignees[0] && <span className="absolute -right-1 top-1/2 z-10 -translate-y-1/2"><Avatar a={row.assignees[0]} /></span>}
                   {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "r", row)} className="absolute right-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-r-lg" />}
                 </div>
@@ -362,6 +391,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 {row.subtasks.map((sub) => {
                   const sDone = sub.status === "done";
                   const subPct = Math.max(0, Math.min(100, sub.progress ?? 0));
+                  const subWarn = isLate(sub.status, subPct, sub.startDate, sub.dueDate);
                   return (
                     <div key={sub.id} onDragEnter={() => onSubDragEnter(row.id, sub.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center hover:bg-gray-50/40 ${subDragging === sub.id ? "opacity-40" : ""}`}>
                       <div className="flex w-60 shrink-0 items-center gap-1.5 py-2 pr-4 pl-[26px]">
@@ -369,12 +399,14 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                           <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
                         </span>
                         <Check done={sDone} onClick={() => toggleDone(sub)} />
-                        <button onClick={() => setSelected(sub)} title={sub.title} className={`truncate text-left text-[13px] hover:text-blue-600 ${sDone ? "text-gray-300 line-through" : "text-gray-600"}`}>{sub.title}</button>
+                        {subWarn && <span title="시작일이 지났는데 시작 전이거나 마감이 지났어요" className="shrink-0 text-red-500"><svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg></span>}
+                        <button onClick={() => setSelected(sub)} title={sub.title} className={`truncate text-left text-[13px] hover:text-blue-600 ${sDone ? "text-gray-300 line-through" : subWarn ? "text-red-700" : "text-gray-600"}`}>{sub.title}</button>
                       </div>
                       <button data-track onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className="relative block h-9 flex-1 cursor-pointer">
                         <Columns />
-                        <div onMouseDown={(e) => startDrag(e, "task", "move", sub)} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 cursor-grab items-center overflow-hidden rounded-md ${SUB_TRACK} group-hover:ring-2 ${SUB_RING} active:cursor-grabbing`} style={span(dsv(sub), dev(sub))}>
-                          <div className="absolute inset-y-0 left-0 rounded-md bg-gradient-to-r from-slate-400 to-slate-600 transition-[width] duration-300" style={{ width: `${subPct}%` }} />
+                        <div onMouseDown={(e) => startDrag(e, "task", "move", sub)} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 cursor-grab items-center overflow-hidden rounded-md ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`} active:cursor-grabbing`} style={span(dsv(sub), dev(sub))}>
+                          <div className={`absolute inset-y-0 left-0 rounded-md bg-gradient-to-r ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
+                          {sub.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-md" style={{ width: `${subPct}%`, backgroundImage: STRIPE }} />}
                           <span onMouseDown={(e) => startDrag(e, "task", "l", sub)} className="absolute left-0 top-0 z-20 h-full w-1.5 cursor-ew-resize" />
                           {sub.assignees[0] && <span className="absolute -right-0.5 top-1/2 -translate-y-1/2"><Avatar a={sub.assignees[0]} size="xs" /></span>}
                           <span onMouseDown={(e) => startDrag(e, "task", "r", sub)} className="absolute right-0 top-0 z-20 h-full w-1.5 cursor-ew-resize" />

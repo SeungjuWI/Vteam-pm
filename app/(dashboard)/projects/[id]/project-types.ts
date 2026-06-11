@@ -21,6 +21,8 @@ export interface Task {
   assignees: TaskAssignee[];
   dueDate: string | null;
   startDate: string | null;
+  sortOrder?: number | null;
+  createdAt?: string;
 }
 
 export interface MainTask extends Task {

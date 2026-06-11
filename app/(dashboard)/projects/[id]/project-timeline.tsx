@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { quickAddTask, updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks } from "../actions";
+import { quickAddTask, updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
 
@@ -104,6 +104,32 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     rowDrag.current = null;
     setRowDragging(null);
     startTx(async () => { await reorderTasks(projectId, orderRef.current.map((i) => i.id)); router.refresh(); });
+  }
+
+  // 서브태스크 행 순서(드래그 정렬) — 같은 부모 안에서만
+  const subDrag = useRef<{ parentId: string; id: string } | null>(null);
+  const [subDragging, setSubDragging] = useState<string | null>(null);
+  function onSubDragEnter(parentId: string, targetId: string) {
+    const d = subDrag.current;
+    if (!d || d.parentId !== parentId || d.id === targetId) return;
+    setOrder((prev) => prev.map((row) => {
+      if (row.id !== parentId) return row;
+      const arr = [...row.subtasks];
+      const fi = arr.findIndex((x) => x.id === d.id);
+      const ti = arr.findIndex((x) => x.id === targetId);
+      if (fi < 0 || ti < 0) return row;
+      const [m] = arr.splice(fi, 1);
+      arr.splice(ti, 0, m);
+      return { ...row, subtasks: arr };
+    }));
+  }
+  function onSubDragEnd(parentId: string) {
+    subDrag.current = null;
+    setSubDragging(null);
+    const row = orderRef.current.find((r) => r.id === parentId);
+    if (!row) return;
+    const ids = row.subtasks.map((s) => s.id);
+    startTx(async () => { await reorderSubtasks(projectId, parentId, ids); router.refresh(); });
   }
 
   function toggle(id: string) { setOpen((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
@@ -342,12 +368,15 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
 
             {isOpen && (
               <div className="relative">
-                {row.subtasks.length > 0 && <span className="pointer-events-none absolute left-[31px] top-0 bottom-3 w-px bg-gray-200" />}
+                {row.subtasks.length > 0 && <span className="pointer-events-none absolute left-[16px] top-0 bottom-3 w-px bg-gray-200" />}
                 {row.subtasks.map((sub) => {
                   const sDone = sub.status === "done";
                   return (
-                    <div key={sub.id} className="group flex items-center hover:bg-gray-50/40">
-                      <div className="flex w-60 shrink-0 items-center gap-2 py-2 pr-4 pl-[44px]">
+                    <div key={sub.id} onDragEnter={() => onSubDragEnter(row.id, sub.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center hover:bg-gray-50/40 ${subDragging === sub.id ? "opacity-40" : ""}`}>
+                      <div className="flex w-60 shrink-0 items-center gap-1.5 py-2 pr-4 pl-[26px]">
+                        <span draggable onDragStart={() => { subDrag.current = { parentId: row.id, id: sub.id }; setSubDragging(sub.id); }} onDragEnd={() => onSubDragEnd(row.id)} title="드래그로 순서 변경" className="shrink-0 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
+                        </span>
                         <Check done={sDone} onClick={() => toggleDone(sub)} />
                         <button onClick={() => setSelected(sub)} title={sub.title} className={`truncate text-left text-[13px] hover:text-blue-600 ${sDone ? "text-gray-300 line-through" : "text-gray-600"}`}>{sub.title}</button>
                       </div>

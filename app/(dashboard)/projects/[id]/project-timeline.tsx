@@ -12,11 +12,11 @@ const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
 
 const SUB_SOLID = "bg-slate-300";
 const SUB_RING = "ring-slate-200";
-const tone: Record<string, { soft: string; solid: string; ring: string }> = {
-  done: { soft: "bg-emerald-100", solid: "bg-emerald-500", ring: "ring-emerald-200" },
-  in_progress: { soft: "bg-blue-100", solid: "bg-blue-500", ring: "ring-blue-200" },
-  pending: { soft: "bg-amber-100", solid: "bg-amber-400", ring: "ring-amber-200" },
-  todo: { soft: "bg-slate-100", solid: "bg-slate-300", ring: "ring-slate-200" },
+const tone: Record<string, { soft: string; solid: string; grad: string; ring: string }> = {
+  done: { soft: "bg-emerald-100", solid: "bg-emerald-500", grad: "from-emerald-300 to-emerald-500", ring: "ring-emerald-200" },
+  in_progress: { soft: "bg-blue-100", solid: "bg-blue-500", grad: "from-blue-300 to-blue-600", ring: "ring-blue-200" },
+  pending: { soft: "bg-amber-100", solid: "bg-amber-400", grad: "from-amber-200 to-amber-500", ring: "ring-amber-200" },
+  todo: { soft: "bg-slate-100", solid: "bg-slate-300", grad: "from-slate-200 to-slate-400", ring: "ring-slate-200" },
 };
 
 function ymOf(d: string | null): number | null {
@@ -354,7 +354,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 <Columns />
                 <div onMouseDown={hasSubs ? undefined : (e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center rounded-lg ring-1 ring-inset ${tn.ring} group-hover:ring-2 ${hasSubs ? "" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
                   <div className={`absolute inset-0 rounded-lg ${tn.soft}`} />
-                  <div className={`absolute inset-y-0 left-0 rounded-lg ${tn.solid}`} style={{ width: `${pctV}%` }} />
+                  <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${tn.grad} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
                   {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "l", row)} className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-l-lg" />}
                   <span className="relative z-10 ml-2.5 text-[11px] font-semibold text-gray-700">{pctV}%</span>
                   {row.assignees[0] && <span className="absolute -right-1 top-1/2 z-10 -translate-y-1/2"><Avatar a={row.assignees[0]} /></span>}

@@ -4,11 +4,12 @@ import { useState, useEffect, useRef, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { quickAddTask, updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks } from "../actions";
+import { updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
 
 const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
+const CreateTaskModal = dynamic(() => import("./create-task-modal"));
 
 // 상태별 막대 색 (차분하게). 진도율(%)만큼 그라데이션으로 채움.
 const STATUS_FILL: Record<string, string> = {
@@ -38,11 +39,6 @@ const SUB_RING = "ring-slate-200";
 const effProgress = (s: { status: string; progress?: number | null }) =>
   s.status === "done" ? 100 : Math.max(0, Math.min(100, s.progress ?? 0));
 
-function ymOf(d: string | null): number | null {
-  if (!d) return null;
-  const dt = new Date(d);
-  return dt.getFullYear() * 12 + dt.getMonth();
-}
 
 function Avatar({ a, size = "sm" }: { a: { name: string; avatarUrl: string | null }; size?: "sm" | "xs" }) {
   const cls = size === "sm" ? "h-5 w-5 text-[9px]" : "h-4 w-4 text-[8px]";
@@ -60,30 +56,20 @@ function Check({ done, onClick }: { done: boolean; onClick: () => void }) {
   );
 }
 
-function QuickAdd({ projectId, parentId, placeholder, onDone }: { projectId: string; parentId: string | null; placeholder: string; onDone: () => void }) {
-  const [v, setV] = useState("");
-  const [pending, start] = useTransition();
-  const router = useRouter();
-  function submit() {
-    const title = v.trim();
-    if (!title) { onDone(); return; }
-    start(async () => { await quickAddTask(projectId, title, parentId, null); setV(""); router.refresh(); onDone(); });
-  }
-  return <input autoFocus value={v} disabled={pending} onChange={(e) => setV(e.target.value)}
-    onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") onDone(); }} onBlur={submit}
-    placeholder={placeholder} className="w-full rounded-lg border border-blue-200 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-50" />;
-}
-
 export default function ProjectTimeline({ projectId, mainTasks, members, allMembers, currentUserId, milestones }: {
   projectId: string; mainTasks: MainTask[]; members: Member[]; allMembers: Member[]; currentUserId: string; milestones: Milestone[];
 }) {
   const t = useT();
   const router = useRouter();
   const [open, setOpen] = useState<Set<string>>(new Set(mainTasks.filter((m) => m.subtasks.length > 0).map((m) => m.id)));
+  const [scale, setScale] = useState<"week" | "month" | "year">("month");
+  const scaleKey = `vteam:timeline-scale:${projectId}`;
+  useEffect(() => { try { const v = localStorage.getItem(scaleKey); if (v === "week" || v === "year") setScale(v); } catch {} }, [scaleKey]);
+  const chooseScale = (v: "week" | "month" | "year") => { setScale(v); try { localStorage.setItem(scaleKey, v); } catch {} };
   const [selected, setSelected] = useState<Task | null>(null);
-  const [addingMain, setAddingMain] = useState(false);
+  // 태스크 추가 모달: null=닫힘, parentId=null이면 메인 / 값이 있으면 그 메인의 서브
+  const [creating, setCreating] = useState<{ parentId: string | null; parentTitle?: string } | null>(null);
   const [showDone, setShowDone] = useState(false);
-  const [addingSubFor, setAddingSubFor] = useState<string | null>(null);
   const [addingMs, setAddingMs] = useState(false);
   const [msTitle, setMsTitle] = useState("");
   const [msDate, setMsDate] = useState("");
@@ -170,7 +156,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     startTx(async () => { await updateTaskStatus(task.id, next, projectId); router.refresh(); });
   }
 
-  // 월 컬럼 범위 산출
+  // ── 시간축 (주/월/연 전환) ──
   const now = new Date();
   const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   // 시작일이 지났는데 아직 시작 전(0%)이거나, 마감일이 지났는데 미완료 → 경고
@@ -179,81 +165,100 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     const overdue = status !== "done" && !!dueDate && Date.parse(dueDate) < todayMid;
     return lateStart || overdue;
   };
-  const nowYm = now.getFullYear() * 12 + now.getMonth();
-  const yms: number[] = [];
-  for (const m of mainTasks) {
-    for (const x of [ymOf(m.startDate), ymOf(m.dueDate)]) if (x !== null) yms.push(x);
-    for (const s of m.subtasks) for (const x of [ymOf(s.startDate), ymOf(s.dueDate)]) if (x !== null) yms.push(x);
-  }
-  for (const ms of milestones) { const x = ymOf(ms.date); if (x !== null) yms.push(x); }
-  const decYm = now.getFullYear() * 12 + 11; // 기본값: 올해 12월까지 표시
-  const minYm = Math.min(nowYm, ...yms);
-  const maxYm = Math.max(nowYm, decYm, ...yms);
-  const N = maxYm - minYm + 1;
-  const columns = Array.from({ length: N }, (_, i) => minYm + i);
-  const label = (ym: number) => `${(ym % 12) + 1}월`;
 
-  const todayIdx = nowYm - minYm;
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const todayPct = ((todayIdx + (now.getDate() - 1) / daysInMonth) / N) * 100;
+  // 기본 날짜 헬퍼
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const daysInM = (y: number, m0: number) => new Date(y, m0 + 1, 0).getDate();
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const dayNum = (str: string) => { const dt = new Date(str); return Math.floor(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()) / 86400000); };
+  const fromDayNum = (n: number) => { const dt = new Date(n * 86400000); return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`; };
+
+  // 보기별 컬럼 단위: 주=일(日) 칸 / 월=주(週) 칸 / 연=월(月) 칸
+  const utc = (day: number) => { const dt = new Date(day * 86400000); return { y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: dt.getUTCDate(), dow: dt.getUTCDay() }; };
+  const unitStart = (day: number) => {
+    const { y, m, dow } = utc(day);
+    if (scale === "week") return day;                            // 일 단위
+    if (scale === "month") return day - ((dow + 6) % 7);         // 주(월요일 시작) 단위
+    return Math.floor(Date.UTC(y, m, 1) / 86400000);            // 월 단위 (연 보기)
+  };
+  const unitNext = (day: number) => {
+    const { y, m } = utc(day);
+    if (scale === "week") return day + 1;
+    if (scale === "month") return unitStart(day) + 7;
+    return Math.floor(Date.UTC(y, m + 1, 1) / 86400000);
+  };
+  const unitLabel = (day: number) => {
+    const { y, m, d } = utc(day);
+    if (scale === "week") return d === 1 ? `${m + 1}/1` : `${d}`;  // 일: 날짜(월초엔 6/1)
+    if (scale === "month") return `${m + 1}/${d}`;                 // 주: 그 주 월요일 날짜
+    return m === 0 ? `${y}` : `${m + 1}월`;                        // 월: 1월엔 연도 표기
+  };
+
+  // 데이터 날짜 수집 → 축 범위(단위 경계로 스냅)
+  const todayDay = dayNum(todayStr);
+  const allDays = [todayDay];
+  for (const mt of mainTasks) {
+    for (const x of [mt.startDate, mt.dueDate]) if (x) allDays.push(dayNum(x));
+    for (const s of mt.subtasks) for (const x of [s.startDate, s.dueDate]) if (x) allDays.push(dayNum(x));
+  }
+  for (const ms of milestones) if (ms.date) allDays.push(dayNum(ms.date));
+  // 기본 표시 범위: 주(일 칸)=오늘부터 2주, 월(주 칸)=6주, 연(월 칸)=올해 말까지
+  const defaultEnd = scale === "week" ? todayDay + 13
+    : scale === "month" ? todayDay + 42
+    : dayNum(`${now.getFullYear()}-12-31`);
+  const axisStart = unitStart(Math.min(...allDays));
+  const axisEnd = unitNext(Math.max(...allDays, defaultEnd));   // 제외(exclusive) 경계
+  const totalDays = Math.max(1, axisEnd - axisStart);
+
+  // 컬럼 목록(각 단위의 시작·끝 일수와 라벨)
+  const columns: { start: number; end: number; label: string }[] = [];
+  for (let c = axisStart; c < axisEnd; c = unitNext(c)) columns.push({ start: c, end: Math.min(unitNext(c), axisEnd), label: unitLabel(c) });
+  const N = columns.length;
+
+  // 날짜 → 축 위 좌표(%)
+  const pctDay = (day: number, end: boolean) => ((clamp(day + (end ? 1 : 0), axisStart, axisEnd) - axisStart) / totalDays) * 100;
+  const todayIdx = columns.findIndex((c) => todayDay >= c.start && todayDay < c.end);
+  const todayPct = ((todayDay + 0.5 - axisStart) / totalDays) * 100;
 
   function span(startDate: string | null, dueDate: string | null) {
-    // 시작일 없으면 마감월 전체를 막대로(보이게), 있으면 일 단위 정밀
-    const anchor = new Date(dueDate ?? startDate ?? todayStr);
-    const ay = anchor.getFullYear(), am = anchor.getMonth();
-    const monthStart = `${ay}-${pad(am + 1)}-01`;
-    const monthEnd = `${ay}-${pad(am + 1)}-${pad(daysInM(ay, am))}`;
-    const left = posOf(startDate ?? monthStart, false);
-    const right = posOf(startDate ? (dueDate ?? startDate) : monthEnd, true);
-    const width = Math.max(right - left, 3);
+    let left: number, right: number;
+    if (startDate) {
+      left = pctDay(dayNum(startDate), false);
+      right = pctDay(dayNum(dueDate ?? startDate), true);
+    } else {
+      // 시작일이 없으면 마감일이 속한 '한 칸'(주/월/연)을 막대로 표시
+      const due = dayNum(dueDate ?? todayStr);
+      left = pctDay(unitStart(due), false);
+      right = pctDay(unitNext(due) - 1, true);
+    }
+    const width = Math.max(right - left, scale === "year" ? 0.8 : 2);
     return { left: `${left}%`, width: `${width}%` };
   }
-  function msPct(date: string) {
-    const dt = new Date(date);
-    const ym = dt.getFullYear() * 12 + dt.getMonth();
-    const dim = new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate();
-    const idx = Math.max(0, Math.min(N - 1, ym - minYm));
-    return ((idx + (dt.getDate() - 1) / dim) / N) * 100;
-  }
+  function msPct(date: string) { return ((dayNum(date) + 0.5 - axisStart) / totalDays) * 100; }
 
   const Columns = () => (
     <div className="pointer-events-none absolute inset-0 flex">
-      {columns.map((_, i) => (
-        <div key={i} className={`relative flex-1 border-r border-gray-100 last:border-r-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
-          {/* 월을 4등분하는 옅은 주(週) 눈금선 */}
-          <span className="absolute inset-y-0 left-[25%] w-px bg-gray-100/80" />
-          <span className="absolute inset-y-0 left-[50%] w-px bg-gray-100/80" />
-          <span className="absolute inset-y-0 left-[75%] w-px bg-gray-100/80" />
+      {columns.map((c, i) => (
+        <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={`relative border-r border-gray-100 last:border-r-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
+          {/* 연 보기(월 칸)에선 칸을 4등분하는 옅은 주(週) 보조선 */}
+          {scale === "year" && <>
+            <span className="absolute inset-y-0 left-[25%] w-px bg-gray-100/80" />
+            <span className="absolute inset-y-0 left-[50%] w-px bg-gray-100/80" />
+            <span className="absolute inset-y-0 left-[75%] w-px bg-gray-100/80" />
+          </>}
         </div>
       ))}
     </div>
   );
 
-  // ── 드래그 (일 단위) ──
-  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  const daysInM = (y: number, m0: number) => new Date(y, m0 + 1, 0).getDate();
-  const ymToStartStr = (ym: number) => `${Math.floor(ym / 12)}-${pad((ym % 12) + 1)}-01`;
-  const ymToEndStr = (ym: number) => { const y = Math.floor(ym / 12), mo = ym % 12; return `${y}-${pad(mo + 1)}-${pad(daysInM(y, mo))}`; };
-  const posOf = (str: string, end: boolean) => {
-    const dt = new Date(str); const y = dt.getFullYear(), m0 = dt.getMonth(), d = dt.getDate();
-    const col = clamp(y * 12 + m0 - minYm, 0, N - 1);
-    const dim = daysInM(y, m0);
-    return ((col + (end ? d : d - 1) / dim) / N) * 100;
-  };
+  // 드래그(마일스톤 이동)용 날짜 역산
   const dateAt = (clientX: number, rect: DOMRect) => {
     const frac = clamp((clientX - rect.left) / rect.width, 0, 0.999999);
-    const colFloat = frac * N;
-    const col = clamp(Math.floor(colFloat), 0, N - 1);
-    const ym = minYm + col, y = Math.floor(ym / 12), m0 = ym % 12, dim = daysInM(y, m0);
-    const day = clamp(Math.floor((colFloat - col) * dim) + 1, 1, dim);
-    return `${y}-${pad(m0 + 1)}-${pad(day)}`;
+    return fromDayNum(Math.floor(axisStart + frac * totalDays));
   };
-  const dayNum = (str: string) => { const dt = new Date(str); return Math.floor(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()) / 86400000); };
-  const fromDayNum = (n: number) => { const dt = new Date(n * 86400000); return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`; };
-  const minDay = dayNum(ymToStartStr(minYm));
-  const maxDay = dayNum(ymToEndStr(maxYm));
+  const minDay = axisStart;
+  const maxDay = axisEnd - 1;
   const dsv = (task: { id: string; startDate: string | null }) => (dragOverride?.id === task.id ? dragOverride.startDate : task.startDate);
   const dev = (task: { id: string; dueDate: string | null }) => (dragOverride?.id === task.id ? dragOverride.dueDate : task.dueDate);
   const msDateOf = (ms: Milestone) => (msOverride?.id === ms.id ? msOverride.date : ms.date);
@@ -368,6 +373,15 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
+      {/* 보기 단위 전환 (주/월/연) */}
+      <div className="flex items-center justify-end border-b border-gray-100 px-4 py-2">
+        <div className="flex gap-0.5 rounded-lg bg-gray-100 p-0.5">
+          {([["week", "주"], ["month", "월"], ["year", "연"]] as const).map(([v, ko]) => (
+            <button key={v} onClick={() => chooseScale(v)}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${scale === v ? "bg-white text-gray-900" : "text-gray-400 hover:text-gray-600"}`}>{ko}</button>
+          ))}
+        </div>
+      </div>
       {/* 헤더 */}
       <div className="flex items-stretch border-b border-gray-100 bg-gray-50/30">
         <div className="flex w-60 shrink-0 items-end justify-between px-5 pb-3">
@@ -380,8 +394,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           )}
         </div>
         <div className="relative flex flex-1 pt-7">
-          {columns.map((ym, i) => (
-            <div key={ym} className="flex-1 px-2 pb-3 text-center"><span className={`text-xs font-medium ${i === todayIdx ? "text-rose-500" : "text-gray-500"}`}>{label(ym)}</span></div>
+          {columns.map((c, i) => (
+            <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="overflow-hidden px-1 pb-3 text-center"><span className={`text-xs font-medium ${i === todayIdx ? "text-rose-500" : "text-gray-500"}`}>{c.label}</span></div>
           ))}
           {todayIdx >= 0 && todayIdx < N && (
             <div className="pointer-events-none absolute top-1.5 z-20 flex -translate-x-1/2 flex-col items-center" style={{ left: `${todayPct}%` }}>
@@ -396,7 +410,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         </div>
       </div>
 
-      {order.length === 0 && !addingMain ? (
+      {order.length === 0 ? (
         <div className="py-12 text-center text-sm text-gray-300">{t("tasks.emptyMain")}</div>
       ) : (() => {
         const isMainDone = (r: MainTask) => (r.subtasks.length > 0 ? r.subtasks.every((s) => s.status === "done") : r.status === "done");
@@ -472,13 +486,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                     </div>
                   );
                 })}
-                {addingSubFor === row.id ? (
-                  <div className="py-1.5 pl-[44px] pr-4"><QuickAdd projectId={projectId} parentId={row.id} placeholder={t("tasks.subPlaceholder")} onDone={() => setAddingSubFor(null)} /></div>
-                ) : (
-                  <button onClick={() => { setOpen((p) => new Set(p).add(row.id)); setAddingSubFor(row.id); }} className="flex items-center gap-1.5 py-2 pl-[44px] text-xs text-gray-300 hover:text-blue-500">
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addSub")}
-                  </button>
-                )}
+                <button onClick={() => setCreating({ parentId: row.id, parentTitle: row.title })} className="flex items-center gap-1.5 py-2 pl-[44px] text-xs text-gray-300 hover:text-blue-500">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addSub")}
+                </button>
               </div>
             )}
           </div>
@@ -504,13 +514,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       })()}
 
       {/* 메인 추가 */}
-      {addingMain ? (
-        <div className="px-5 py-2.5"><QuickAdd projectId={projectId} parentId={null} placeholder={t("tasks.mainPlaceholder")} onDone={() => setAddingMain(false)} /></div>
-      ) : (
-        <button onClick={() => setAddingMain(true)} className="flex items-center gap-1.5 px-5 py-3 text-xs font-medium text-gray-400 hover:text-blue-500">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addMain")}
-        </button>
-      )}
+      <button onClick={() => setCreating({ parentId: null })} className="flex items-center gap-1.5 px-5 py-3 text-xs font-medium text-gray-400 hover:text-blue-500">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addMain")}
+      </button>
 
       {/* 마일스톤 */}
       <div className="flex items-center border-t border-gray-100 bg-amber-50/30">
@@ -549,6 +555,11 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
 
       {selected && (
         <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} onClose={() => setSelected(null)} />
+      )}
+
+      {creating && (
+        <CreateTaskModal projectId={projectId} parentTaskId={creating.parentId} parentTitle={creating.parentTitle ?? null} allMembers={allMembers}
+          onClose={() => { if (creating.parentId) setOpen((p) => new Set(p).add(creating.parentId!)); setCreating(null); router.refresh(); }} />
       )}
     </div>
   );

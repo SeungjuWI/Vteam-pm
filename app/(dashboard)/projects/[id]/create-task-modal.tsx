@@ -6,13 +6,14 @@ import { createTask } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, TaskStatus } from "./project-types";
 
-export default function CreateTaskModal({ projectId, initialStatus, allMembers, onClose }: { projectId: string; initialStatus: TaskStatus; allMembers: Member[]; onClose: () => void }) {
+export default function CreateTaskModal({ projectId, initialStatus = "todo", parentTaskId = null, parentTitle = null, allMembers, onClose }: { projectId: string; initialStatus?: TaskStatus; parentTaskId?: string | null; parentTitle?: string | null; allMembers: Member[]; onClose: () => void }) {
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
+  const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -24,10 +25,14 @@ export default function CreateTaskModal({ projectId, initialStatus, allMembers, 
       (m.name.toLowerCase().includes(search.toLowerCase()) || m.email.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const canSubmit = !!title.trim() && !!startDate && !!dueDate;
+
   async function handleSubmit() {
+    if (!canSubmit) { setError("제목·시작일·마감일을 모두 입력해주세요"); return; }
+    if (dueDate < startDate) { setError("마감일이 시작일보다 빠를 수 없어요"); return; }
     setLoading(true);
     setError("");
-    const result = await createTask(projectId, title, description, priority, dueDate, selectedIds, initialStatus);
+    const result = await createTask(projectId, title, description, priority, dueDate, selectedIds, initialStatus, parentTaskId, startDate);
     if (result?.error) { setError(result.error); setLoading(false); }
     else onClose();
   }
@@ -36,9 +41,16 @@ export default function CreateTaskModal({ projectId, initialStatus, allMembers, 
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-2xl bg-white p-6">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">{t("tasks.add")}</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+        <div className="mb-5 flex items-start justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${parentTaskId ? "bg-gray-100 text-gray-500" : "bg-blue-50 text-blue-600"}`}>{parentTaskId ? t("tasks.addSub") : t("tasks.addMain")}</span>
+            </div>
+            {parentTaskId && parentTitle && (
+              <p className="mt-1 truncate text-xs text-gray-400">상위 · <span className="font-medium text-gray-600">{parentTitle}</span></p>
+            )}
+          </div>
+          <button onClick={onClose} className="ml-2 shrink-0 rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -71,37 +83,47 @@ export default function CreateTaskModal({ projectId, initialStatus, allMembers, 
             />
           </div>
 
-          {/* 우선순위 + 마감일 */}
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.priority")}</label>
-              <div className="flex gap-1.5">
-                {([
-                  { key: "low", label: "Low", active: "bg-gray-100 text-gray-700" },
-                  { key: "medium", label: "Medium", active: "bg-amber-50 text-amber-700" },
-                  { key: "high", label: "High", active: "bg-red-50 text-red-600" },
-                ] as const).map((p) => (
-                  <button
-                    key={p.key}
-                    type="button"
-                    onClick={() => setPriority(p.key)}
-                    className={`flex-1 rounded-lg py-2 text-xs font-medium transition-colors ${
-                      priority === p.key ? p.active : "bg-gray-50 text-gray-400 hover:bg-gray-100"
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.dueDate")}</label>
+          {/* 기간: 시작일 → 마감일 (필수) */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.startDate")} · {t("tasks.dueDate")} <span className="text-red-400">*</span></label>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="flex-1 rounded-lg border border-gray-200 px-3.5 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+              />
+              <span className="shrink-0 text-gray-300">→</span>
               <input
                 type="date"
                 value={dueDate}
+                min={startDate || undefined}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-gray-200 px-3.5 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
               />
+            </div>
+          </div>
+
+          {/* 우선순위 */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.priority")}</label>
+            <div className="flex gap-1.5">
+              {([
+                { key: "low", label: "Low", active: "bg-gray-100 text-gray-700" },
+                { key: "medium", label: "Medium", active: "bg-amber-50 text-amber-700" },
+                { key: "high", label: "High", active: "bg-red-50 text-red-600" },
+              ] as const).map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => setPriority(p.key)}
+                  className={`flex-1 rounded-lg py-2 text-xs font-medium transition-colors ${
+                    priority === p.key ? p.active : "bg-gray-50 text-gray-400 hover:bg-gray-100"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -175,7 +197,7 @@ export default function CreateTaskModal({ projectId, initialStatus, allMembers, 
             <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
               {t("common.cancel")}
             </button>
-            <button onClick={handleSubmit} disabled={loading} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50">
+            <button onClick={handleSubmit} disabled={loading || !canSubmit} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50">
               {loading ? t("common.creating") : t("tasks.create")}
             </button>
           </div>

@@ -312,6 +312,7 @@ export async function createTask(
   assigneeIds: string[],
   status: string = "todo",
   parentTaskId: string | null = null,
+  startDate: string | null = null,
 ) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -347,7 +348,7 @@ export async function createTask(
       status,
       priority,
       due_date: dueDate || null,
-      start_date: kstTodayStr(), // 시작일 기본값 = 오늘 (이후 모달에서 변경 가능)
+      start_date: startDate || kstTodayStr(), // 지정 시작일 없으면 오늘
       parent_task_id: parentTaskId,
       source_language: authorProfile?.language || "ko",
     })

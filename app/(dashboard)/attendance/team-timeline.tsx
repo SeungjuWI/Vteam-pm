@@ -21,6 +21,10 @@ const TOTAL_HOURS = HOUR_END - HOUR_START;
 const WORK_START_HOUR = 10.5;
 const WORK_START_PERCENT = ((WORK_START_HOUR - HOUR_START) / TOTAL_HOURS) * 100;
 
+// 퇴근 기준 시간: 19:30
+const WORK_END_HOUR = 19.5;
+const WORK_END_PERCENT = ((WORK_END_HOUR - HOUR_START) / TOTAL_HOURS) * 100;
+
 function formatTime(iso: string) {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -113,6 +117,12 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
               >
                 {t("dashboard.workStartMarker")}
               </span>
+              <span
+                className="absolute top-1 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-indigo-500 px-2 py-0.5 text-[10px] font-medium text-white"
+                style={{ left: `${WORK_END_PERCENT}%` }}
+              >
+                {t("dashboard.workEndMarker")}
+              </span>
             </div>
           </div>
 
@@ -152,6 +162,11 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
                       <div
                         className="pointer-events-none absolute top-[-16px] z-10 h-[72px] border-l border-dashed border-rose-300"
                         style={{ left: `${WORK_START_PERCENT}%` }}
+                      />
+                      {/* 퇴근 기준선 19:30 — 모든 행을 관통 */}
+                      <div
+                        className="pointer-events-none absolute top-[-16px] z-10 h-[72px] border-l border-dashed border-indigo-300"
+                        style={{ left: `${WORK_END_PERCENT}%` }}
                       />
                       <div
                         className={`absolute top-1 h-8 rounded-md px-2.5 py-1 ${

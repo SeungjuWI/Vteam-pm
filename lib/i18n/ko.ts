@@ -439,6 +439,7 @@ const ko = {
   "dashboard.items": "개",
   "dashboard.late": "지각",
   "dashboard.workStartMarker": "출근 10:30",
+  "dashboard.workEndMarker": "퇴근 19:30",
 
   // Board
   "board.title": "게시판",

@@ -159,17 +159,30 @@ export default async function DashboardPage() {
   }
 
   // 상단 카드용: 마감 임박·지연 건수 + 그 일의 담당자
-  const urgentItems: { assignees: { name: string; avatarUrl: string | null }[] }[] = [];
+  const urgentItems: { assignees: { name: string; avatarUrl: string | null }[]; days: number; bucket: "overdue" | "soon" | "upcoming" }[] = [];
   for (const g of deadlineGroups) {
     for (const m of g.mains) {
-      if (!m.isIndex && m.bucket && m.bucket !== "upcoming") urgentItems.push(m);
-      for (const s of m.subtasks) if (s.bucket !== "upcoming") urgentItems.push(s);
+      if (!m.isIndex && m.bucket && m.bucket !== "upcoming") urgentItems.push({ assignees: m.assignees, days: m.days ?? 0, bucket: m.bucket });
+      for (const s of m.subtasks) if (s.bucket !== "upcoming") urgentItems.push({ assignees: s.assignees, days: s.days, bucket: s.bucket });
     }
   }
   const urgentCount = urgentItems.length;
   const urgentOwnerMap = new Map<string, { name: string; avatarUrl: string | null }>();
   for (const it of urgentItems) for (const a of it.assignees) if (!urgentOwnerMap.has(a.name)) urgentOwnerMap.set(a.name, a);
   const urgentOwners = [...urgentOwnerMap.values()];
+
+  // 🐢 마감 리더보드: 현재 지연(overdue) 중인 일감을 담당자별 누적 지연일 순으로
+  const lbMap = new Map<string, { name: string; avatarUrl: string | null; count: number; days: number }>();
+  for (const it of urgentItems) {
+    if (it.bucket !== "overdue") continue;
+    for (const a of it.assignees) {
+      const e = lbMap.get(a.name) ?? { name: a.name, avatarUrl: a.avatarUrl, count: 0, days: 0 };
+      e.count += 1;
+      e.days += Math.abs(it.days);
+      lbMap.set(a.name, e);
+    }
+  }
+  const leaderboard = [...lbMap.values()].sort((a, b) => b.days - a.days || b.count - a.count);
 
   type TeamRecord = { id: string; clock_in: string; clock_out: string | null; profiles: { name: string; email: string; avatar_url: string | null; position: string | null } };
   const teamToday = ((teamTodayRaw || []) as unknown as TeamRecord[]);
@@ -221,6 +234,28 @@ export default async function DashboardPage() {
       </div>
 
       <TeamDeadlines groups={deadlineGroups} />
+
+      {leaderboard.length > 0 && (
+        <div className="rounded-2xl border border-gray-100 bg-white p-5">
+          <div className="mb-4 flex items-baseline gap-2">
+            <h2 className="text-sm font-semibold text-gray-900">🐢 {t("dashboard.leaderboard")}</h2>
+            <span className="text-xs text-gray-400">{t("dashboard.leaderboardHint")}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            {leaderboard.slice(0, 5).map((e, i) => (
+              <div key={e.name} className="flex items-center gap-3 rounded-lg px-1 py-1.5">
+                <span className="w-6 shrink-0 text-center text-base">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : <span className="text-xs font-medium text-gray-400">{i + 1}</span>}</span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[10px] font-medium text-gray-500" title={e.name}>
+                  {e.avatarUrl ? <Image src={e.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : e.name[0]}
+                </span>
+                <span className={`flex-1 truncate text-sm ${i === 0 ? "font-semibold text-gray-900" : "text-gray-700"}`}>{e.name}</span>
+                <span className="shrink-0 text-xs text-gray-400">{e.count}{t("dashboard.cases")}</span>
+                <span className="w-16 shrink-0 text-right text-xs font-semibold text-red-500 tabular-nums">{e.days}{t("dashboard.daysOverdueTotal")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <TeamTimeline records={timelineRecords} />
 

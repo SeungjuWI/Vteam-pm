@@ -77,6 +77,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const [open, setOpen] = useState<Set<string>>(new Set(mainTasks.filter((m) => m.subtasks.length > 0).map((m) => m.id)));
   const [selected, setSelected] = useState<Task | null>(null);
   const [addingMain, setAddingMain] = useState(false);
+  const [showDone, setShowDone] = useState(false);
   const [addingSubFor, setAddingSubFor] = useState<string | null>(null);
   const [addingMs, setAddingMs] = useState(false);
   const [msTitle, setMsTitle] = useState("");
@@ -351,7 +352,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
 
       {order.length === 0 && !addingMain ? (
         <div className="py-12 text-center text-sm text-gray-300">{t("tasks.emptyMain")}</div>
-      ) : order.map((row) => {
+      ) : (() => {
+        const isMainDone = (r: MainTask) => (r.subtasks.length > 0 ? r.subtasks.every((s) => s.status === "done") : r.status === "done");
+        const renderMainRow = (row: MainTask) => {
         const isOpen = open.has(row.id);
         const subs = row.subtasks;
         const hasSubs = subs.length > 0;
@@ -438,7 +441,25 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
             )}
           </div>
         );
-      })}
+        };
+        const active = order.filter((r) => !isMainDone(r));
+        const doneRows = order.filter((r) => isMainDone(r));
+        return (
+          <>
+            {active.map(renderMainRow)}
+            {doneRows.length > 0 && (
+              <div className="border-t border-gray-100">
+                <button onClick={() => setShowDone((v) => !v)} className="flex w-full items-center gap-1.5 px-5 py-2.5 text-xs font-medium text-gray-400 transition-colors hover:text-gray-600">
+                  <svg className={`h-3.5 w-3.5 transition-transform ${showDone ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                  <svg className="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 011.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" /></svg>
+                  {t("tasks.done")} {doneRows.length}
+                </button>
+                {showDone && doneRows.map(renderMainRow)}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* 메인 추가 */}
       {addingMain ? (

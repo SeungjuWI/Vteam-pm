@@ -33,6 +33,11 @@ const STATUS_RING: Record<string, string> = {
 const STRIPE = "repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,.55) 4px, rgba(255,255,255,.55) 8px)";
 const SUB_RING = "ring-slate-200";
 
+// 진도율(%): 완료(done) 태스크는 progress 값과 무관하게 100%로 본다.
+// (체크박스로 완료 처리하면 status만 done이 되고 progress는 0으로 남기 때문)
+const effProgress = (s: { status: string; progress?: number | null }) =>
+  s.status === "done" ? 100 : Math.max(0, Math.min(100, s.progress ?? 0));
+
 function ymOf(d: string | null): number | null {
   if (!d) return null;
   const dt = new Date(d);
@@ -367,8 +372,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           : row.status;
         const isDone = effStatus === "done";
         const pctV = hasSubs
-          ? Math.round(subs.reduce((a, s) => a + Math.max(0, Math.min(100, s.progress ?? 0)), 0) / subs.length)
-          : Math.max(0, Math.min(100, row.progress ?? 0));
+          ? Math.round(subs.reduce((a, s) => a + effProgress(s), 0) / subs.length)
+          : effProgress(row);
         const barStyle = rollupSpan(row);
         const warn = hasSubs
           ? subs.some((s) => isLate(s.status, s.progress ?? 0, s.startDate, s.dueDate))
@@ -405,7 +410,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 {row.subtasks.length > 0 && <span className="pointer-events-none absolute left-[16px] top-0 bottom-3 w-px bg-gray-200" />}
                 {row.subtasks.map((sub) => {
                   const sDone = sub.status === "done";
-                  const subPct = Math.max(0, Math.min(100, sub.progress ?? 0));
+                  const subPct = effProgress(sub);
                   const subWarn = isLate(sub.status, subPct, sub.startDate, sub.dueDate);
                   return (
                     <div key={sub.id} onDragEnter={() => onSubDragEnter(row.id, sub.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center hover:bg-gray-50/40 ${subDragging === sub.id ? "opacity-40" : ""}`}>

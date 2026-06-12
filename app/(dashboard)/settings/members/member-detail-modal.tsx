@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Avatar from "@/components/avatar";
 import { getMemberDetail, deactivateMember } from "./actions";
+import { getIpPolicies, assignIpPolicy } from "../ip-policies/actions";
 import { adjustBalance } from "../../leaves/actions";
 import {
   getEmployeeAttendances,
@@ -22,6 +23,7 @@ type MemberDetail = {
   avatarUrl: string | null;
   joinDate: string | null;
   createdAt: string;
+  ipPolicyId: string | null;
   balance: { total: number; used: number } | null;
   recentLeaves: {
     id: string;
@@ -95,6 +97,10 @@ export default function MemberDetailModal({
   const [editingBalance, setEditingBalance] = useState(false);
   const [editValue, setEditValue] = useState(0);
 
+  // 출퇴근 IP 제한
+  const [ipPolicies, setIpPolicies] = useState<{ id: string; name: string; cidrs: string[] }[]>([]);
+  const [savingIpPolicy, setSavingIpPolicy] = useState(false);
+
   // 출퇴근 관리
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([]);
   const [attMonth, setAttMonth] = useState(() => {
@@ -128,6 +134,23 @@ export default function MemberDetailModal({
       setAttLoading(false);
     });
   }, [memberId, attMonth, isManager]);
+
+  useEffect(() => {
+    if (!isManager) return;
+    getIpPolicies().then(setIpPolicies);
+  }, [isManager]);
+
+  async function handleAssignIpPolicy(policyId: string | null) {
+    if (!data) return;
+    const prev = data.ipPolicyId;
+    setSavingIpPolicy(true);
+    setData({ ...data, ipPolicyId: policyId }); // 낙관적 업데이트
+    const res = await assignIpPolicy(data.id, policyId);
+    if (res && "error" in res) {
+      setData((d) => (d ? { ...d, ipPolicyId: prev } : d)); // 실패 시 롤백
+    }
+    setSavingIpPolicy(false);
+  }
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
 
@@ -552,6 +575,34 @@ export default function MemberDetailModal({
                         );
                       })}
                     </div>
+                  )}
+                </div>
+
+                <div className="h-px bg-gray-100" />
+              </>
+            )}
+
+            {/* 출퇴근 IP 제한 (관리자만) */}
+            {isManager && (
+              <>
+                <div className="my-5">
+                  <h3 className="mb-1 text-sm font-medium text-gray-900">{t("ipPolicy.memberSectionTitle")}</h3>
+                  <p className="mb-3 text-xs text-gray-400">{t("ipPolicy.memberSectionDesc")}</p>
+                  <select
+                    value={data.ipPolicyId ?? ""}
+                    onChange={(e) => handleAssignIpPolicy(e.target.value || null)}
+                    disabled={savingIpPolicy}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-50"
+                  >
+                    <option value="">{t("ipPolicy.noRestriction")}</option>
+                    {ipPolicies.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  {ipPolicies.length === 0 && (
+                    <p className="mt-1.5 text-[11px] text-gray-400">{t("ipPolicy.noPolicyHint")}</p>
                   )}
                 </div>
 

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kstStartOfToday } from "@/lib/date";
+import { getClockIpState } from "@/lib/attendance-ip";
 
 export async function clockIn() {
   const supabase = await createClient();
@@ -15,11 +16,16 @@ export async function clockIn() {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("id, company_id")
+    .select("id, company_id, ip_policy_id")
     .eq("id", user.id)
     .single();
 
   if (!profile?.company_id) return { error: "회사 정보가 없습니다" };
+
+  const { allowed, ip } = await getClockIpState(adminClient, profile.ip_policy_id);
+  if (!allowed) {
+    return { error: "허용된 네트워크에서만 출퇴근할 수 있습니다" };
+  }
 
   // 오늘(한국 날짜) 이미 출근했는지 확인
   const today = kstStartOfToday();
@@ -40,6 +46,7 @@ export async function clockIn() {
       employee_id: user.id,
       company_id: profile.company_id,
       clock_in: new Date().toISOString(),
+      ip_address: ip,
     });
 
   if (error) return { error: error.message };
@@ -80,6 +87,17 @@ export async function clockOut() {
 
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
+
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("ip_policy_id")
+    .eq("id", user.id)
+    .single();
+
+  const { allowed } = await getClockIpState(adminClient, profile?.ip_policy_id ?? null);
+  if (!allowed) {
+    return { error: "허용된 네트워크에서만 출퇴근할 수 있습니다" };
+  }
 
   // 밤샘 근무는 지원하지 않으므로 오늘(한국 날짜) 출근 기록만 퇴근 대상으로 본다.
   // 전날 퇴근을 누락한 기록은 여기서 잡히지 않고 '퇴근 누락'으로 남아 관리자가 정산한다.

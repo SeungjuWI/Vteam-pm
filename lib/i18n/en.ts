@@ -74,6 +74,7 @@ const en: Record<TranslationKey, string> = {
   "settings.orgChart": "Org Chart",
   "settings.workPolicy": "Work Policy",
   "settings.leavePolicy": "Leave Policy",
+  "settings.ipPolicy": "Attendance IP",
 
   // Account Settings
   "account.title": "Account Info",
@@ -622,6 +623,29 @@ const en: Record<TranslationKey, string> = {
   "desktop.otherVersions": "Other versions:",
   "desktop.macBefore2020": "Pre-2020 Mac",
   "desktop.windowsReq": "Windows 10+",
+
+  // Attendance IP restriction
+  "ipPolicy.title": "Attendance IP Restriction",
+  "ipPolicy.description": "Group allowed IPs (e.g. office networks) into policies, then apply them per member from Member management. Restricted members can only clock in/out from allowed networks.",
+  "ipPolicy.currentIp": "Your current IP:",
+  "ipPolicy.listTitle": "IP Policies",
+  "ipPolicy.addPolicy": "Add policy",
+  "ipPolicy.empty": "No policies yet. Add one and apply it to members.",
+  "ipPolicy.newTitle": "New policy",
+  "ipPolicy.editTitle": "Edit policy",
+  "ipPolicy.nameLabel": "Policy name",
+  "ipPolicy.namePlaceholder": "e.g. Korea office",
+  "ipPolicy.cidrsLabel": "Allowed IPs / ranges",
+  "ipPolicy.cidrsHelp": "One per line. Single IP (203.0.113.4) or CIDR range (203.0.113.0/24). IPv6 supported.",
+  "ipPolicy.memberCount": "{n} applied",
+  "ipPolicy.noCidr": "No IPs",
+  "ipPolicy.deleteWarn": "Deleting will remove the IP restriction for {n} member(s).",
+  "ipPolicy.memberSectionTitle": "Attendance IP restriction",
+  "ipPolicy.memberSectionDesc": "When applied, this member can only clock in/out from the selected policy's allowed networks.",
+  "ipPolicy.noRestriction": "No restriction (anywhere)",
+  "ipPolicy.noPolicyHint": "Create a policy first under Attendance IP settings.",
+  "clock.ipBlockedTitle": "You can't clock in/out from this network",
+  "clock.ipBlockedDesc": "Please try again from the office network set by your admin.",
 };
 
 export default en;

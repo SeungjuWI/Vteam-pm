@@ -5,9 +5,11 @@ import { useT, useLocale } from "@/lib/i18n";
 type Props = {
   isClockedIn: boolean;
   clockInTime: string | null;
+  ipBlocked?: boolean;
+  currentIp?: string | null;
 };
 
-export default function ClockButton({ isClockedIn, clockInTime }: Props) {
+export default function ClockButton({ isClockedIn, clockInTime, ipBlocked, currentIp }: Props) {
   const t = useT();
   const locale = useLocale();
 
@@ -34,6 +36,16 @@ export default function ClockButton({ isClockedIn, clockInTime }: Props) {
           {" · "}
           {getElapsed()} {t("clock.elapsed")}
         </p>
+      )}
+
+      {ipBlocked && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+          <p className="text-xs font-medium text-amber-700">{t("clock.ipBlockedTitle")}</p>
+          <p className="mt-0.5 text-[11px] text-amber-600">
+            {t("clock.ipBlockedDesc")}
+            {currentIp ? ` (${t("ipPolicy.currentIp")} ${currentIp})` : ""}
+          </p>
+        </div>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import { kstStartOfToday, kstAddDays } from "@/lib/date";
 import { isLateClockIn } from "@/lib/attendance";
+import { getClockIpState } from "@/lib/attendance-ip";
 import ClockButton from "./clock-button";
 import AttendanceCalendar from "./attendance-calendar";
 import { getT } from "@/lib/i18n/server";
@@ -59,6 +60,8 @@ export default async function AttendancePage() {
       .single(),
   ]);
 
+  const ipState = await getClockIpState(adminClient, profile.ip_policy_id ?? null);
+
   const isClockedIn = todayRecord ? !todayRecord.clock_out : false;
   const requiredHours = workSettings?.required_hours ? Number(workSettings.required_hours) : 8;
 
@@ -74,7 +77,12 @@ export default async function AttendancePage() {
       <h1 className="text-lg font-semibold text-gray-900">{t("attendance.title")}</h1>
 
       <div className="rounded-xl bg-white p-6">
-        <ClockButton isClockedIn={isClockedIn} clockInTime={todayRecord?.clock_in || null} />
+        <ClockButton
+          isClockedIn={isClockedIn}
+          clockInTime={todayRecord?.clock_in || null}
+          ipBlocked={ipState.restricted && !ipState.allowed}
+          currentIp={ipState.ip}
+        />
       </div>
 
       <AttendanceCalendar

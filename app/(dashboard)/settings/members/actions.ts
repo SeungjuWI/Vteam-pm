@@ -137,7 +137,7 @@ export async function getMemberDetail(memberId: string) {
 
   const { data: member } = await adminClient
     .from("profiles")
-    .select("id, name, email, role, status, position, avatar_url, join_date, created_at, company_id")
+    .select("id, name, email, role, status, position, avatar_url, join_date, created_at, company_id, ip_policy_id")
     .eq("id", memberId)
     .single();
 
@@ -170,6 +170,7 @@ export async function getMemberDetail(memberId: string) {
     avatarUrl: member.avatar_url ?? null,
     joinDate: member.join_date,
     createdAt: member.created_at,
+    ipPolicyId: (member.ip_policy_id as string | null) ?? null,
     balance: balanceRes.data
       ? { total: Number(balanceRes.data.total), used: Number(balanceRes.data.used) }
       : null,

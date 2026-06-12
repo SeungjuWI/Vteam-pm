@@ -41,7 +41,7 @@ export const getProfile = cache(async () => {
   const adminClient = createAdminClient();
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("company_id, status, role, language, name, position, avatar_url")
+    .select("company_id, status, role, language, name, position, avatar_url, ip_policy_id")
     .eq("id", user.id)
     .single();
 

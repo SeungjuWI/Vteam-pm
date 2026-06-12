@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import { kstStartOfToday, kstAddDays } from "@/lib/date";
@@ -50,8 +51,6 @@ export default async function DashboardPage() {
   ]);
 
   if (teamError) console.error("team query error:", teamError);
-
-  const activeProjectCount = projRows?.length || 0;
 
   // 팀 전체 마감 현황: 회사 내 미완료 + 마감일 있는 태스크를 프로젝트별로 묶고 지연/임박 표시
   const todayMid = kstStartOfToday().getTime();
@@ -159,6 +158,19 @@ export default async function DashboardPage() {
       .sort((a, b) => sortKey(a.mains[0]) - sortKey(b.mains[0]));
   }
 
+  // 상단 카드용: 마감 임박·지연 건수 + 그 일의 담당자
+  const urgentItems: { assignees: { name: string; avatarUrl: string | null }[] }[] = [];
+  for (const g of deadlineGroups) {
+    for (const m of g.mains) {
+      if (!m.isIndex && m.bucket && m.bucket !== "upcoming") urgentItems.push(m);
+      for (const s of m.subtasks) if (s.bucket !== "upcoming") urgentItems.push(s);
+    }
+  }
+  const urgentCount = urgentItems.length;
+  const urgentOwnerMap = new Map<string, { name: string; avatarUrl: string | null }>();
+  for (const it of urgentItems) for (const a of it.assignees) if (!urgentOwnerMap.has(a.name)) urgentOwnerMap.set(a.name, a);
+  const urgentOwners = [...urgentOwnerMap.values()];
+
   type TeamRecord = { id: string; clock_in: string; clock_out: string | null; profiles: { name: string; email: string; avatar_url: string | null; position: string | null } };
   const teamToday = ((teamTodayRaw || []) as unknown as TeamRecord[]);
   const totalMembers = count || 0;
@@ -184,14 +196,27 @@ export default async function DashboardPage() {
           </p>
         </div>
         <div className="rounded-xl bg-white p-5">
-          <p className="text-sm text-gray-500">{t("dashboard.absent")}</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-900">
-            {totalMembers - teamToday.length}<span className="text-sm font-normal text-gray-400">{t("dashboard.persons")}</span>
+          <p className="text-sm text-gray-500">{t("dashboard.urgentTasks")}</p>
+          <p className={`mt-1 text-2xl font-semibold ${urgentCount > 0 ? "text-red-600" : "text-gray-900"}`}>
+            {urgentCount}<span className="text-sm font-normal text-gray-400">{t("dashboard.cases")}</span>
           </p>
         </div>
         <div className="rounded-xl bg-white p-5">
-          <p className="text-sm text-gray-500">{t("dashboard.activeProjects")}</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-900">{activeProjectCount || 0}{t("dashboard.items")}</p>
+          <p className="text-sm text-gray-500">{t("dashboard.urgentOwners")}</p>
+          {urgentOwners.length === 0 ? (
+            <p className="mt-1 text-2xl font-semibold text-gray-900">{t("dashboard.noUrgent")}</p>
+          ) : (
+            <div className="mt-2 flex items-center gap-2">
+              <div className="flex -space-x-2">
+                {urgentOwners.slice(0, 5).map((a, i) => (
+                  <span key={i} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-[11px] font-medium text-gray-500 ring-2 ring-white" title={a.name}>
+                    {a.avatarUrl ? <Image src={a.avatarUrl} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" /> : a.name[0]}
+                  </span>
+                ))}
+              </div>
+              {urgentOwners.length > 5 && <span className="text-sm text-gray-400">+{urgentOwners.length - 5}</span>}
+            </div>
+          )}
         </div>
       </div>
 

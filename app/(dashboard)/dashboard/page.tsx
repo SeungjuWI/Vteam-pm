@@ -127,6 +127,7 @@ export default async function DashboardPage() {
         dueDate: withDue ? r.due_date : null,
         days: info ? info.days : null,
         bucket: info ? info.bucket : null,
+        isIndex: false, // 서브 부착 후 결정
         assignees: assigneeMap[r.id] || [],
         subtasks: [],
       };
@@ -143,6 +144,9 @@ export default async function DashboardPage() {
       if (parent) parent.subtasks.push(sub);
       else mainMap.set(tk.id, makeMain(tk, true));
     }
+
+    // 서브를 가진 메인은 분류(인덱스) 역할 → 마감 배지 숨김 처리용 플래그
+    for (const m of mainMap.values()) m.isIndex = m.subtasks.length > 0;
 
     const sortKey = (m?: DeadlineMain) => (m ? Math.min(m.days ?? 9999, ...m.subtasks.map((s) => s.days), 9999) : 9999);
     const byProj: Record<string, DeadlineMain[]> = {};

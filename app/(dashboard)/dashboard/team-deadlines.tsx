@@ -22,6 +22,8 @@ export type DeadlineMain = {
   dueDate: string | null;
   days: number | null;
   bucket: Bucket | null;
+  // 서브를 가진 메인 = 분류(인덱스) 역할 → 마감 배지/날짜 숨김. 서브 없는 단독 메인만 일감으로 배지 표시.
+  isIndex: boolean;
   assignees: { name: string; avatarUrl: string | null }[];
   subtasks: DeadlineTask[];
 };
@@ -69,17 +71,17 @@ export default function TeamDeadlines({ groups }: { groups: DeadlineGroup[] }) {
   const [showAll, setShowAll] = useState(false);
 
   const urgentCount = groups.reduce(
-    (n, g) => n + g.mains.reduce((m, mt) => m + (isUrgent(mt.bucket) ? 1 : 0) + mt.subtasks.filter((s) => isUrgent(s.bucket)).length, 0),
+    (n, g) => n + g.mains.reduce((m, mt) => m + (!mt.isIndex && isUrgent(mt.bucket) ? 1 : 0) + mt.subtasks.filter((s) => isUrgent(s.bucket)).length, 0),
     0,
   );
 
-  // 토글에 따라 upcoming 숨김. 메인은 자신이 급하거나 표시할 서브가 있으면 노출
+  // 토글에 따라 upcoming 숨김. 인덱스 메인은 급한 서브가 있을 때만, 단독 메인은 자신이 급할 때 노출
   const shown = groups
     .map((g) => ({
       ...g,
       mains: g.mains
         .map((m) => ({ ...m, subtasks: showAll ? m.subtasks : m.subtasks.filter((s) => isUrgent(s.bucket)) }))
-        .filter((m) => showAll || isUrgent(m.bucket) || m.subtasks.length > 0),
+        .filter((m) => showAll || (!m.isIndex && isUrgent(m.bucket)) || m.subtasks.length > 0),
     }))
     .filter((g) => g.mains.length > 0);
 
@@ -107,11 +109,11 @@ export default function TeamDeadlines({ groups }: { groups: DeadlineGroup[] }) {
               <div className="flex flex-col gap-1">
                 {g.mains.map((m) => (
                   <div key={m.id} className="rounded-lg">
-                    {/* 메인 태스크 */}
+                    {/* 메인 태스크 — 서브를 가진 메인은 분류(인덱스)라 마감 배지/날짜 숨김 */}
                     <Link href={`/projects/${g.projectId}`} className="flex items-center gap-3 rounded-lg px-1 py-2 transition-colors hover:bg-gray-50/60">
-                      {m.bucket ? <Badge bucket={m.bucket} days={m.days as number} t={t} /> : <span className="shrink-0 text-[11px] text-gray-300">·</span>}
-                      <span className={`flex-1 truncate text-sm font-medium ${m.bucket === "overdue" ? "text-red-700" : "text-gray-900"}`}>{m.title}</span>
-                      {m.dueDate && <span className="shrink-0 text-[11px] text-gray-300">{dueLabel(m.dueDate)}</span>}
+                      {!m.isIndex && (m.bucket ? <Badge bucket={m.bucket} days={m.days as number} t={t} /> : <span className="shrink-0 text-[11px] text-gray-300">·</span>)}
+                      <span className={`flex-1 truncate text-sm font-medium ${m.isIndex ? "text-gray-500" : m.bucket === "overdue" ? "text-red-700" : "text-gray-900"}`}>{m.title}</span>
+                      {!m.isIndex && m.dueDate && <span className="shrink-0 text-[11px] text-gray-300">{dueLabel(m.dueDate)}</span>}
                       <Avatars assignees={m.assignees} t={t} />
                     </Link>
                     {/* 서브 태스크 (들여쓰기) */}

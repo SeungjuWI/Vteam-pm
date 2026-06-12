@@ -401,6 +401,7 @@ const en: Record<TranslationKey, string> = {
   "dashboard.myTasks": "My Tasks",
   "dashboard.noTasks": "No tasks assigned",
   "dashboard.leaderboard": "Deadline Leaderboard",
+  "dashboard.noOverdueYet": "No one's behind on a deadline yet 🎉",
   "dashboard.leaderboardHint": "by total days overdue · hang in there!",
   "dashboard.daysOverdueTotal": "d overdue",
   "dashboard.urgentTasks": "Overdue · Due Soon",

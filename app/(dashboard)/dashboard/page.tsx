@@ -235,12 +235,14 @@ export default async function DashboardPage() {
 
       <TeamDeadlines groups={deadlineGroups} />
 
-      {leaderboard.length > 0 && (
-        <div className="rounded-2xl border border-gray-100 bg-white p-5">
-          <div className="mb-4 flex items-baseline gap-2">
-            <h2 className="text-sm font-semibold text-gray-900">🐢 {t("dashboard.leaderboard")}</h2>
-            <span className="text-xs text-gray-400">{t("dashboard.leaderboardHint")}</span>
-          </div>
+      <div className="rounded-2xl border border-gray-100 bg-white p-5">
+        <div className="mb-4 flex items-baseline gap-2">
+          <h2 className="text-sm font-semibold text-gray-900">🐢 {t("dashboard.leaderboard")}</h2>
+          <span className="text-xs text-gray-400">{t("dashboard.leaderboardHint")}</span>
+        </div>
+        {leaderboard.length === 0 ? (
+          <p className="py-6 text-center text-sm text-gray-300">{t("dashboard.noOverdueYet")}</p>
+        ) : (
           <div className="flex flex-col gap-1">
             {leaderboard.slice(0, 5).map((e, i) => (
               <div key={e.name} className="flex items-center gap-3 rounded-lg px-1 py-1.5">
@@ -254,8 +256,8 @@ export default async function DashboardPage() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <TeamTimeline records={timelineRecords} />
 

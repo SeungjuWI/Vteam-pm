@@ -399,6 +399,7 @@ const ko = {
   "dashboard.myTasks": "내 태스크",
   "dashboard.noTasks": "할당된 태스크가 없습니다",
   "dashboard.leaderboard": "마감 리더보드",
+  "dashboard.noOverdueYet": "아직 마감 넘긴 사람이 없어요 🎉",
   "dashboard.leaderboardHint": "누적 지연일 순 · 분발해요!",
   "dashboard.daysOverdueTotal": "일 지연",
   "dashboard.urgentTasks": "마감 임박·지연",

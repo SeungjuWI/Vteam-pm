@@ -437,6 +437,8 @@ const ko = {
   "dashboard.working": "명 근무중",
   "dashboard.persons": "명",
   "dashboard.items": "개",
+  "dashboard.late": "지각",
+  "dashboard.workStartMarker": "출근 10:30",
 
   // Board
   "board.title": "게시판",

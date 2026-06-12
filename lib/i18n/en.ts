@@ -439,6 +439,8 @@ const en: Record<TranslationKey, string> = {
   "dashboard.working": " working",
   "dashboard.persons": "",
   "dashboard.items": "",
+  "dashboard.late": "Late",
+  "dashboard.workStartMarker": "Start 10:30",
 
   // Board
   "board.title": "Board",

@@ -93,7 +93,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const [dragOverride, setDragOverride] = useState<{ id: string; startDate: string; dueDate: string } | null>(null);
   const [msOverride, setMsOverride] = useState<{ id: string; date: string } | null>(null);
   const [dragging, setDragging] = useState(false);
-  const drag = useRef<null | { kind: "task" | "ms"; mode: "move" | "l" | "r"; id: string; rect: DOMRect; anchorDay: number; origS: number; origE: number; latest?: { startDate?: string; dueDate?: string; date?: string } }>(null);
+  const drag = useRef<null | { kind: "task" | "ms"; mode: "move" | "l" | "r"; id: string; rect: DOMRect; anchorDay: number; downX: number; origS: number; origE: number; latest?: { startDate?: string; dueDate?: string; date?: string } }>(null);
   const moved = useRef(false);
   useEffect(() => { setDragOverride(null); setMsOverride(null); }, [mainTasks, milestones]);
 
@@ -218,7 +218,14 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
 
   const Columns = () => (
     <div className="pointer-events-none absolute inset-0 flex">
-      {columns.map((_, i) => <div key={i} className={`flex-1 border-r border-gray-100 last:border-r-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`} />)}
+      {columns.map((_, i) => (
+        <div key={i} className={`relative flex-1 border-r border-gray-100 last:border-r-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
+          {/* 월을 4등분하는 옅은 주(週) 눈금선 */}
+          <span className="absolute inset-y-0 left-[25%] w-px bg-gray-100/80" />
+          <span className="absolute inset-y-0 left-[50%] w-px bg-gray-100/80" />
+          <span className="absolute inset-y-0 left-[75%] w-px bg-gray-100/80" />
+        </div>
+      ))}
     </div>
   );
 
@@ -251,6 +258,26 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const dev = (task: { id: string; dueDate: string | null }) => (dragOverride?.id === task.id ? dragOverride.dueDate : task.dueDate);
   const msDateOf = (ms: Milestone) => (msOverride?.id === ms.id ? msOverride.date : ms.date);
 
+  // hover 툴팁용 날짜 포맷: "6/3 ~ 6/20 (18일)" / 단일일이면 "6/3"
+  const fmtD = (s: string) => { const dt = new Date(s); return `${dt.getMonth() + 1}/${dt.getDate()}`; };
+  const fmtRange = (start: string | null, due: string | null) => {
+    if (!start && !due) return "기간 미설정";
+    const s = start ?? due!, e = due ?? start!;
+    if (s === e) return fmtD(s);
+    const days = Math.abs(dayNum(e) - dayNum(s)) + 1;
+    return `${fmtD(s)} ~ ${fmtD(e)} (${days}일)`;
+  };
+  // 메인(서브 보유) 막대 툴팁: 메인+서브 전체의 시작~마감 합집합 범위
+  const rollupDates = (row: MainTask) => {
+    let minS: string | null = null, maxD: string | null = null;
+    for (const it of [{ s: dsv(row), d: dev(row) }, ...row.subtasks.map((x) => ({ s: dsv(x), d: dev(x) }))]) {
+      const s = it.s ?? it.d, d = it.d ?? it.s;
+      if (s && (!minS || s < minS)) minS = s;
+      if (d && (!maxD || d > maxD)) maxD = d;
+    }
+    return { s: minS, d: maxD };
+  };
+
   // 메인 막대 = 메인 자체 기간 ∪ 하위 막대들의 범위(합집합). 날짜 없는 하위는 제외.
   const rollupSpan = (row: MainTask) => {
     const spans: { left: string; width: string }[] = [];
@@ -275,12 +302,24 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     const rect = trackEl.getBoundingClientRect();
     const anchorDay = dayNum(dateAt(e.clientX, rect));
     if (kind === "ms") {
-      drag.current = { kind, mode: "move", id: item.id, rect, anchorDay, origS: 0, origE: 0 };
+      drag.current = { kind, mode: "move", id: item.id, rect, anchorDay, downX: e.clientX, origS: 0, origE: 0 };
     } else {
-      let sd = dayNum(item.startDate ?? item.dueDate ?? todayStr);
-      let ed = dayNum(item.dueDate ?? item.startDate ?? todayStr);
+      let sd: number, ed: number;
+      if (item.startDate) {
+        // 시작·마감이 있으면 그대로
+        sd = dayNum(item.startDate);
+        ed = dayNum(item.dueDate ?? item.startDate);
+      } else if (item.dueDate) {
+        // 시작일이 없으면 화면엔 '마감월 전체'로 보임 → 그 폭을 유지(하루로 쪼그라들지 않게)
+        const due = new Date(item.dueDate);
+        const y = due.getFullYear(), m0 = due.getMonth();
+        sd = dayNum(`${y}-${pad(m0 + 1)}-01`);
+        ed = dayNum(`${y}-${pad(m0 + 1)}-${pad(daysInM(y, m0))}`);
+      } else {
+        sd = ed = dayNum(todayStr);
+      }
       if (ed < sd) { const tmp = sd; sd = ed; ed = tmp; }
-      drag.current = { kind, mode, id: item.id, rect, anchorDay, origS: sd, origE: ed };
+      drag.current = { kind, mode, id: item.id, rect, anchorDay, downX: e.clientX, origS: sd, origE: ed };
     }
     moved.current = false;
     setDragging(true);
@@ -290,6 +329,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     if (!dragging) return;
     function onMove(e: MouseEvent) {
       const d = drag.current; if (!d) return;
+      // 클릭과 드래그 구분: 4px 이상 움직여야 비로소 드래그로 인정(클릭만으론 막대 안 변함)
+      if (!moved.current && Math.abs(e.clientX - d.downX) <= 4) return;
       moved.current = true;
       const cur = dayNum(dateAt(e.clientX, d.rect));
       if (d.kind === "ms") { const date = fromDayNum(cur); d.latest = { date }; setMsOverride({ id: d.id, date }); return; }
@@ -392,15 +433,13 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 {warn && <span title="시작일이 지났는데 시작 전이거나 마감이 지났어요" className="shrink-0 text-red-500"><svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg></span>}
                 <button onClick={() => setSelected(row)} title={row.title} className={`truncate text-left text-sm font-medium hover:text-blue-600 ${isDone ? "text-gray-300 line-through" : warn ? "text-red-700" : "text-gray-900"}`}>{row.title}</button>
               </div>
-              <button data-track onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className="relative block h-12 flex-1 cursor-pointer">
+              <button data-track onClick={() => setSelected(row)} className="relative block h-12 flex-1 cursor-pointer">
                 <Columns />
-                <div onMouseDown={hasSubs ? undefined : (e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
+                <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}`; })()} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`}`} style={barStyle}>
                   <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
                   {effStatus === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
-                  {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "l", row)} className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-l-lg" />}
                   <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-gray-700"}`}>{pctV}%</span>
                   {row.assignees.length > 0 && <span className="absolute -right-1 top-1/2 z-10 flex -translate-y-1/2 -space-x-1.5">{row.assignees.slice(0, 3).map((a, i) => <Avatar key={i} a={a} />)}</span>}
-                  {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "r", row)} className="absolute right-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-r-lg" />}
                 </div>
               </button>
             </div>
@@ -422,14 +461,12 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                         {subWarn && <span title="시작일이 지났는데 시작 전이거나 마감이 지났어요" className="shrink-0 text-red-500"><svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg></span>}
                         <button onClick={() => setSelected(sub)} title={sub.title} className={`truncate text-left text-[13px] hover:text-blue-600 ${sDone ? "text-gray-300 line-through" : subWarn ? "text-red-700" : "text-gray-600"}`}>{sub.title}</button>
                       </div>
-                      <button data-track onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className="relative block h-9 flex-1 cursor-pointer">
+                      <button data-track onClick={() => setSelected(sub)} className="relative block h-9 flex-1 cursor-pointer">
                         <Columns />
-                        <div onMouseDown={(e) => startDrag(e, "task", "move", sub)} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 cursor-grab items-center overflow-hidden rounded-md ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`} active:cursor-grabbing`} style={span(dsv(sub), dev(sub))}>
+                        <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))}`} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center overflow-hidden rounded-md ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`}`} style={span(dsv(sub), dev(sub))}>
                           <div className={`absolute inset-y-0 left-0 rounded-md bg-gradient-to-r ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
                           {sub.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-md" style={{ width: `${subPct}%`, backgroundImage: STRIPE }} />}
-                          <span onMouseDown={(e) => startDrag(e, "task", "l", sub)} className="absolute left-0 top-0 z-20 h-full w-1.5 cursor-ew-resize" />
                           {sub.assignees.length > 0 && <span className="absolute -right-0.5 top-1/2 flex -translate-y-1/2 -space-x-1.5">{sub.assignees.slice(0, 3).map((a, i) => <Avatar key={i} a={a} size="xs" />)}</span>}
-                          <span onMouseDown={(e) => startDrag(e, "task", "r", sub)} className="absolute right-0 top-0 z-20 h-full w-1.5 cursor-ew-resize" />
                         </div>
                       </button>
                     </div>

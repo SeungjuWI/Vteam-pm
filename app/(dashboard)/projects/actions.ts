@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { toKstParts } from "@/lib/date";
+
+// 오늘(한국) 날짜를 YYYY-MM-DD로 — 태스크 시작일 기본값
+function kstTodayStr(): string {
+  const k = toKstParts(new Date());
+  return `${k.getUTCFullYear()}-${String(k.getUTCMonth() + 1).padStart(2, "0")}-${String(k.getUTCDate()).padStart(2, "0")}`;
+}
 
 // ── 회사 소유권 검증 (멀티테넌트 격리: 다른 회사 리소스 접근 차단) ──
 type Admin = ReturnType<typeof createAdminClient>;
@@ -340,6 +347,7 @@ export async function createTask(
       status,
       priority,
       due_date: dueDate || null,
+      start_date: kstTodayStr(), // 시작일 기본값 = 오늘 (이후 모달에서 변경 가능)
       parent_task_id: parentTaskId,
       source_language: authorProfile?.language || "ko",
     })

@@ -391,7 +391,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                   {effStatus === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
                   {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "l", row)} className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-l-lg" />}
                   <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-gray-700"}`}>{pctV}%</span>
-                  {row.assignees[0] && <span className="absolute -right-1 top-1/2 z-10 -translate-y-1/2"><Avatar a={row.assignees[0]} /></span>}
+                  {row.assignees.length > 0 && <span className="absolute -right-1 top-1/2 z-10 flex -translate-y-1/2 -space-x-1.5">{row.assignees.slice(0, 3).map((a, i) => <Avatar key={i} a={a} />)}</span>}
                   {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "r", row)} className="absolute right-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-r-lg" />}
                 </div>
               </button>
@@ -420,7 +420,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                           <div className={`absolute inset-y-0 left-0 rounded-md bg-gradient-to-r ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
                           {sub.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-md" style={{ width: `${subPct}%`, backgroundImage: STRIPE }} />}
                           <span onMouseDown={(e) => startDrag(e, "task", "l", sub)} className="absolute left-0 top-0 z-20 h-full w-1.5 cursor-ew-resize" />
-                          {sub.assignees[0] && <span className="absolute -right-0.5 top-1/2 -translate-y-1/2"><Avatar a={sub.assignees[0]} size="xs" /></span>}
+                          {sub.assignees.length > 0 && <span className="absolute -right-0.5 top-1/2 flex -translate-y-1/2 -space-x-1.5">{sub.assignees.slice(0, 3).map((a, i) => <Avatar key={i} a={a} size="xs" />)}</span>}
                           <span onMouseDown={(e) => startDrag(e, "task", "r", sub)} className="absolute right-0 top-0 z-20 h-full w-1.5 cursor-ew-resize" />
                         </div>
                       </button>

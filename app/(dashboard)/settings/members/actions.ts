@@ -89,6 +89,57 @@ export async function approveMember(memberId: string) {
   revalidatePath("/settings/members");
 }
 
+export async function changeMemberRole(memberId: string, newRole: "admin" | "employee") {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  if (newRole !== "admin" && newRole !== "employee") return { error: "잘못된 역할입니다" };
+
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("role, company_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin" || !profile.company_id) return { error: "권한이 없습니다" };
+
+  // 본인 권한은 변경 불가(자기 권한 잠금 방지)
+  if (memberId === user.id) return { error: "본인의 권한은 변경할 수 없습니다" };
+
+  const { data: target } = await adminClient
+    .from("profiles")
+    .select("company_id, role")
+    .eq("id", memberId)
+    .single();
+
+  if (!target || target.company_id !== profile.company_id) return { error: "같은 회사의 멤버가 아닙니다" };
+
+  // 회사 소유자(생성자)는 관리자에서 강등 불가
+  if (newRole !== "admin") {
+    const { data: company } = await adminClient
+      .from("companies")
+      .select("created_by")
+      .eq("id", profile.company_id)
+      .single();
+    if (company?.created_by === memberId) return { error: "회사 소유자는 관리자에서 내릴 수 없습니다" };
+  }
+
+  if (target.role === newRole) return { success: true };
+
+  const { error } = await adminClient
+    .from("profiles")
+    .update({ role: newRole })
+    .eq("id", memberId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings/members");
+  return { success: true };
+}
+
 export async function rejectMember(memberId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -145,7 +196,7 @@ export async function getMemberDetail(memberId: string) {
 
   const year = new Date().getFullYear();
 
-  const [balanceRes, leavesRes] = await Promise.all([
+  const [balanceRes, leavesRes, companyRes] = await Promise.all([
     adminClient
       .from("leave_balances")
       .select("total, used")
@@ -158,7 +209,15 @@ export async function getMemberDetail(memberId: string) {
       .eq("employee_id", memberId)
       .order("created_at", { ascending: false })
       .limit(10),
+    adminClient
+      .from("companies")
+      .select("created_by")
+      .eq("id", myProfile.company_id)
+      .single(),
   ]);
+
+  const isOwner = !!companyRes.data?.created_by && companyRes.data.created_by === member.id;
+  const isSelf = member.id === user.id;
 
   return {
     id: member.id,
@@ -171,6 +230,8 @@ export async function getMemberDetail(memberId: string) {
     joinDate: member.join_date,
     createdAt: member.created_at,
     ipPolicyId: (member.ip_policy_id as string | null) ?? null,
+    isOwner,
+    isSelf,
     balance: balanceRes.data
       ? { total: Number(balanceRes.data.total), used: Number(balanceRes.data.used) }
       : null,

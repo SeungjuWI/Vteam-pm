@@ -381,6 +381,15 @@ const ko = {
   "memberDetail.deactivate": "퇴사 처리",
   "memberDetail.deactivateConfirm": "님을 퇴사 처리하시겠습니까?",
   "memberDetail.deactivateDesc": "비활성화되며 팀에서 제외됩니다.",
+  "memberDetail.permission": "권한",
+  "memberDetail.adminDesc": "관리자는 멤버·근무·연차 등 회사 설정을 관리할 수 있습니다.",
+  "memberDetail.employeeDesc": "일반 직원은 본인 업무 화면만 사용합니다.",
+  "memberDetail.promote": "관리자로 승격",
+  "memberDetail.demote": "일반 직원으로 변경",
+  "memberDetail.promoteConfirm": "이 멤버를 관리자로 승격하시겠습니까? 회사 설정을 모두 관리할 수 있게 됩니다.",
+  "memberDetail.demoteConfirm": "이 멤버를 일반 직원으로 변경하시겠습니까? 관리자 권한이 회수됩니다.",
+  "memberDetail.owner": "소유자",
+  "memberDetail.ownerHint": "회사 소유자라 권한을 변경할 수 없습니다.",
 
   // Comments
   "comments.title": "댓글",

@@ -383,6 +383,15 @@ const en: Record<TranslationKey, string> = {
   "memberDetail.deactivate": "Deactivate",
   "memberDetail.deactivateConfirm": " — deactivate this member?",
   "memberDetail.deactivateDesc": "They will be deactivated and removed from the team.",
+  "memberDetail.permission": "Permission",
+  "memberDetail.adminDesc": "Admins can manage company settings: members, work, leave, and more.",
+  "memberDetail.employeeDesc": "Employees only use their own work screens.",
+  "memberDetail.promote": "Promote to admin",
+  "memberDetail.demote": "Change to employee",
+  "memberDetail.promoteConfirm": "Promote this member to admin? They will be able to manage all company settings.",
+  "memberDetail.demoteConfirm": "Change this member to a regular employee? Admin permissions will be revoked.",
+  "memberDetail.owner": "Owner",
+  "memberDetail.ownerHint": "This is the company owner; their role can't be changed.",
 
   // Comments
   "comments.title": "Comments",

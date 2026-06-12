@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Avatar from "@/components/avatar";
-import { getMemberDetail, deactivateMember } from "./actions";
+import { getMemberDetail, deactivateMember, changeMemberRole } from "./actions";
 import { getIpPolicies, assignIpPolicy } from "../ip-policies/actions";
 import { adjustBalance } from "../../leaves/actions";
 import {
@@ -24,6 +24,8 @@ type MemberDetail = {
   joinDate: string | null;
   createdAt: string;
   ipPolicyId: string | null;
+  isOwner: boolean;
+  isSelf: boolean;
   balance: { total: number; used: number } | null;
   recentLeaves: {
     id: string;
@@ -101,6 +103,11 @@ export default function MemberDetailModal({
   const [ipPolicies, setIpPolicies] = useState<{ id: string; name: string; cidrs: string[] }[]>([]);
   const [savingIpPolicy, setSavingIpPolicy] = useState(false);
 
+  // 권한 변경
+  const [confirmRole, setConfirmRole] = useState<"admin" | "employee" | null>(null);
+  const [changingRole, setChangingRole] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
+
   // 출퇴근 관리
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([]);
   const [attMonth, setAttMonth] = useState(() => {
@@ -150,6 +157,20 @@ export default function MemberDetailModal({
       setData((d) => (d ? { ...d, ipPolicyId: prev } : d)); // 실패 시 롤백
     }
     setSavingIpPolicy(false);
+  }
+
+  async function handleChangeRole(newRole: "admin" | "employee") {
+    if (!data) return;
+    setChangingRole(true);
+    setRoleError(null);
+    const res = await changeMemberRole(data.id, newRole);
+    if (res && "error" in res) {
+      setRoleError(res.error ?? t("common.errorOccurred"));
+    } else {
+      setData({ ...data, role: newRole });
+    }
+    setChangingRole(false);
+    setConfirmRole(null);
   }
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
@@ -575,6 +596,63 @@ export default function MemberDetailModal({
                         );
                       })}
                     </div>
+                  )}
+                </div>
+
+                <div className="h-px bg-gray-100" />
+              </>
+            )}
+
+            {/* 권한 변경 (관리자만, 본인 제외) */}
+            {isManager && !data.isSelf && (
+              <>
+                <div className="my-5">
+                  <h3 className="mb-1 text-sm font-medium text-gray-900">{t("memberDetail.permission")}</h3>
+                  <p className="mb-3 text-xs text-gray-400">
+                    {data.role === "admin" ? t("memberDetail.adminDesc") : t("memberDetail.employeeDesc")}
+                  </p>
+                  {roleError && <p className="mb-2 text-xs text-red-500">{roleError}</p>}
+
+                  {data.isOwner ? (
+                    <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5">
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-600">{t("memberDetail.owner")}</span>
+                      <span className="text-xs text-gray-500">{t("memberDetail.ownerHint")}</span>
+                    </div>
+                  ) : confirmRole ? (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-xs text-gray-700">
+                        {confirmRole === "admin" ? t("memberDetail.promoteConfirm") : t("memberDetail.demoteConfirm")}
+                      </p>
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          onClick={() => handleChangeRole(confirmRole)}
+                          disabled={changingRole}
+                          className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+                        >
+                          {confirmRole === "admin" ? t("memberDetail.promote") : t("memberDetail.demote")}
+                        </button>
+                        <button
+                          onClick={() => { setConfirmRole(null); setRoleError(null); }}
+                          className="text-xs text-gray-400 hover:text-gray-600"
+                        >
+                          {t("common.cancel")}
+                        </button>
+                      </div>
+                    </div>
+                  ) : data.role === "employee" ? (
+                    <button
+                      onClick={() => { setConfirmRole("admin"); setRoleError(null); }}
+                      className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600"
+                    >
+                      {t("memberDetail.promote")}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { setConfirmRole("employee"); setRoleError(null); }}
+                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      {t("memberDetail.demote")}
+                    </button>
                   )}
                 </div>
 

@@ -353,11 +353,23 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         <div className="py-12 text-center text-sm text-gray-300">{t("tasks.emptyMain")}</div>
       ) : order.map((row) => {
         const isOpen = open.has(row.id);
-        const isDone = row.status === "done";
-        const pctV = Math.max(0, Math.min(100, row.progress ?? 0));
-        const hasSubs = row.subtasks.length > 0;
+        const subs = row.subtasks;
+        const hasSubs = subs.length > 0;
+        // 서브가 있으면 메인은 서브 집계로 표시 (진도 평균·상태·경고). 서브 없으면 메인 자체 값.
+        const effStatus = hasSubs
+          ? (subs.every((s) => s.status === "done") ? "done"
+            : subs.some((s) => s.status === "pending") ? "pending"
+            : subs.some((s) => s.status === "in_progress" || (s.progress ?? 0) > 0) ? "in_progress"
+            : "todo")
+          : row.status;
+        const isDone = effStatus === "done";
+        const pctV = hasSubs
+          ? Math.round(subs.reduce((a, s) => a + Math.max(0, Math.min(100, s.progress ?? 0)), 0) / subs.length)
+          : Math.max(0, Math.min(100, row.progress ?? 0));
         const barStyle = rollupSpan(row);
-        const warn = isLate(row.status, pctV, row.startDate, row.dueDate);
+        const warn = hasSubs
+          ? subs.some((s) => isLate(s.status, s.progress ?? 0, s.startDate, s.dueDate))
+          : isLate(row.status, pctV, row.startDate, row.dueDate);
         return (
           <div key={row.id}>
             <div onDragEnter={() => onRowDragEnter(row.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center transition-colors hover:bg-gray-50/40 ${rowDragging === row.id ? "opacity-40" : ""}`}>
@@ -365,7 +377,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 <span draggable onDragStart={() => { rowDrag.current = row.id; setRowDragging(row.id); }} onDragEnd={onRowDragEnd} title="드래그로 순서 변경" className="shrink-0 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
                   <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
                 </span>
-                <Check done={row.status === "done"} onClick={() => toggleDone(row)} />
+                <Check done={isDone} onClick={() => { if (!hasSubs) toggleDone(row); }} />
                 <button onClick={() => toggle(row.id)} className="shrink-0 text-gray-300 hover:text-gray-500" title={t("tasks.addSub")}>
                   <svg className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>
@@ -374,9 +386,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
               </div>
               <button data-track onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className="relative block h-12 flex-1 cursor-pointer">
                 <Columns />
-                <div onMouseDown={hasSubs ? undefined : (e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${STATUS_TRACK[row.status]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[row.status]}`} ${hasSubs ? "" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
-                  <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${STATUS_FILL[row.status]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
-                  {row.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
+                <div onMouseDown={hasSubs ? undefined : (e) => startDrag(e, "task", "move", row)} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
+                  <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
+                  {effStatus === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
                   {!hasSubs && <span onMouseDown={(e) => startDrag(e, "task", "l", row)} className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize rounded-l-lg" />}
                   <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-gray-700"}`}>{pctV}%</span>
                   {row.assignees[0] && <span className="absolute -right-1 top-1/2 z-10 -translate-y-1/2"><Avatar a={row.assignees[0]} /></span>}

@@ -171,13 +171,14 @@ export default async function DashboardPage() {
   for (const it of urgentItems) for (const a of it.assignees) if (!urgentOwnerMap.has(a.name)) urgentOwnerMap.set(a.name, a);
   const urgentOwners = [...urgentOwnerMap.values()];
 
-  // 🐢 마감 리더보드: 마감 임박·지연 일감을 담당자별로. 점수는 지난 지연일(overdue) 합, 동률은 건수로
+  // 🐢 마감 리더보드: 실제 마감 지난(overdue) 일감만 담당자별 누적 지연일 순. 지연이 없으면 비움.
   const lbMap = new Map<string, { name: string; avatarUrl: string | null; count: number; days: number }>();
   for (const it of urgentItems) {
+    if (it.bucket !== "overdue") continue;
     for (const a of it.assignees) {
       const e = lbMap.get(a.name) ?? { name: a.name, avatarUrl: a.avatarUrl, count: 0, days: 0 };
       e.count += 1;
-      if (it.bucket === "overdue") e.days += Math.abs(it.days);
+      e.days += Math.abs(it.days);
       lbMap.set(a.name, e);
     }
   }
@@ -249,7 +250,7 @@ export default async function DashboardPage() {
                 </span>
                 <span className={`flex-1 truncate text-sm ${i === 0 ? "font-semibold text-gray-900" : "text-gray-700"}`}>{e.name}</span>
                 <span className="shrink-0 text-xs text-gray-400">{e.count}{t("dashboard.cases")}</span>
-                <span className="w-16 shrink-0 text-right text-xs font-semibold tabular-nums">{e.days > 0 ? <span className="text-red-500">{e.days}{t("dashboard.daysOverdueTotal")}</span> : <span className="text-amber-500">{t("dashboard.dueSoon")}</span>}</span>
+                <span className="w-16 shrink-0 text-right text-xs font-semibold text-red-500 tabular-nums">{e.days}{t("dashboard.daysOverdueTotal")}</span>
               </div>
             ))}
           </div>

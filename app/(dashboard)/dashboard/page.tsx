@@ -28,7 +28,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     adminClient
       .from("attendances")
-      .select("id, clock_in, clock_out, profiles!attendances_employee_id_fkey(name, email, avatar_url, position)")
+      .select("id, employee_id, clock_in, clock_out, profiles!attendances_employee_id_fkey(name, email, avatar_url, position)")
       .eq("company_id", profile.company_id)
       .gte("clock_in", todayStart.toISOString())
       .lt("clock_in", todayEnd.toISOString())
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
       .eq("status", "active"),
     adminClient
       .from("profiles")
-      .select("id, name, avatar_url")
+      .select("id, name, avatar_url, position, status, is_bot")
       .eq("company_id", profile.company_id),
   ]);
 
@@ -182,9 +182,11 @@ export default async function DashboardPage() {
       lbMap.set(a.name, e);
     }
   }
-  const leaderboard = [...lbMap.values()].sort((a, b) => b.days - a.days || b.count - a.count);
+  const leaderboard = [...lbMap.values()]
+    .map((e) => ({ ...e, avg: e.days / e.count }))
+    .sort((a, b) => b.avg - a.avg || b.count - a.count);
 
-  type TeamRecord = { id: string; clock_in: string; clock_out: string | null; profiles: { name: string; email: string; avatar_url: string | null; position: string | null } };
+  type TeamRecord = { id: string; employee_id: string; clock_in: string; clock_out: string | null; profiles: { name: string; email: string; avatar_url: string | null; position: string | null } };
   const teamToday = ((teamTodayRaw || []) as unknown as TeamRecord[]);
   const totalMembers = count || 0;
 
@@ -196,6 +198,12 @@ export default async function DashboardPage() {
     clockIn: r.clock_in,
     clockOut: r.clock_out,
   }));
+
+  // 오늘 출근 안 찍은 활성 멤버 = 미태그
+  const attendedIds = new Set(teamToday.map((r) => r.employee_id));
+  const absentMembers = (companyMembers || [])
+    .filter((m) => m.status === "active" && !m.is_bot && !attendedIds.has(m.id))
+    .map((m) => ({ name: m.name, avatarUrl: m.avatar_url, position: m.position }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -252,14 +260,14 @@ export default async function DashboardPage() {
                 </span>
                 <span className={`flex-1 truncate text-sm ${i === 0 ? "font-semibold text-gray-900" : "text-gray-700"}`}>{e.name}</span>
                 <span className="shrink-0 text-xs text-gray-400">{e.count}{t("dashboard.cases")}</span>
-                <span className="w-16 shrink-0 text-right text-xs font-semibold text-red-500 tabular-nums">{e.days}{t("dashboard.daysOverdueTotal")}</span>
+                <span className="w-24 shrink-0 text-right text-xs font-semibold text-red-500 tabular-nums">{t("dashboard.avgPrefix")}{Math.round(e.avg)}{t("dashboard.daysOverdueTotal")}</span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <TeamTimeline records={timelineRecords} />
+      <TeamTimeline records={timelineRecords} absentMembers={absentMembers} />
 
       <Board currentUserId={user.id} companyId={profile.company_id} />
     </div>

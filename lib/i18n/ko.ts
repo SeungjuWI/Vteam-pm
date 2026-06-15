@@ -400,7 +400,8 @@ const ko = {
   "dashboard.noTasks": "할당된 태스크가 없습니다",
   "dashboard.leaderboard": "마감 리더보드",
   "dashboard.noOverdueYet": "아직 마감 넘긴 사람이 없어요 🎉",
-  "dashboard.leaderboardHint": "누적 지연일 순 · 분발해요!",
+  "dashboard.leaderboardHint": "평균 지연일 순 · 분발해요!",
+  "dashboard.avgPrefix": "평균 ",
   "dashboard.daysOverdueTotal": "일 지연",
   "dashboard.urgentTasks": "마감 임박·지연",
   "dashboard.urgentOwners": "담당자",
@@ -425,6 +426,7 @@ const ko = {
   "dashboard.teamStatus": "팀원 근무 현황",
   "dashboard.noTeamToday": "오늘 출근한 팀원이 없습니다",
   "dashboard.working": "명 근무중",
+  "dashboard.untagged": "미태그",
   "dashboard.persons": "명",
   "dashboard.items": "개",
 

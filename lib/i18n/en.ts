@@ -402,7 +402,8 @@ const en: Record<TranslationKey, string> = {
   "dashboard.noTasks": "No tasks assigned",
   "dashboard.leaderboard": "Deadline Leaderboard",
   "dashboard.noOverdueYet": "No one's behind on a deadline yet 🎉",
-  "dashboard.leaderboardHint": "by total days overdue · hang in there!",
+  "dashboard.leaderboardHint": "by avg days overdue · hang in there!",
+  "dashboard.avgPrefix": "avg ",
   "dashboard.daysOverdueTotal": "d overdue",
   "dashboard.urgentTasks": "Overdue · Due Soon",
   "dashboard.urgentOwners": "Owners",
@@ -427,6 +428,7 @@ const en: Record<TranslationKey, string> = {
   "dashboard.teamStatus": "Team Work Status",
   "dashboard.noTeamToday": "No team members checked in today",
   "dashboard.working": " working",
+  "dashboard.untagged": "Not tagged",
   "dashboard.persons": "",
   "dashboard.items": "",
 

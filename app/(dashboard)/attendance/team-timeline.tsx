@@ -13,6 +13,12 @@ type TeamRecord = {
   clockOut: string | null;
 };
 
+type AbsentMember = {
+  name: string;
+  avatarUrl: string | null;
+  position: string | null;
+};
+
 const HOUR_START = 7;
 const HOUR_END = 22;
 const TOTAL_HOURS = HOUR_END - HOUR_START;
@@ -36,7 +42,7 @@ function getBarStyle(clockIn: string, clockOut: string | null) {
   return { left: `${left}%`, width: `${width}%` };
 }
 
-export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
+export default function TeamTimeline({ records, absentMembers = [] }: { records: TeamRecord[]; absentMembers?: AbsentMember[] }) {
   const t = useT();
   const hours = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => HOUR_START + i);
 
@@ -69,6 +75,9 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
               <span className="text-xs font-medium text-emerald-600">{workingCount}{t("dashboard.working")}</span>
             </span>
           )}
+          {absentMembers.length > 0 && (
+            <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600">{t("dashboard.untagged")} {absentMembers.length}</span>
+          )}
         </div>
         <svg
           className={`h-4 w-4 text-gray-400 transition-transform ${open ? "" : "-rotate-90"}`}
@@ -81,7 +90,7 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
         </svg>
       </button>
 
-      {!open ? null : records.length === 0 ? (
+      {!open ? null : records.length === 0 && absentMembers.length === 0 ? (
         <div className="flex h-32 items-center justify-center">
           <p className="text-sm text-gray-400">{t("dashboard.noTeamToday")}</p>
         </div>
@@ -146,6 +155,24 @@ export default function TeamTimeline({ records }: { records: TeamRecord[] }) {
                 </div>
               );
             })}
+
+            {/* 미태그(오늘 출근 안 찍은 활성 멤버) */}
+            {absentMembers.map((m, i) => (
+              <div key={`absent-${i}`} className="flex min-w-[800px] items-center">
+                <div className="flex w-48 shrink-0 items-center gap-3 px-6 py-4">
+                  <div className="opacity-60"><Avatar url={m.avatarUrl} name={m.name} size={32} /></div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-gray-500">{m.name}</p>
+                    <p className="text-xs text-gray-400">{t("dashboard.untagged")}</p>
+                  </div>
+                </div>
+                <div className="relative flex-1 py-4 pr-4">
+                  <div className="flex h-10 items-center rounded-lg border border-dashed border-gray-200 bg-gray-50/50 px-3">
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400">{t("dashboard.untagged")}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

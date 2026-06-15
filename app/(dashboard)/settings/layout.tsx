@@ -15,6 +15,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     { href: "/settings/org-chart", label: t("settings.orgChart") },
     { href: "/settings/work", label: t("settings.workPolicy") },
     { href: "/settings/leave", label: t("settings.leavePolicy") },
+    { href: "/settings/ip-policies", label: t("settings.ipPolicy") },
   ];
 
   if (isSimple) {

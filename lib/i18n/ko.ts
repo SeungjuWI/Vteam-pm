@@ -72,6 +72,7 @@ const ko = {
   "settings.orgChart": "조직도",
   "settings.workPolicy": "근무 규정",
   "settings.leavePolicy": "연차 제도",
+  "settings.ipPolicy": "출퇴근 IP 제한",
 
   // Account Settings
   "account.title": "계정 정보",
@@ -380,6 +381,15 @@ const ko = {
   "memberDetail.deactivate": "퇴사 처리",
   "memberDetail.deactivateConfirm": "님을 퇴사 처리하시겠습니까?",
   "memberDetail.deactivateDesc": "비활성화되며 팀에서 제외됩니다.",
+  "memberDetail.permission": "권한",
+  "memberDetail.adminDesc": "관리자는 멤버·근무·연차 등 회사 설정을 관리할 수 있습니다.",
+  "memberDetail.employeeDesc": "일반 직원은 본인 업무 화면만 사용합니다.",
+  "memberDetail.promote": "관리자로 승격",
+  "memberDetail.demote": "일반 직원으로 변경",
+  "memberDetail.promoteConfirm": "이 멤버를 관리자로 승격하시겠습니까? 회사 설정을 모두 관리할 수 있게 됩니다.",
+  "memberDetail.demoteConfirm": "이 멤버를 일반 직원으로 변경하시겠습니까? 관리자 권한이 회수됩니다.",
+  "memberDetail.owner": "소유자",
+  "memberDetail.ownerHint": "회사 소유자라 권한을 변경할 수 없습니다.",
 
   // Comments
   "comments.title": "댓글",
@@ -429,6 +439,9 @@ const ko = {
   "dashboard.untagged": "미태그",
   "dashboard.persons": "명",
   "dashboard.items": "개",
+  "dashboard.late": "지각",
+  "dashboard.workStartMarker": "출근 10:30",
+  "dashboard.workEndMarker": "퇴근 19:30",
 
   // Board
   "board.title": "게시판",
@@ -622,6 +635,29 @@ const ko = {
   "desktop.otherVersions": "다른 버전:",
   "desktop.macBefore2020": "2020년 이전 Mac",
   "desktop.windowsReq": "Windows 10 이상",
+
+  // 출퇴근 IP 제한
+  "ipPolicy.title": "출퇴근 IP 제한",
+  "ipPolicy.description": "허용 IP(사무실 네트워크 등)를 정책으로 묶어 두고, 멤버 관리에서 유저별로 적용합니다. 적용된 유저는 허용된 네트워크에서만 출퇴근할 수 있습니다.",
+  "ipPolicy.currentIp": "현재 내 IP:",
+  "ipPolicy.listTitle": "IP 정책",
+  "ipPolicy.addPolicy": "정책 추가",
+  "ipPolicy.empty": "등록된 정책이 없습니다. 정책을 추가해 유저에게 적용하세요.",
+  "ipPolicy.newTitle": "새 정책",
+  "ipPolicy.editTitle": "정책 수정",
+  "ipPolicy.nameLabel": "정책 이름",
+  "ipPolicy.namePlaceholder": "예: 한국법인 사무실",
+  "ipPolicy.cidrsLabel": "허용 IP / 대역",
+  "ipPolicy.cidrsHelp": "한 줄에 하나씩. 단일 IP(203.0.113.4) 또는 CIDR 대역(203.0.113.0/24) 입력. IPv6도 지원.",
+  "ipPolicy.memberCount": "{n}명 적용",
+  "ipPolicy.noCidr": "등록된 IP 없음",
+  "ipPolicy.deleteWarn": "삭제하면 적용된 {n}명의 IP 제한이 해제됩니다.",
+  "ipPolicy.memberSectionTitle": "출퇴근 IP 제한",
+  "ipPolicy.memberSectionDesc": "적용하면 이 멤버는 선택한 정책의 허용 네트워크에서만 출퇴근할 수 있습니다.",
+  "ipPolicy.noRestriction": "제한 없음 (어디서나 가능)",
+  "ipPolicy.noPolicyHint": "먼저 '출퇴근 IP 제한' 설정에서 정책을 만들어주세요.",
+  "clock.ipBlockedTitle": "현재 네트워크에서는 출퇴근할 수 없습니다",
+  "clock.ipBlockedDesc": "관리자가 지정한 사무실 네트워크에서 다시 시도해주세요.",
 } as const;
 
 export type TranslationKey = keyof typeof ko;

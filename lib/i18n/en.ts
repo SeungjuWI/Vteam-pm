@@ -74,6 +74,7 @@ const en: Record<TranslationKey, string> = {
   "settings.orgChart": "Org Chart",
   "settings.workPolicy": "Work Policy",
   "settings.leavePolicy": "Leave Policy",
+  "settings.ipPolicy": "Attendance IP",
 
   // Account Settings
   "account.title": "Account Info",
@@ -382,6 +383,15 @@ const en: Record<TranslationKey, string> = {
   "memberDetail.deactivate": "Deactivate",
   "memberDetail.deactivateConfirm": " — deactivate this member?",
   "memberDetail.deactivateDesc": "They will be deactivated and removed from the team.",
+  "memberDetail.permission": "Permission",
+  "memberDetail.adminDesc": "Admins can manage company settings: members, work, leave, and more.",
+  "memberDetail.employeeDesc": "Employees only use their own work screens.",
+  "memberDetail.promote": "Promote to admin",
+  "memberDetail.demote": "Change to employee",
+  "memberDetail.promoteConfirm": "Promote this member to admin? They will be able to manage all company settings.",
+  "memberDetail.demoteConfirm": "Change this member to a regular employee? Admin permissions will be revoked.",
+  "memberDetail.owner": "Owner",
+  "memberDetail.ownerHint": "This is the company owner; their role can't be changed.",
 
   // Comments
   "comments.title": "Comments",
@@ -431,6 +441,9 @@ const en: Record<TranslationKey, string> = {
   "dashboard.untagged": "Not tagged",
   "dashboard.persons": "",
   "dashboard.items": "",
+  "dashboard.late": "Late",
+  "dashboard.workStartMarker": "Start 10:30",
+  "dashboard.workEndMarker": "End 19:30",
 
   // Board
   "board.title": "Board",
@@ -624,6 +637,29 @@ const en: Record<TranslationKey, string> = {
   "desktop.otherVersions": "Other versions:",
   "desktop.macBefore2020": "Pre-2020 Mac",
   "desktop.windowsReq": "Windows 10+",
+
+  // Attendance IP restriction
+  "ipPolicy.title": "Attendance IP Restriction",
+  "ipPolicy.description": "Group allowed IPs (e.g. office networks) into policies, then apply them per member from Member management. Restricted members can only clock in/out from allowed networks.",
+  "ipPolicy.currentIp": "Your current IP:",
+  "ipPolicy.listTitle": "IP Policies",
+  "ipPolicy.addPolicy": "Add policy",
+  "ipPolicy.empty": "No policies yet. Add one and apply it to members.",
+  "ipPolicy.newTitle": "New policy",
+  "ipPolicy.editTitle": "Edit policy",
+  "ipPolicy.nameLabel": "Policy name",
+  "ipPolicy.namePlaceholder": "e.g. Korea office",
+  "ipPolicy.cidrsLabel": "Allowed IPs / ranges",
+  "ipPolicy.cidrsHelp": "One per line. Single IP (203.0.113.4) or CIDR range (203.0.113.0/24). IPv6 supported.",
+  "ipPolicy.memberCount": "{n} applied",
+  "ipPolicy.noCidr": "No IPs",
+  "ipPolicy.deleteWarn": "Deleting will remove the IP restriction for {n} member(s).",
+  "ipPolicy.memberSectionTitle": "Attendance IP restriction",
+  "ipPolicy.memberSectionDesc": "When applied, this member can only clock in/out from the selected policy's allowed networks.",
+  "ipPolicy.noRestriction": "No restriction (anywhere)",
+  "ipPolicy.noPolicyHint": "Create a policy first under Attendance IP settings.",
+  "clock.ipBlockedTitle": "You can't clock in/out from this network",
+  "clock.ipBlockedDesc": "Please try again from the office network set by your admin.",
 };
 
 export default en;

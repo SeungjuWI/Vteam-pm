@@ -23,9 +23,22 @@ const HOUR_START = 7;
 const HOUR_END = 22;
 const TOTAL_HOURS = HOUR_END - HOUR_START;
 
+// 출근 기준 시간: 10:30 이후 출근하면 지각
+const WORK_START_HOUR = 10.5;
+const WORK_START_PERCENT = ((WORK_START_HOUR - HOUR_START) / TOTAL_HOURS) * 100;
+
+// 퇴근 기준 시간: 19:30
+const WORK_END_HOUR = 19.5;
+const WORK_END_PERCENT = ((WORK_END_HOUR - HOUR_START) / TOTAL_HOURS) * 100;
+
 function formatTime(iso: string) {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function isLate(clockIn: string) {
+  const d = new Date(clockIn);
+  return d.getHours() + d.getMinutes() / 60 > WORK_START_HOUR;
 }
 
 function getBarStyle(clockIn: string, clockOut: string | null) {
@@ -98,7 +111,7 @@ export default function TeamTimeline({ records, absentMembers = [] }: { records:
         <div className="overflow-x-auto">
           <div className="flex min-w-[800px]">
             <div className="w-48 shrink-0" />
-            <div className="relative flex flex-1">
+            <div className="relative flex flex-1 pr-4">
               {hours.map((h) => (
                 <div
                   key={h}
@@ -107,6 +120,18 @@ export default function TeamTimeline({ records, absentMembers = [] }: { records:
                   {h}
                 </div>
               ))}
+              <span
+                className="absolute top-1 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-medium text-white"
+                style={{ left: `${WORK_START_PERCENT}%` }}
+              >
+                {t("dashboard.workStartMarker")}
+              </span>
+              <span
+                className="absolute top-1 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-indigo-500 px-2 py-0.5 text-[10px] font-medium text-white"
+                style={{ left: `${WORK_END_PERCENT}%` }}
+              >
+                {t("dashboard.workEndMarker")}
+              </span>
             </div>
           </div>
 
@@ -114,13 +139,21 @@ export default function TeamTimeline({ records, absentMembers = [] }: { records:
             {records.map((record, i) => {
               const isWorking = !record.clockOut;
               const barStyle = getBarStyle(record.clockIn, record.clockOut);
+              const late = isLate(record.clockIn);
 
               return (
                 <div key={i} className="flex min-w-[800px] items-center">
                   <div className="flex w-48 shrink-0 items-center gap-3 px-6 py-4">
                     <Avatar url={record.avatarUrl} name={record.name} size={32} />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-gray-900">{record.name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-sm font-medium text-gray-900">{record.name}</p>
+                        {late && (
+                          <span className="shrink-0 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-600">
+                            {t("dashboard.late")}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-blue-500">{getDuration(record.clockIn, record.clockOut)}</p>
                     </div>
                   </div>
@@ -134,6 +167,16 @@ export default function TeamTimeline({ records, absentMembers = [] }: { records:
                           style={{ left: `${((h - HOUR_START) / TOTAL_HOURS) * 100}%` }}
                         />
                       ))}
+                      {/* 출근 기준선 10:30 — 모든 행을 관통 */}
+                      <div
+                        className="pointer-events-none absolute top-[-16px] z-10 h-[72px] border-l border-dashed border-rose-300"
+                        style={{ left: `${WORK_START_PERCENT}%` }}
+                      />
+                      {/* 퇴근 기준선 19:30 — 모든 행을 관통 */}
+                      <div
+                        className="pointer-events-none absolute top-[-16px] z-10 h-[72px] border-l border-dashed border-indigo-300"
+                        style={{ left: `${WORK_END_PERCENT}%` }}
+                      />
                       <div
                         className={`absolute top-1 h-8 rounded-md px-2.5 py-1 ${
                           isWorking ? "bg-emerald-100" : "bg-blue-50"

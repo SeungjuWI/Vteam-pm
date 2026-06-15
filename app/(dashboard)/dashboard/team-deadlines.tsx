@@ -110,7 +110,7 @@ export default function TeamDeadlines({ groups }: { groups: DeadlineGroup[] }) {
                 {g.mains.map((m) => (
                   <div key={m.id} className="rounded-lg">
                     {/* 메인 태스크 — 서브를 가진 메인은 분류(인덱스)라 마감 배지/날짜 숨김 */}
-                    <Link href={`/projects/${g.projectId}`} className="flex items-center gap-3 rounded-lg px-1 py-2 transition-colors hover:bg-gray-50/60">
+                    <Link href={`/projects/${g.projectId}?task=${m.id}`} className="flex items-center gap-3 rounded-lg px-1 py-2 transition-colors hover:bg-gray-50/60">
                       {!m.isIndex && (m.bucket ? <Badge bucket={m.bucket} days={m.days as number} t={t} /> : <span className="shrink-0 text-[11px] text-gray-300">·</span>)}
                       <span className={`flex-1 truncate text-sm font-medium ${m.isIndex ? "text-gray-500" : m.bucket === "overdue" ? "text-red-700" : "text-gray-900"}`}>{m.title}</span>
                       {!m.isIndex && m.dueDate && <span className="shrink-0 text-[11px] text-gray-300">{dueLabel(m.dueDate)}</span>}
@@ -120,7 +120,7 @@ export default function TeamDeadlines({ groups }: { groups: DeadlineGroup[] }) {
                     {m.subtasks.length > 0 && (
                       <div className="ml-3 border-l border-gray-100 pl-3">
                         {m.subtasks.map((s) => (
-                          <Link key={s.id} href={`/projects/${g.projectId}`} className="flex items-center gap-3 rounded-lg px-1 py-1.5 transition-colors hover:bg-gray-50/60">
+                          <Link key={s.id} href={`/projects/${g.projectId}?task=${s.id}`} className="flex items-center gap-3 rounded-lg px-1 py-1.5 transition-colors hover:bg-gray-50/60">
                             <span className="shrink-0 text-gray-300">↳</span>
                             <Badge bucket={s.bucket} days={s.days} t={t} />
                             <span className={`flex-1 truncate text-[13px] ${s.bucket === "overdue" ? "font-medium text-gray-900" : "text-gray-600"}`}>{s.title}</span>

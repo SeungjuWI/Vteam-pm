@@ -67,15 +67,17 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   useEffect(() => { try { const v = localStorage.getItem(scaleKey); if (v === "week" || v === "year") setScale(v); } catch {} }, [scaleKey]);
   const chooseScale = (v: "week" | "month" | "year") => { setScale(v); try { localStorage.setItem(scaleKey, v); } catch {} };
   const [selected, setSelected] = useState<Task | null>(null);
-  // 대시보드 마감현황 등에서 ?task=<id>로 진입하면 해당 태스크 모달 자동 오픈
+  // 대시보드 마감현황 등에서 ?task=<id>로 진입하면 해당 태스크 모달 자동 오픈 (최초 1회만 — 닫은 뒤 refresh로 재오픈되는 것 방지)
   const searchParams = useSearchParams();
+  const deepLinkOpened = useRef(false);
   useEffect(() => {
+    if (deepLinkOpened.current) return;
     const tid = searchParams.get("task");
     if (!tid) return;
     for (const m of mainTasks) {
-      if (m.id === tid) { setSelected(m); return; }
+      if (m.id === tid) { setSelected(m); deepLinkOpened.current = true; return; }
       const sub = m.subtasks.find((s) => s.id === tid);
-      if (sub) { setSelected(sub); return; }
+      if (sub) { setSelected(sub); deepLinkOpened.current = true; return; }
     }
   }, [searchParams, mainTasks]);
   // 태스크 추가 모달: null=닫힘, parentId=null이면 메인 / 값이 있으면 그 메인의 서브

@@ -200,6 +200,16 @@ export async function sendMessage(receiverId: string, content: string) {
 
   if (!profile?.company_id) return { error: "회사 정보가 없습니다" };
 
+  // 수신자가 같은 회사 멤버인지 검증 (회사 간 DM 차단)
+  const { data: receiver } = await adminClient
+    .from("profiles")
+    .select("company_id")
+    .eq("id", receiverId)
+    .single();
+  if (!receiver || receiver.company_id !== profile.company_id) {
+    return { error: "같은 회사의 멤버에게만 메시지를 보낼 수 있습니다" };
+  }
+
   const { error } = await adminClient.from("direct_messages").insert({
     company_id: profile.company_id,
     sender_id: user.id,

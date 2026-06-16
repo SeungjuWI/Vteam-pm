@@ -5,6 +5,12 @@ import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { translateText } from "@/lib/translate";
 
+// 내가 이 방의 멤버인지 검증 (멀티테넌트 격리)
+async function inGroupRoom(adminClient: ReturnType<typeof createAdminClient>, roomId: string, userId: string): Promise<boolean> {
+  const { data } = await adminClient.from("group_dm_members").select("id").eq("room_id", roomId).eq("user_id", userId).maybeSingle();
+  return !!data;
+}
+
 // 단체 DM방 생성
 export async function createGroupDm(memberIds: string[], name?: string) {
   const supabase = await createClient();
@@ -159,6 +165,7 @@ export async function getGroupDmMessages(roomId: string) {
   if (!user) return [];
 
   const adminClient = createAdminClient();
+  if (!(await inGroupRoom(adminClient, roomId, user.id))) return [];
 
   // 내 언어
   const { data: myProfile } = await adminClient
@@ -248,6 +255,7 @@ export async function sendGroupDmMessage(roomId: string, content: string) {
   if (!user) return { error: "로그인이 필요합니다" };
 
   const adminClient = createAdminClient();
+  if (!(await inGroupRoom(adminClient, roomId, user.id))) return { error: "이 방의 멤버가 아닙니다" };
   const { data: profile } = await adminClient
     .from("profiles")
     .select("language")

@@ -23,6 +23,14 @@ async function getMe() {
   return { userId: user.id, profile, adminClient };
 }
 
+// 채널이 내 회사 소속인지 검증 (멀티테넌트 격리)
+async function channelInCompany(adminClient: ReturnType<typeof createAdminClient>, channelId: string, companyId: string): Promise<boolean> {
+  const { data: ch } = await adminClient.from("dept_channels").select("department_id").eq("id", channelId).single();
+  if (!ch) return false;
+  const { data: dept } = await adminClient.from("departments").select("company_id").eq("id", ch.department_id).single();
+  return !!dept && dept.company_id === companyId;
+}
+
 // ===== 부서 관리 (admin 전용) =====
 
 // 회사 전체 부서 + 멤버 + 채널 (관리 패널용)
@@ -372,6 +380,7 @@ export async function getChannelMessages(channelId: string) {
   const me = await getMe();
   if (!me) return [];
   const { userId, profile, adminClient } = me;
+  if (!(await channelInCompany(adminClient, channelId, profile.company_id))) return [];
   const myLang = profile.language ?? "ko";
 
   const { data } = await adminClient
@@ -458,6 +467,7 @@ export async function sendChannelMessage(channelId: string, content: string) {
   const me = await getMe();
   if (!me) return { error: "로그인이 필요합니다" };
   const { userId, profile, adminClient } = me;
+  if (!(await channelInCompany(adminClient, channelId, profile.company_id))) return { error: "권한이 없습니다" };
 
   const { error } = await adminClient.from("dept_channel_messages").insert({
     channel_id: channelId,
@@ -473,7 +483,8 @@ export async function sendChannelMessage(channelId: string, content: string) {
 export async function markChannelAsRead(channelId: string) {
   const me = await getMe();
   if (!me) return;
-  const { userId, adminClient } = me;
+  const { userId, profile, adminClient } = me;
+  if (!(await channelInCompany(adminClient, channelId, profile.company_id))) return;
 
   await adminClient.from("dept_channel_reads").upsert(
     {

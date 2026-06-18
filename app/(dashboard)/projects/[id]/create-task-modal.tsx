@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { createTask } from "../actions";
 import { useT } from "@/lib/i18n";
+import { kstTodayString } from "@/lib/date";
 import type { Member, TaskStatus } from "./project-types";
 
 export default function CreateTaskModal({ projectId, initialStatus = "todo", parentTaskId = null, parentTitle = null, allMembers, onClose }: { projectId: string; initialStatus?: TaskStatus; parentTaskId?: string | null; parentTitle?: string | null; allMembers: Member[]; onClose: () => void }) {
@@ -13,7 +14,7 @@ export default function CreateTaskModal({ projectId, initialStatus = "todo", par
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(kstTodayString());
   const [dueDate, setDueDate] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -83,48 +84,41 @@ export default function CreateTaskModal({ projectId, initialStatus = "todo", par
             />
           </div>
 
-          {/* 기간: 시작일 → 마감일 (필수) */}
+          {/* 기간: 시작일 → 마감일 (필수) — 상세 모달과 동일 스타일 */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.startDate")} · {t("tasks.dueDate")} <span className="text-red-400">*</span></label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-400">{t("tasks.startDate")}</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="flex-1 rounded-lg border border-gray-200 px-3.5 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
               />
-              <span className="shrink-0 text-gray-300">→</span>
+              <span className="text-gray-300">→</span>
+              <span className="text-xs text-gray-400">{t("tasks.dueDate")}</span>
               <input
                 type="date"
                 value={dueDate}
                 min={startDate || undefined}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="flex-1 rounded-lg border border-gray-200 px-3.5 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>
 
-          {/* 우선순위 */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.priority")}</label>
-            <div className="flex gap-1.5">
-              {([
-                { key: "low", label: "Low", active: "bg-gray-100 text-gray-700" },
-                { key: "medium", label: "Medium", active: "bg-amber-50 text-amber-700" },
-                { key: "high", label: "High", active: "bg-red-50 text-red-600" },
-              ] as const).map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => setPriority(p.key)}
-                  className={`flex-1 rounded-lg py-2 text-xs font-medium transition-colors ${
-                    priority === p.key ? p.active : "bg-gray-50 text-gray-400 hover:bg-gray-100"
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+          {/* 우선순위 — 상세 모달과 동일한 드롭다운 */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-600">{t("tasks.priority")}</label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
           </div>
 
           {/* 담당자 (복수) */}

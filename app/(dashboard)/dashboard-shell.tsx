@@ -123,6 +123,7 @@ export interface WorkStatus {
 export default function DashboardShell({
   children,
   role,
+  isSuperAdmin,
   userId,
   userEmail,
   userLang,
@@ -133,6 +134,7 @@ export default function DashboardShell({
 }: {
   children: React.ReactNode;
   role: string;
+  isSuperAdmin: boolean;
   userId: string;
   userEmail: string;
   userLang: string;
@@ -182,6 +184,25 @@ export default function DashboardShell({
                     {t("nav.adminSection")}
                   </div>
                   {adminNavItems.map(renderNavItem)}
+                </>
+              )}
+
+              {isSuperAdmin && (
+                <>
+                  <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
+                    운영자
+                  </div>
+                  <Link
+                    href="/admin"
+                    className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                      pathname.startsWith("/admin")
+                        ? "bg-blue-50 font-medium text-blue-500"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                  >
+                    {iconMap["chart"]}
+                    가입현황
+                  </Link>
                 </>
               )}
             </nav>

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSuperAdminEmail } from "@/lib/auth/super-admin";
 import { kstStartOfToday } from "@/lib/date";
 import DashboardShell from "./dashboard-shell";
 
@@ -43,6 +44,7 @@ export default async function DashboardLayout({
   return (
     <DashboardShell
       role={profile.role ?? "employee"}
+      isSuperAdmin={isSuperAdminEmail(user.email)}
       userId={user.id}
       userEmail={user.email ?? ""}
       userLang={profile.language ?? "ko"}

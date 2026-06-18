@@ -32,6 +32,12 @@ export function kstStartOfMonth(date: Date = new Date()): Date {
   return new Date(shifted.getTime() - KST_OFFSET_MS);
 }
 
+/** 오늘(한국)을 <input type="date">용 "YYYY-MM-DD" 문자열로 반환.
+ *  브라우저 타임존과 무관하게 항상 KST 날짜를 준다. */
+export function kstTodayString(): string {
+  return new Date(Date.now() + KST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
 /** date를 한국 시각 시계로 읽기 위해 +9h 시프트한 Date.
  *  반환값의 getUTCHours()/getUTCMinutes()/getUTCDay()가 각각 한국 시/분/요일을 가리킨다. */
 export function toKstParts(date: Date): Date {

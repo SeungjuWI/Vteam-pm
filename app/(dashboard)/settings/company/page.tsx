@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, getProfile } from "@/lib/supabase/auth-cache";
 import CompanyInfoView from "./company-info-view";
+import SlackSettings from "./slack-settings";
 
 export default async function CompanySettingsPage() {
   const user = await getAuthUser();
@@ -13,7 +14,7 @@ export default async function CompanySettingsPage() {
 
   const { data: company } = await adminClient
     .from("companies")
-    .select("name, created_at, founded_at, business_number, corp_number, phone, address, logo_url")
+    .select("name, created_at, founded_at, business_number, corp_number, phone, address, logo_url, slack_webhook_url, slack_digest_enabled")
     .eq("id", profile.company_id)
     .single();
 
@@ -29,19 +30,27 @@ export default async function CompanySettingsPage() {
   const isEditable = profile.role === "admin";
 
   return (
-    <CompanyInfoView
-      data={{
-        name: company.name,
-        foundedAt: company.founded_at ?? "",
-        businessNumber: company.business_number ?? "",
-        corpNumber: company.corp_number ?? "",
-        phone: company.phone ?? "",
-        address: company.address ?? "",
-        logoUrl: company.logo_url ?? "",
-        createdAt: company.created_at,
-        memberCount: count || 0,
-      }}
-      isEditable={isEditable}
-    />
+    <div className="flex flex-col gap-6">
+      <CompanyInfoView
+        data={{
+          name: company.name,
+          foundedAt: company.founded_at ?? "",
+          businessNumber: company.business_number ?? "",
+          corpNumber: company.corp_number ?? "",
+          phone: company.phone ?? "",
+          address: company.address ?? "",
+          logoUrl: company.logo_url ?? "",
+          createdAt: company.created_at,
+          memberCount: count || 0,
+        }}
+        isEditable={isEditable}
+      />
+      {isEditable && (
+        <SlackSettings
+          initialWebhook={company.slack_webhook_url ?? ""}
+          initialEnabled={company.slack_digest_enabled ?? false}
+        />
+      )}
+    </div>
   );
 }

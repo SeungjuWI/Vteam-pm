@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { clockIn, clockOut, getAttendanceStatus } from "@/app/(dashboard)/attendance/actions";
+import { clockIn, clockOut, cancelClockOut, getAttendanceStatus } from "@/app/(dashboard)/attendance/actions";
 import { useT } from "@/lib/i18n";
 
 type WorkStatus = "idle" | "working" | "done";
@@ -150,6 +150,19 @@ export default function WorkTimer({
     setOpen(false);
   }
 
+  async function handleCancelClockOut() {
+    if (!confirm(t("timer.cancelClockOutConfirm"))) return;
+    setLoading(true);
+    const result = await cancelClockOut();
+    if (result?.error) {
+      alert(result.error);
+    } else {
+      await fetchStatus();
+    }
+    setLoading(false);
+    setOpen(false);
+  }
+
   async function handleClockOutConfirm() {
     setLoading(true);
     const result = await clockOut();
@@ -241,7 +254,16 @@ export default function WorkTimer({
               </button>
             )}
             {status === "done" && (
-              <p className="px-4 py-2 text-sm text-gray-400">{t("timer.doneMessage")}</p>
+              <button
+                onClick={handleCancelClockOut}
+                disabled={loading}
+                className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              >
+                <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                </svg>
+                {t("timer.cancelClockOut")}
+              </button>
             )}
           </div>
         </div>,

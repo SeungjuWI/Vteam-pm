@@ -604,6 +604,8 @@ const ko = {
   "timer.clockOutDone": "퇴근 완료",
   "timer.totalHours": "총 근무시간",
   "timer.goodJob": "수고 많으셨어요!",
+  "timer.cancelClockOut": "퇴근 취소",
+  "timer.cancelClockOutConfirm": "퇴근을 취소하고 다시 근무 상태로 돌릴까요?",
 
   // Attendance Calendar
   "calendar.week": "주",

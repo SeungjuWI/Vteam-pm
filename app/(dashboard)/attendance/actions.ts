@@ -123,6 +123,39 @@ export async function clockOut() {
   revalidatePath("/attendance");
 }
 
+// 본인이 실수로 누른 퇴근을 취소 → 다시 근무중 상태로 (clock_out 비움).
+// 오늘(한국 날짜) 퇴근까지 찍은 가장 최근 기록만 대상. 관리자 도움 없이 셀프 정정용.
+export async function cancelClockOut() {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  const today = kstStartOfToday();
+
+  const { data: record } = await adminClient
+    .from("attendances")
+    .select("id")
+    .eq("employee_id", user.id)
+    .gte("clock_in", today.toISOString())
+    .not("clock_out", "is", null)
+    .order("clock_in", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!record) return { error: "취소할 퇴근 기록이 없습니다" };
+
+  const { error } = await adminClient
+    .from("attendances")
+    .update({ clock_out: null })
+    .eq("id", record.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/attendance");
+}
+
 // ── 관리자용 출퇴근 관리 ──
 
 export async function getEmployeeAttendances(employeeId: string, year: number, month: number) {

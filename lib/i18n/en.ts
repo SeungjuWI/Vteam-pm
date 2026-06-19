@@ -606,6 +606,8 @@ const en: Record<TranslationKey, string> = {
   "timer.clockOutDone": "Clocked Out",
   "timer.totalHours": "Total Hours",
   "timer.goodJob": "Great work today!",
+  "timer.cancelClockOut": "Cancel clock-out",
+  "timer.cancelClockOutConfirm": "Cancel clock-out and return to working?",
 
   // Attendance Calendar
   "calendar.week": "Week",

@@ -59,35 +59,20 @@ export default function CreateTaskModal({ projectId, initialStatus = "todo", par
         </div>
 
         <div className="flex flex-col gap-4">
-          {/* 제목 */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.taskTitle")} <span className="text-red-400">*</span></label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t("tasks.titlePlaceholder")}
-              className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
-              autoFocus
-            />
-          </div>
+          {/* 제목 — 상세 모달과 동일한 인라인 큰 제목 */}
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={t("tasks.titlePlaceholder")}
+            autoFocus
+            className="-mx-2 w-[calc(100%+1rem)] rounded-lg px-2 py-1 text-lg font-semibold text-gray-900 placeholder:text-gray-300 transition-colors hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+          />
 
-          {/* 작업 내용 */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.content")}</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t("tasks.contentPlaceholder")}
-              rows={3}
-              className="w-full resize-none rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          {/* 기간: 시작일 → 마감일 (필수) — 상세 모달과 동일 스타일 */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.startDate")} · {t("tasks.dueDate")} <span className="text-red-400">*</span></label>
-            <div className="flex flex-wrap items-center gap-2">
+          {/* 기간 — 상세 모달의 '② 언제까지' 카드와 동일 */}
+          <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+            <p className="mb-2 text-xs font-semibold text-gray-600">{t("tasks.startDate")} · {t("tasks.dueDate")} <span className="text-red-400">*</span></p>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-xs text-gray-400">{t("tasks.startDate")}</span>
               <input
                 type="date"
@@ -109,7 +94,7 @@ export default function CreateTaskModal({ projectId, initialStatus = "todo", par
 
           {/* 우선순위 — 상세 모달과 동일한 드롭다운 */}
           <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-gray-600">{t("tasks.priority")}</label>
+            <label className="text-xs font-medium text-gray-400">{t("tasks.priority")}</label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
@@ -123,7 +108,7 @@ export default function CreateTaskModal({ projectId, initialStatus = "todo", par
 
           {/* 담당자 (복수) */}
           <div className="relative">
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("tasks.assignee")}</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-400">{t("tasks.assignee")}</label>
             {selectedIds.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {selectedIds.map((mid) => {
@@ -183,6 +168,18 @@ export default function CreateTaskModal({ projectId, initialStatus = "todo", par
                 </div>
               </>
             )}
+          </div>
+
+          {/* 작업 내용(설명) — 상세 모달과 동일한 회색 배경 */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-gray-400">{t("tasks.content")}</p>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t("tasks.contentPlaceholder")}
+              rows={3}
+              className="w-full resize-none rounded-lg bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
           </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}

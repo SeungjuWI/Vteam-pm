@@ -48,6 +48,19 @@ export default async function ProjectDetailPage({ params }: Props) {
       .order("name", { ascending: true }),
   ]);
 
+  // 제목 없는 드래프트('추가'만 누르고 제목 미입력) 처리:
+  //  - 화면에선 숨긴다 (제목이 없으면 클릭 영역이 없어 열지도 삭제도 못 하는 빈 줄 방지)
+  //  - 10분 이상 방치된 것은 DB에서 삭제(찌꺼기 정리). 편집 중인 드래프트는 보통 즉시 제목이 생기므로 안전.
+  const rawTasks = tasksRes.data || [];
+  const visibleTasks = rawTasks.filter((t) => (t.title ?? "").trim() !== "");
+  const staleDraftIds = rawTasks
+    .filter((t) => (t.title ?? "").trim() === "" && Date.parse(t.created_at as string) < Date.now() - 10 * 60 * 1000)
+    .map((t) => t.id);
+  if (staleDraftIds.length > 0) {
+    await adminClient.from("task_assignees").delete().in("task_id", staleDraftIds);
+    await adminClient.from("tasks").delete().in("id", staleDraftIds);
+  }
+
   const allMembers = (membersRes.data || []).map((m) => ({
     id: m.id,
     name: m.name,
@@ -60,7 +73,7 @@ export default async function ProjectDetailPage({ params }: Props) {
   const projectMembers = allMembers.filter((m) => memberIds.includes(m.id));
 
   // 태스크 담당자 조회
-  const taskIds = (tasksRes.data || []).map((t) => t.id);
+  const taskIds = visibleTasks.map((t) => t.id);
   let taskAssigneesMap: Record<string, { name: string; avatarUrl: string | null }[]> = {};
 
   if (taskIds.length > 0) {
@@ -80,7 +93,7 @@ export default async function ProjectDetailPage({ params }: Props) {
     }
   }
 
-  const allTasks = (tasksRes.data || []).map((t) => ({
+  const allTasks = visibleTasks.map((t) => ({
     id: t.id,
     title: t.title,
     description: t.description,

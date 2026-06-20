@@ -289,8 +289,8 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
 }
 
 /* ── 태스크 상세/수정 모달 ── */
-export default function TaskDetailModal({ task, projectId, allMembers, projectMembers, currentUserId, onClose }: {
-  task: Task; projectId: string; allMembers: Member[]; projectMembers: Member[]; currentUserId: string; onClose: () => void;
+export default function TaskDetailModal({ task, projectId, allMembers, projectMembers, currentUserId, onClose, isDraft = false }: {
+  task: Task; projectId: string; allMembers: Member[]; projectMembers: Member[]; currentUserId: string; onClose: () => void; isDraft?: boolean;
 }) {
   const t = useT();
   const router = useRouter();
@@ -394,7 +394,10 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     dirty.current = false;
     onClose();
     (async () => {
-      if (wasDirty) {
+      if (isDraft && !title.trim()) {
+        // 제목 없이 닫은 빈 드래프트 → 정리(삭제)
+        await deleteTask(task.id, projectId);
+      } else if (wasDirty) {
         await updateTask(task.id, projectId, title.trim() || task.title, description, priority, dueDate, selectedIds, outputJoined, startDate, progress);
       }
       router.refresh();
@@ -436,7 +439,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 pt-5">
             {/* 제목 (인라인) */}
-            <input value={title} onChange={(e) => { setTitle(e.target.value); dirty.current = true; }} onBlur={() => persist()} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} placeholder={t("tasks.taskTitle")}
+            <input value={title} autoFocus={isDraft} onChange={(e) => { setTitle(e.target.value); dirty.current = true; }} onBlur={() => persist()} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} placeholder={t("tasks.taskTitle")}
               className="-mx-2 w-[calc(100%+1rem)] rounded-lg px-2 py-1 text-lg font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
 
             {/* ① 무엇을 — 결과물 + 진도율 (핵심) */}

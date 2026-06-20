@@ -382,6 +382,65 @@ export async function createTask(
   return { success: true };
 }
 
+// 통일된 편집 경험: '추가'를 누르면 빈 태스크를 즉시 만들고 그 자리에서 상세 편집기를 연다.
+// (서브태스크 추가/태스크 추가가 '등록된 태스크 클릭'과 똑같은 화면이 되도록)
+// 제목 없이 닫으면 클라이언트가 이 태스크를 삭제(드래프트 정리)한다.
+export async function createTaskDraft(
+  projectId: string,
+  parentTaskId: string | null = null,
+  status: string = "todo",
+) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("company_id, language")
+    .eq("id", user.id)
+    .single();
+  if (!profile?.company_id) return { error: "권한이 없습니다" };
+
+  if (!(await projectInCompany(adminClient, projectId, profile.company_id))) return { error: "프로젝트를 찾을 수 없습니다" };
+  if (parentTaskId && !(await taskInCompany(adminClient, parentTaskId, profile.company_id))) return { error: "부모 태스크를 찾을 수 없습니다" };
+
+  const today = kstTodayStr();
+  const { data: task, error } = await adminClient
+    .from("tasks")
+    .insert({
+      project_id: projectId,
+      title: "",
+      status,
+      priority: "medium",
+      start_date: today,
+      parent_task_id: parentTaskId,
+      source_language: profile.language || "ko",
+    })
+    .select("id, start_date")
+    .single();
+
+  if (error || !task) return { error: "태스크 생성에 실패했습니다" };
+
+  revalidatePath(`/projects/${projectId}`);
+  return {
+    task: {
+      id: task.id as string,
+      title: "",
+      description: null,
+      output: null,
+      progress: 0,
+      status: status as "todo" | "in_progress" | "pending" | "done",
+      priority: "medium" as const,
+      assignees: [],
+      checklist: [],
+      dueDate: null,
+      startDate: (task.start_date as string) ?? today,
+    },
+  };
+}
+
 // 인라인 빠른 추가 (제목만) — 메인태스크는 parentTaskId=null, 서브태스크는 부모 id
 export async function quickAddTask(
   projectId: string,

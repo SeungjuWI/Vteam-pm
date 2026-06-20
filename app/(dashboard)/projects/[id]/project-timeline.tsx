@@ -4,12 +4,11 @@ import { useState, useEffect, useRef, useTransition } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks } from "../actions";
+import { updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks, createTaskDraft } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
 
 const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
-const CreateTaskModal = dynamic(() => import("./create-task-modal"));
 
 // 상태별 막대 색 (차분하게). 진도율(%)만큼 그라데이션으로 채움.
 const STATUS_FILL: Record<string, string> = {
@@ -81,7 +80,16 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     }
   }, [searchParams, mainTasks]);
   // 태스크 추가 모달: null=닫힘, parentId=null이면 메인 / 값이 있으면 그 메인의 서브
-  const [creating, setCreating] = useState<{ parentId: string | null; parentTitle?: string } | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+
+  // '추가' = 빈 태스크를 즉시 만들고 동일한 상세 편집기를 연다 (생성/편집 UI 통일)
+  async function handleAddTask(parentId: string | null) {
+    const r = await createTaskDraft(projectId, parentId);
+    if ("error" in r) { alert(r.error); return; }
+    if (parentId) setOpen((p) => new Set(p).add(parentId));
+    setDraftId(r.task.id);
+    setSelected(r.task);
+  }
   const [showDone, setShowDone] = useState(false);
   const [addingMs, setAddingMs] = useState(false);
   const [msTitle, setMsTitle] = useState("");
@@ -499,7 +507,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                     </div>
                   );
                 })}
-                <button onClick={() => setCreating({ parentId: row.id, parentTitle: row.title })} className="flex items-center gap-1.5 py-2 pl-[44px] text-xs text-gray-300 hover:text-blue-500">
+                <button onClick={() => handleAddTask(row.id)} className="flex items-center gap-1.5 py-2 pl-[44px] text-xs text-gray-300 hover:text-blue-500">
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addSub")}
                 </button>
               </div>
@@ -527,7 +535,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       })()}
 
       {/* 메인 추가 */}
-      <button onClick={() => setCreating({ parentId: null })} className="flex items-center gap-1.5 px-5 py-3 text-xs font-medium text-gray-400 hover:text-blue-500">
+      <button onClick={() => handleAddTask(null)} className="flex items-center gap-1.5 px-5 py-3 text-xs font-medium text-gray-400 hover:text-blue-500">
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addMain")}
       </button>
 
@@ -567,12 +575,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       )}
 
       {selected && (
-        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} onClose={() => setSelected(null)} />
-      )}
-
-      {creating && (
-        <CreateTaskModal projectId={projectId} parentTaskId={creating.parentId} parentTitle={creating.parentTitle ?? null} allMembers={allMembers}
-          onClose={() => { if (creating.parentId) setOpen((p) => new Set(p).add(creating.parentId!)); setCreating(null); router.refresh(); }} />
+        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} isDraft={selected.id === draftId} onClose={() => { setSelected(null); setDraftId(null); }} />
       )}
     </div>
   );

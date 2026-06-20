@@ -4,21 +4,28 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { updateTaskStatus } from "../actions";
+import { updateTaskStatus, createTaskDraft } from "../actions";
 import { useT } from "@/lib/i18n";
-import type { Member, MainTask, TaskStatus } from "./project-types";
+import type { Member, Task, MainTask, TaskStatus } from "./project-types";
 import { priorityConfig } from "./project-types";
 
 const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
-const CreateTaskModal = dynamic(() => import("./create-task-modal"));
 
 export default function ProjectBoard({ projectId, mainTasks, members, allMembers, currentUserId }: {
   projectId: string; mainTasks: MainTask[]; members: Member[]; allMembers: Member[]; currentUserId: string;
 }) {
   const t = useT();
   const router = useRouter();
-  const [selected, setSelected] = useState<MainTask | null>(null);
-  const [showCreate, setShowCreate] = useState<TaskStatus | null>(null);
+  const [selected, setSelected] = useState<Task | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+
+  // '추가' = 빈 태스크를 즉시 만들고 동일한 상세 편집기를 연다 (생성/편집 UI 통일)
+  async function handleAddTask(status: TaskStatus) {
+    const r = await createTaskDraft(projectId, null, status);
+    if ("error" in r) { alert(r.error); return; }
+    setDraftId(r.task.id);
+    setSelected(r.task);
+  }
   const [dragOver, setDragOver] = useState<string | null>(null);
   const dragId = useRef<string | null>(null);
   const isDragging = useRef(false);
@@ -90,7 +97,7 @@ export default function ProjectBoard({ projectId, mainTasks, members, allMembers
                   </div>
                 );
               })}
-              <button onClick={() => setShowCreate(col.key)} className="mt-1 flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-gray-200 py-2 text-xs text-gray-300 transition-colors hover:border-gray-300 hover:text-gray-400">
+              <button onClick={() => handleAddTask(col.key)} className="mt-1 flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-gray-200 py-2 text-xs text-gray-300 transition-colors hover:border-gray-300 hover:text-gray-400">
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("common.add")}
               </button>
             </div>
@@ -98,11 +105,8 @@ export default function ProjectBoard({ projectId, mainTasks, members, allMembers
         );
       })}
 
-      {showCreate && (
-        <CreateTaskModal projectId={projectId} initialStatus={showCreate} allMembers={allMembers} onClose={() => { setShowCreate(null); router.refresh(); }} />
-      )}
       {selected && (
-        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} onClose={() => setSelected(null)} />
+        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} isDraft={selected.id === draftId} onClose={() => { setSelected(null); setDraftId(null); }} />
       )}
     </div>
   );

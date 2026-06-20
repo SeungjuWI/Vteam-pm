@@ -362,8 +362,9 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     requestAnimationFrame(() => outputRefs.current[idx]?.focus());
   }
   // 체크리스트(세부 할일) — 별도 경량 저장
-  function saveChecklist(arr: ChecklistItem[]) {
-    updateTaskChecklist(task.id, projectId, arr);
+  async function saveChecklist(arr: ChecklistItem[]) {
+    const r = await updateTaskChecklist(task.id, projectId, arr);
+    if (errOf(r)) alert(errOf(r));
   }
   function toggleCheck(id: string) {
     const next = checklist.map((it) => (it.id === id ? { ...it, done: !it.done } : it));
@@ -385,8 +386,10 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     requestAnimationFrame(() => checklistRefs.current[idx]?.focus());
   }
   async function changeStatus(s: "todo" | "in_progress" | "pending" | "done") {
+    const prev = status;
     setStatus(s);
-    await updateTaskStatus(task.id, s, projectId);
+    const r = await updateTaskStatus(task.id, s, projectId);
+    if (errOf(r)) { alert(errOf(r)); setStatus(prev); }  // 실패 시 알림 + 되돌림
   }
   // 즉시 닫고, 미저장 변경은 백그라운드로 저장 후 새로고침
   function closeSave() {
@@ -417,7 +420,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     setDeleting(true);
     const result = await deleteTask(task.id, projectId);
     if (errOf(result)) { alert(errOf(result)); setDeleting(false); }
-    else onClose();
+    else { onClose(); router.refresh(); }  // 삭제 후 목록 즉시 반영
   }
 
   return (

@@ -36,7 +36,9 @@ export async function clockIn() {
     .eq("employee_id", user.id)
     .gte("clock_in", today.toISOString())
     .is("clock_out", null)
-    .single();
+    .order("clock_in", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (existing) return { error: "이미 출근 상태입니다" };
 
@@ -70,7 +72,7 @@ export async function getAttendanceStatus() {
     .gte("clock_in", today.toISOString())
     .order("clock_in", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!record) return { status: "idle" as const, clockIn: null, clockOut: null };
 
@@ -109,7 +111,9 @@ export async function clockOut() {
     .eq("employee_id", user.id)
     .gte("clock_in", today.toISOString())
     .is("clock_out", null)
-    .single();
+    .order("clock_in", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (!record) return { error: "출근 기록이 없습니다" };
 
@@ -142,7 +146,7 @@ export async function cancelClockOut() {
     .not("clock_out", "is", null)
     .order("clock_in", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!record) return { error: "취소할 퇴근 기록이 없습니다" };
 

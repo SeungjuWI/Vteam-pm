@@ -375,10 +375,10 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       if (!d || !moved.current || !d.latest) return;
       if (d.kind === "ms" && d.latest.date) {
         const date = d.latest.date;
-        startTx(async () => { await updateMilestoneDate(d.id, projectId, date); router.refresh(); });
+        startTx(async () => { const r = await updateMilestoneDate(d.id, projectId, date); if ((r as { error?: string })?.error) alert((r as { error?: string }).error); router.refresh(); });
       } else if (d.latest.startDate && d.latest.dueDate) {
         const { startDate, dueDate } = d.latest;
-        startTx(async () => { await updateTaskDates(d.id, projectId, startDate, dueDate); router.refresh(); });
+        startTx(async () => { const r = await updateTaskDates(d.id, projectId, startDate, dueDate); if ((r as { error?: string })?.error) alert((r as { error?: string }).error); router.refresh(); });
       }
     }
     window.addEventListener("mousemove", onMove);

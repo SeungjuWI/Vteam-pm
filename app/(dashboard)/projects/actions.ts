@@ -403,8 +403,13 @@ export async function createTaskDraft(
     .single();
   if (!profile?.company_id) return { error: "권한이 없습니다" };
 
-  if (!(await projectInCompany(adminClient, projectId, profile.company_id))) return { error: "프로젝트를 찾을 수 없습니다" };
-  if (parentTaskId && !(await taskInCompany(adminClient, parentTaskId, profile.company_id))) return { error: "부모 태스크를 찾을 수 없습니다" };
+  // 권한/소속 확인은 서로 독립적이므로 병렬로 (직렬 왕복 줄여 등록 체감속도 개선)
+  const [projOk, parentOk] = await Promise.all([
+    projectInCompany(adminClient, projectId, profile.company_id),
+    parentTaskId ? taskInCompany(adminClient, parentTaskId, profile.company_id) : Promise.resolve(true),
+  ]);
+  if (!projOk) return { error: "프로젝트를 찾을 수 없습니다" };
+  if (!parentOk) return { error: "부모 태스크를 찾을 수 없습니다" };
 
   const today = kstTodayStr();
   const { data: task, error } = await adminClient
@@ -426,7 +431,9 @@ export async function createTaskDraft(
   // 빠른 등록: 만든 사람(연 사람)을 담당자로 기본 지정 (편집기에서 수정/제거 가능)
   await adminClient.from("task_assignees").insert({ task_id: task.id, member_id: user.id });
 
-  revalidatePath(`/projects/${projectId}`);
+  // revalidatePath 의도적으로 호출하지 않음:
+  //   클라이언트가 반환된 task로 즉시 편집기를 열고(setSelected), 닫을 때 router.refresh()로 반영한다.
+  //   여기서 전체 페이지(태스크 전량 + AI 번역)를 다시 부르면 추가가 느려진다.
   return {
     task: {
       id: task.id as string,

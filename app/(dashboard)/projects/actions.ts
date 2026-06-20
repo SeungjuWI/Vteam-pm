@@ -398,7 +398,7 @@ export async function createTaskDraft(
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("company_id, language")
+    .select("company_id, language, name, avatar_url")
     .eq("id", user.id)
     .single();
   if (!profile?.company_id) return { error: "권한이 없습니다" };
@@ -423,6 +423,9 @@ export async function createTaskDraft(
 
   if (error || !task) return { error: "태스크 생성에 실패했습니다" };
 
+  // 빠른 등록: 만든 사람(연 사람)을 담당자로 기본 지정 (편집기에서 수정/제거 가능)
+  await adminClient.from("task_assignees").insert({ task_id: task.id, member_id: user.id });
+
   revalidatePath(`/projects/${projectId}`);
   return {
     task: {
@@ -433,7 +436,7 @@ export async function createTaskDraft(
       progress: 0,
       status: status as "todo" | "in_progress" | "pending" | "done",
       priority: "medium" as const,
-      assignees: [],
+      assignees: [{ name: profile.name as string, avatarUrl: (profile.avatar_url as string) ?? null }],
       checklist: [],
       dueDate: null,
       startDate: (task.start_date as string) ?? today,

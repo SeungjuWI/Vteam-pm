@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useT, useLocale } from "@/lib/i18n";
 import type { Member } from "./project-types";
@@ -13,8 +12,8 @@ import {
   deleteKeyResult,
   deleteObjective,
 } from "./okr-actions";
-
-const CreateOkrModal = dynamic(() => import("./create-okr-modal"));
+// 클릭 즉시 떠야 하므로 일반 import (dynamic 지연 로딩이면 첫 클릭 때 청크 컴파일/다운로드로 멈칫함)
+import CreateOkrModal from "./create-okr-modal";
 
 function periodLabel(period: string, locale: string): string {
   const [y, m] = period.split("-").map(Number);

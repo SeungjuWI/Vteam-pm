@@ -3,13 +3,12 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { quickAddTask, updateTaskStatus } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, MainTask } from "./project-types";
 import { priorityConfig } from "./project-types";
-
-const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
+// 클릭 즉시 떠야 하므로 일반 import (dynamic 지연 로딩이면 첫 클릭 때 청크 컴파일/다운로드로 멈칫함)
+import TaskDetailModal from "./task-detail-modal";
 
 export function mainCompletion(t: MainTask): number {
   if (t.subtasks.length > 0) {

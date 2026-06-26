@@ -458,26 +458,6 @@ const ko = {
   "board.hoursAgo": "시간 전",
   "board.daysAgo": "일 전",
 
-  // Project Discussion
-  "discussion.title": "토론",
-  "discussion.write": "글쓰기",
-  "discussion.placeholder": "프로젝트 멤버에게 공유할 내용을 작성하세요...",
-  "discussion.submit": "게시",
-  "discussion.empty": "아직 글이 없습니다. 첫 글을 남겨보세요.",
-  "discussion.deleteConfirm": "이 글을 삭제하시겠습니까? 스레드의 댓글도 함께 삭제됩니다.",
-  "discussion.deleteReplyConfirm": "이 댓글을 삭제하시겠습니까?",
-  "discussion.translated": "번역됨",
-  "discussion.original": "원문 보기",
-  "discussion.openThread": "스레드 열기",
-  "discussion.closeThread": "스레드 닫기",
-  "discussion.replyCountSuffix": "개 댓글",
-  "discussion.replyPlaceholder": "댓글을 입력하세요...",
-  "discussion.noReplies": "아직 댓글이 없습니다.",
-  "discussion.justNow": "방금",
-  "discussion.minutesAgo": "분 전",
-  "discussion.hoursAgo": "시간 전",
-  "discussion.daysAgo": "일 전",
-
   // My Tasks
   "myTasks.title": "내 태스크",
   "myTasks.total": "전체",

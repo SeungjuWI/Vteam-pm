@@ -3,18 +3,16 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { removeProjectMember } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, MainTask, Project, Milestone } from "./project-types";
 import type { Objective } from "./okr-types";
 import ProjectTimeline from "./project-timeline";
 import ProjectBoard from "./project-board";
-
-const EditProjectModal = dynamic(() => import("./edit-project-modal"));
-const AddMemberModal = dynamic(() => import("./add-member-modal"));
-const ProjectDiscussionButton = dynamic(() => import("./project-discussion-button"));
-const OkrSection = dynamic(() => import("./okr-section"));
+// 모달/패널/섹션은 클릭(펼침) 즉시 떠야 하므로 일반 import (dynamic 지연 로딩이면 첫 클릭 때 청크 컴파일/다운로드로 멈칫함)
+import EditProjectModal from "./edit-project-modal";
+import AddMemberModal from "./add-member-modal";
+import OkrSection from "./okr-section";
 
 interface Props {
   project: Project;
@@ -128,10 +126,6 @@ export default function ProjectDetail({ project, members: initialMembers, allMem
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
             </button>
-
-            <div className="ml-1 border-l border-gray-200 pl-2">
-              <ProjectDiscussionButton projectId={project.id} currentUserId={currentUserId} />
-            </div>
 
             {showMembers && (
               <>

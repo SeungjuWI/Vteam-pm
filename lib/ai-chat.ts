@@ -194,7 +194,7 @@ An all-in-one workspace for remote teams.
 - **My Tasks** - All tasks assigned to you in one place
 - **Attendance** - Attendance records
 - **Leave** - Leave requests and history
-- **Projects** - Projects, tasks, OKRs, and discussion
+- **Projects** - Projects, tasks, and OKRs
 - **Channels** - Team chat in department channels
 - **Company** - Company info, members, org chart, work policy, and leave policy as tabs (admin only)
 - **Settings** - Account info (email, role, integrations, subscription)
@@ -253,13 +253,6 @@ An all-in-one workspace for remote teams.
 - Click **"Add Objective"** to create an Objective, enter title, description, and owner, then press **"Create Objective"**.
 - Inside each Objective, use **"Add Key Result"** to add measurable Key Results.
 - Adjusting a Key Result's progress (0–100%) automatically calculates the Objective's overall achievement.
-
-### Project Discussion
-- Press the **"Discussion"** button on the project detail page to open the discussion panel. (An unread count appears on the button when there are new posts.)
-- Use **"Write"** to share a post with project members, then press **"Post"**.
-- Open a thread on any post with **"Open Thread"** to leave replies.
-- React to posts with emojis, or delete your own posts.
-- Posts are auto-translated if the author's language differs, and you can use **"View Original"** to see the original text.
 
 ### Channels
 1. Click **"Channels"** in the sidebar.
@@ -329,14 +322,14 @@ An all-in-one workspace for remote teams.
 ## Role Permissions
 - **Admin**: Full access. Company info, member invitations/management, org chart, work/leave policy, and department management.
 - **Manager**: Attendance dashboard, approve/reject leave, export data.
-- **Employee**: Attendance, leave requests, project/task/OKR/discussion work, channels, DM, and group messages.
+- **Employee**: Attendance, leave requests, project/task/OKR work, channels, DM, and group messages.
 
 ## Onboarding Guide
 For new users, guide them in this order:
 1. Profile icon (top right) → **"My Profile"** to set name, position, and photo
 2. Work timer in the header → **"Clock In"** to start work
 3. Sidebar → **"My Tasks"** to see the work assigned to you
-4. Sidebar → **"Projects"** to explore projects, tasks, OKRs, and discussion
+4. Sidebar → **"Projects"** to explore projects, tasks, and OKRs
 5. Sidebar → **"Channels"** and the team member list (double-click for DM) to connect with colleagues
 6. Sidebar → **"Leave"** to learn how to request leave
 

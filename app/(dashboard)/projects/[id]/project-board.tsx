@@ -3,13 +3,12 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { updateTaskStatus, createTaskDraft } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, MainTask, TaskStatus } from "./project-types";
 import { priorityConfig } from "./project-types";
-
-const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
+// 클릭 즉시 떠야 하므로 일반 import (dynamic 지연 로딩이면 첫 클릭 때 청크 컴파일/다운로드로 멈칫함)
+import TaskDetailModal from "./task-detail-modal";
 
 export default function ProjectBoard({ projectId, mainTasks, members, allMembers, currentUserId }: {
   projectId: string; mainTasks: MainTask[]; members: Member[]; allMembers: Member[]; currentUserId: string;

@@ -43,7 +43,7 @@ export default function AddMemberModal({ projectId, currentMemberIds, allMembers
           </button>
         </div>
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("common.searchPlaceholder")} className="mb-3 w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none" autoFocus />
-        <div className="max-h-64 overflow-y-auto">
+        <div className="scrollbar-hide max-h-64 overflow-y-auto">
           {available.length === 0 ? (
             <p className="py-6 text-center text-sm text-gray-600">{allMembers.length === currentMemberIds.length ? t("projects.allMembersJoined") : t("common.noResults")}</p>
           ) : (

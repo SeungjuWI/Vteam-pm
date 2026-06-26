@@ -460,26 +460,6 @@ const en: Record<TranslationKey, string> = {
   "board.hoursAgo": "h ago",
   "board.daysAgo": "d ago",
 
-  // Project Discussion
-  "discussion.title": "Discussion",
-  "discussion.write": "Write",
-  "discussion.placeholder": "Share something with the project members...",
-  "discussion.submit": "Post",
-  "discussion.empty": "No posts yet. Be the first to write one.",
-  "discussion.deleteConfirm": "Delete this post? Replies in the thread will also be deleted.",
-  "discussion.deleteReplyConfirm": "Delete this reply?",
-  "discussion.translated": "Translated",
-  "discussion.original": "View original",
-  "discussion.openThread": "Open thread",
-  "discussion.closeThread": "Close thread",
-  "discussion.replyCountSuffix": " replies",
-  "discussion.replyPlaceholder": "Write a reply...",
-  "discussion.noReplies": "No replies yet.",
-  "discussion.justNow": "Just now",
-  "discussion.minutesAgo": "m ago",
-  "discussion.hoursAgo": "h ago",
-  "discussion.daysAgo": "d ago",
-
   // My Tasks
   "myTasks.title": "My Tasks",
   "myTasks.total": "All",

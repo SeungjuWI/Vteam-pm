@@ -2,20 +2,19 @@
 
 import { useState, useEffect, useRef, useTransition, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic";
 import { updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks, createTaskDraft } from "../actions";
 import { useT } from "@/lib/i18n";
 import TimelineRangePicker, { type DateRange } from "./range-picker";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
+// 클릭 즉시 떠야 하므로 일반 import (dynamic 지연 로딩이면 첫 클릭 때 청크 컴파일/다운로드로 멈칫함)
+import TaskDetailModal from "./task-detail-modal";
 
-const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
-
-// 상태별 막대 색 (차분하게). 진도율(%)만큼 그라데이션으로 채움.
+// 상태별 막대 색 (차분하게). 진도율(%)만큼 단색으로 채움.
 const STATUS_FILL: Record<string, string> = {
-  todo: "from-slate-300 to-slate-400",
-  in_progress: "from-blue-300 to-blue-600",
-  pending: "from-amber-300 to-amber-500",
-  done: "from-emerald-300 to-emerald-500",
+  todo: "bg-slate-400",
+  in_progress: "bg-blue-500",
+  pending: "bg-amber-500",
+  done: "bg-emerald-500",
 };
 const STATUS_TRACK: Record<string, string> = {
   todo: "bg-slate-100",
@@ -473,12 +472,17 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   return (
     <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white">
       {/* 우측에 날짜 범위 선택 + 보기 단위 전환(일/주/월) 나란히 — 내부 scale 키(week/month/year)는 localStorage 호환 위해 유지 */}
+      <div className="flex items-center justify-end px-4 pb-4 pt-3">
+        <button onClick={() => handleAddTask(null)} className="flex items-center gap-1.5 rounded-lg bg-blue-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-600">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addMain")}
+        </button>
+      </div>
       <div className="flex items-center justify-end gap-2 border-b border-gray-100 px-4 py-2">
         <TimelineRangePicker value={range} todayStr={todayStr} dataStart={dataStart} dataEnd={dataEnd} onChange={chooseRange} />
         <div className="flex gap-0.5 rounded-lg bg-gray-100 p-0.5">
           {([["week", "일"], ["month", "주"], ["year", "월"]] as const).map(([v, ko]) => (
             <button key={v} onClick={() => chooseScale(v)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${scale === v ? "bg-white text-gray-900" : "text-gray-400 hover:text-gray-600"}`}>{ko}</button>
+              className={`rounded-md px-3 py-1 text-xs font-bold transition-colors ${scale === v ? "bg-white text-gray-900" : "text-gray-500 hover:text-gray-700"}`}>{ko}</button>
           ))}
         </div>
       </div>
@@ -560,7 +564,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
                 {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }} />}
                 <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${barClipL ? "rounded-l-none" : ""} ${barClipR ? "rounded-r-none" : ""} ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
-                  <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
+                  <div className={`absolute inset-y-0 left-0 rounded-lg ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
                   {effStatus === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
                   <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-gray-700"}`}>{pctV}%</span>
                   {!hasSubs && <>
@@ -594,7 +598,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                         {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
                         {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }} />}
                         <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center overflow-hidden rounded-md ${subBar.clipL ? "rounded-l-none" : ""} ${subBar.clipR ? "rounded-r-none" : ""} ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`} cursor-grab active:cursor-grabbing`} style={{ left: subBar.left, width: subBar.width }}>
-                          <div className={`absolute inset-y-0 left-0 rounded-md bg-gradient-to-r ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
+                          <div className={`absolute inset-y-0 left-0 rounded-md ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
                           {sub.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-md" style={{ width: `${subPct}%`, backgroundImage: STRIPE }} />}
                           <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "l", sub); }} className="absolute inset-y-0 left-0 z-30 w-1.5 cursor-ew-resize" />
                           <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "r", sub); }} className="absolute inset-y-0 right-0 z-30 w-1.5 cursor-ew-resize" />
@@ -629,11 +633,6 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           </>
         );
       })()}
-
-      {/* 메인 추가 */}
-      <button onClick={() => handleAddTask(null)} className="flex items-center gap-1.5 px-5 py-3 text-xs font-medium text-gray-400 hover:text-blue-500">
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addMain")}
-      </button>
 
       {/* 마일스톤 */}
       <div className="flex items-center border-t border-gray-100 bg-amber-50/30">

@@ -717,6 +717,31 @@ export async function deleteTaskComment(commentId: string, projectId: string) {
   return { success: true };
 }
 
+export async function updateTaskComment(commentId: string, projectId: string, content: string) {
+  const supabase = await createClient();
+  const adminClient = createAdminClient();
+
+  const user = await getClaimsUser(supabase);
+  if (!user) return { error: "로그인이 필요합니다" };
+  if (!content.trim()) return { error: "내용을 입력해주세요" };
+
+  const companyId = await getCompanyId(adminClient, user.id);
+  const { data: c } = await adminClient.from("task_comments").select("task_id").eq("id", commentId).single();
+  if (!companyId || !c || !(await taskInCompany(adminClient, c.task_id as string, companyId))) return DENY;
+
+  // 본인 댓글만 수정
+  const { error } = await adminClient
+    .from("task_comments")
+    .update({ content: content.trim() })
+    .eq("id", commentId)
+    .eq("author_id", user.id);
+
+  if (error) return { error: "댓글 수정에 실패했습니다" };
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
+
 // 드래그로 태스크 기간 변경
 export async function updateTaskDates(taskId: string, projectId: string, startDate: string | null, dueDate: string | null) {
   const supabase = await createClient();

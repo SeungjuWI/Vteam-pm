@@ -6,16 +6,14 @@ import { useRouter } from "next/navigation";
 import { quickAddTask, updateTaskStatus } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, MainTask } from "./project-types";
+import { taskProgress } from "./project-types";
 import { priorityConfig } from "./project-types";
 // 클릭 즉시 떠야 하므로 일반 import (dynamic 지연 로딩이면 첫 클릭 때 청크 컴파일/다운로드로 멈칫함)
 import TaskDetailModal from "./task-detail-modal";
 
+// 타임라인 막대 · 상세 모달과 동일한 진행도(0–1). project-types의 taskProgress 단일 소스 사용.
 export function mainCompletion(t: MainTask): number {
-  if (t.subtasks.length > 0) {
-    const done = t.subtasks.filter((s) => s.status === "done").length;
-    return done / t.subtasks.length;
-  }
-  return t.status === "done" ? 1 : t.status === "in_progress" ? 0.5 : 0;
+  return taskProgress(t) / 100;
 }
 
 function Avatars({ assignees }: { assignees: Task["assignees"] }) {
@@ -239,6 +237,7 @@ export default function TaskTree({ projectId, mainTasks, members, currentUserId 
           allMembers={members}
           projectMembers={members}
           currentUserId={currentUserId}
+          subtasks={mainTasks.find((m) => m.id === selectedTask.id)?.subtasks ?? []}
           onClose={() => { setSelectedTask(null); router.refresh(); }}
         />
       )}

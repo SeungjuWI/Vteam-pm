@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition, useMemo } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks, createTaskDraft } from "../actions";
 import { useT } from "@/lib/i18n";
 import TimelineRangePicker, { type DateRange } from "./range-picker";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
+import { effectiveProgress as effProgress, taskProgress } from "./project-types";
 // 클릭 즉시 떠야 하므로 일반 import (dynamic 지연 로딩이면 첫 클릭 때 청크 컴파일/다운로드로 멈칫함)
 import TaskDetailModal from "./task-detail-modal";
 
@@ -32,10 +34,17 @@ const STATUS_RING: Record<string, string> = {
 const STRIPE = "repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,.55) 4px, rgba(255,255,255,.55) 8px)";
 const SUB_RING = "ring-slate-200";
 
-// 진도율(%): 완료(done) 태스크는 progress 값과 무관하게 100%로 본다.
-// (체크박스로 완료 처리하면 status만 done이 되고 progress는 0으로 남기 때문)
-const effProgress = (s: { status: string; progress?: number | null }) =>
-  s.status === "done" ? 100 : Math.max(0, Math.min(100, s.progress ?? 0));
+// 진도율(%)은 effProgress(= effectiveProgress, project-types)로 통일.
+// 타임라인 · 트리 · 상세 모달이 모두 같은 값을 보이게 한 곳에서 계산한다.
+
+// 막대 '색'은 진도(progress)까지 반영한다. status만 보면 진도가 30%인데도 status=todo라
+// 회색(slate)으로 차서, 같은 화면의 in_progress(파랑)와 섞여 위화감이 생긴다.
+// → 시작 버튼을 안 눌렀어도 progress가 0보다 크면 진행중(파랑)으로 본다. (멈춤=pending은 그대로 호박색)
+const colorStatus = (s: { status: string; progress?: number | null }) =>
+  s.status === "done" ? "done"
+    : s.status === "pending" ? "pending"
+    : (s.status === "in_progress" || (s.progress ?? 0) > 0) ? "in_progress"
+    : "todo";
 
 
 function Check({ done, onClick }: { done: boolean; onClick: () => void }) {
@@ -44,6 +53,28 @@ function Check({ done, onClick }: { done: boolean; onClick: () => void }) {
       className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-all ${done ? "border-emerald-500 bg-emerald-500 text-white" : "border-gray-300 text-transparent hover:border-blue-400"}`}>
       <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
     </button>
+  );
+}
+
+// 막대 우측 끝에 담당자 프로필을 띄운다(행 hover 시 페이드인). 막대가 화면 오른쪽에 닿거나
+// 범위 밖으로 빠져나가면(rightPct가 큼) 우측 '바깥'은 잘리므로, 보이는 막대 끝(최대 98%)
+// '안쪽'에 겹쳐 왼쪽으로 펼친다. 그 외엔 막대 오른쪽 바깥에 붙인다.
+function HoverAssignees({ assignees, rightPct }: { assignees: Task["assignees"]; rightPct: number }) {
+  if (!assignees || assignees.length === 0) return null;
+  const flip = rightPct > 86;
+  const anchor = Math.min(rightPct, 98);
+  return (
+    <div
+      className={`pointer-events-none absolute top-1/2 z-30 flex -translate-y-1/2 items-center -space-x-1.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 ${flip ? "flex-row-reverse space-x-reverse pr-2" : "pl-2"}`}
+      style={flip ? { right: `${100 - anchor}%` } : { left: `${rightPct}%` }}
+    >
+      {assignees.slice(0, 3).map((a, i) => (
+        <div key={i} title={a.name} className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-[10px] font-semibold text-gray-500 shadow-sm ring-2 ring-white">
+          {a.avatarUrl ? <Image src={a.avatarUrl} alt={a.name} width={24} height={24} className="h-full w-full object-cover" /> : a.name[0]}
+        </div>
+      ))}
+      {assignees.length > 3 && <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-[9px] font-semibold text-gray-600 ring-2 ring-white">+{assignees.length - 3}</div>}
+    </div>
   );
 }
 
@@ -489,7 +520,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       {/* 헤더 */}
       <div className="flex items-stretch border-b border-gray-100 bg-gray-50/30">
         <div className="flex w-72 shrink-0 items-end justify-between border-r border-gray-100 px-5 pb-3">
-          <span className="text-xs font-medium text-gray-600">{t("tasks.mainTasks")}</span>
+          <span className="text-[13px] font-semibold text-gray-700">{t("tasks.mainTasks")}</span>
           {expandableIds.length > 0 && (
             <button onClick={toggleAll} title={allOpen ? "모두 접기" : "모두 펼치기"} className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-blue-500">
               <svg className={`h-3.5 w-3.5 transition-transform ${allOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
@@ -501,7 +532,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           <div style={{ width: `${(leftPad / totalDays) * 100}%` }} className="shrink-0" />
           {columns.map((c, i) => (
             <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="relative">
-              {c.tick && <span className={`absolute bottom-0 -translate-x-1/2 whitespace-nowrap text-xs font-medium ${scale === "week" ? "left-0" : "left-1/2"} ${i === todayIdx ? "text-gray-900" : "text-gray-500"}`}>{c.label}</span>}
+              {c.tick && <span className={`absolute bottom-0 -translate-x-1/2 whitespace-nowrap text-[13px] font-medium ${scale === "week" ? "left-0" : "left-1/2"} ${i === todayIdx ? "text-gray-900" : "text-gray-600"}`}>{c.label}</span>}
             </div>
           ))}
           {todayIdx >= 0 && todayIdx < N && (
@@ -530,14 +561,24 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         const effStatus = hasSubs
           ? (subs.every((s) => s.status === "done") ? "done"
             : subs.some((s) => s.status === "pending") ? "pending"
-            : subs.some((s) => s.status === "in_progress" || (s.progress ?? 0) > 0) ? "in_progress"
+            : subs.some((s) => s.status === "in_progress" || effProgress(s) > 0) ? "in_progress"
             : "todo")
-          : row.status;
+          : colorStatus(row);
         const isDone = effStatus === "done";
-        const pctV = hasSubs
-          ? Math.round(subs.reduce((a, s) => a + effProgress(s), 0) / subs.length)
-          : effProgress(row);
+        const pctV = taskProgress(row);
         const barStyle = rollupSpan(row);
+        const barLeftPct = parseFloat(barStyle.left);
+        const barRightPct = barLeftPct + parseFloat(barStyle.width);
+        // 메인 막대 담당자 = 메인 자체 ∪ 모든 서브 담당자(이름 기준 중복 제거).
+        // 담당자가 서브에만 붙는 경우가 많아, 메인 자체만 보면 비어 아바타가 안 뜨는 문제를 막는다.
+        const rowAssignees = (() => {
+          const seen = new Set<string>();
+          const out: Task["assignees"] = [];
+          for (const a of [...row.assignees, ...row.subtasks.flatMap((s) => s.assignees)]) {
+            if (!seen.has(a.name)) { seen.add(a.name); out.push(a); }
+          }
+          return out;
+        })();
         // 메인 막대도 합집합 범위가 차트 범위를 벗어나면 그쪽 모서리를 직선으로 끊는다.
         const rd = rollupDates(row);
         const barClipL = !!rd.s && dayNum(rd.s) < axisStart;
@@ -557,57 +598,74 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                   <svg className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>
                 {warn && <span title="시작일이 지났는데 시작 전이거나 마감이 지났어요" className="shrink-0 text-red-500"><svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg></span>}
-                <button onClick={() => setSelected(row)} title={row.title} className={`truncate text-left text-sm font-medium hover:text-blue-600 ${isDone ? "text-gray-300 line-through" : warn ? "text-red-700" : "text-gray-900"}`}>{row.title}</button>
+                <button onClick={() => setSelected(row)} title={row.title} className={`truncate text-left text-[15px] font-semibold hover:text-blue-600 ${isDone ? "text-gray-300 line-through" : warn ? "text-red-700" : "text-gray-900"}`}>{row.title}</button>
               </div>
               <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-12 flex-1 cursor-default">
                 <Columns />
                 {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
                 {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }} />}
                 <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${barClipL ? "rounded-l-none" : ""} ${barClipR ? "rounded-r-none" : ""} ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
-                  <div className={`absolute inset-y-0 left-0 rounded-lg ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
-                  {effStatus === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
-                  <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-gray-700"}`}>{pctV}%</span>
+                  {/* 진도 채움 — 채워진 구간 '안'에 흰색 %를 두어, 채운 만큼만 흰색으로 잘려 보인다 */}
+                  <div className={`absolute inset-y-0 left-0 z-10 overflow-hidden rounded-lg ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }}>
+                    {effStatus === "pending" && <div className="absolute inset-0" style={{ backgroundImage: STRIPE }} />}
+                    <span className="pointer-events-none absolute left-0 top-1/2 ml-2.5 -translate-y-1/2 whitespace-nowrap text-[13px] font-semibold text-white">{pctV}%<span className="ml-2">{row.title}</span></span>
+                  </div>
+                  {/* 빈 구간용 어두운 %·이름 — 채움(z-10) 아래에 깔려, 안 채워진 부분에서만 드러난다. 막대 폭에서 잘림 */}
+                  <span className="pointer-events-none absolute left-0 top-1/2 z-0 ml-2.5 -translate-y-1/2 whitespace-nowrap text-[13px] font-semibold text-gray-800">{pctV}%<span className="ml-2">{row.title}</span></span>
                   {!hasSubs && <>
                     <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "l", row); }} className="absolute inset-y-0 left-0 z-30 w-2 cursor-ew-resize" />
                     <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "r", row); }} className="absolute inset-y-0 right-0 z-30 w-2 cursor-ew-resize" />
                   </>}
                 </div>
+                <HoverAssignees assignees={rowAssignees} rightPct={barRightPct} />
               </div>
             </div>
 
             {isOpen && (
-              <div className="relative">
-                {row.subtasks.length > 0 && <span className="pointer-events-none absolute left-[16px] top-0 bottom-3 w-px bg-gray-200" />}
-                {row.subtasks.map((sub) => {
+              <div>
+                {row.subtasks.map((sub, si) => {
                   const sDone = sub.status === "done";
                   const subPct = effProgress(sub);
                   const subWarn = isLate(sub.status, subPct, sub.startDate, sub.dueDate);
                   const subBar = span(dsv(sub), dev(sub));
+                  const subLeftPct = parseFloat(subBar.left);
+                  const subRightPct = subLeftPct + parseFloat(subBar.width);
+                  const subColor = colorStatus(sub);
+                  const isLastSub = si === row.subtasks.length - 1;
                   return (
                     <div key={sub.id} onDragEnter={() => onSubDragEnter(row.id, sub.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center hover:bg-gray-50/40 ${subDragging === sub.id ? "opacity-40" : ""}`}>
-                      <div className="flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 py-2 pr-4 pl-[26px]">
-                        <span draggable onDragStart={() => { subDrag.current = { parentId: row.id, id: sub.id }; setSubDragging(sub.id); }} onDragEnd={() => onSubDragEnd(row.id)} title="드래그로 순서 변경" className="shrink-0 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
+                      <div className="relative flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 py-2 pr-4 pl-[78px]">
+                        {/* 트리 연결선: 메인의 펼침 화살표(▸) 바로 아래에서 수직선이 내려와 각 서브 체크박스로 ㄴ자로 분기 → 메인/서브 위계를 또렷이 */}
+                        <span aria-hidden className={`pointer-events-none absolute left-[66px] w-px bg-gray-200 ${isLastSub ? "top-0 h-1/2" : "inset-y-0"}`} />
+                        <span aria-hidden className="pointer-events-none absolute left-[66px] top-1/2 h-px w-3 -translate-y-px bg-gray-200" />
+                        <span draggable onDragStart={() => { subDrag.current = { parentId: row.id, id: sub.id }; setSubDragging(sub.id); }} onDragEnd={() => onSubDragEnd(row.id)} title="드래그로 순서 변경" className="absolute left-2 top-1/2 z-10 -translate-y-1/2 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
                           <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
                         </span>
                         <Check done={sDone} onClick={() => toggleDone(sub)} />
                         {subWarn && <span title="시작일이 지났는데 시작 전이거나 마감이 지났어요" className="shrink-0 text-red-500"><svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg></span>}
-                        <button onClick={() => setSelected(sub)} title={sub.title} className={`truncate text-left text-[13px] hover:text-blue-600 ${sDone ? "text-gray-300 line-through" : subWarn ? "text-red-700" : "text-gray-600"}`}>{sub.title}</button>
+                        <button onClick={() => setSelected(sub)} title={sub.title} className={`truncate text-left text-sm font-medium hover:text-blue-600 ${sDone ? "text-gray-400 line-through" : subWarn ? "text-red-700" : "text-gray-700"}`}>{sub.title}</button>
                       </div>
                       <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-9 flex-1 cursor-default">
                         <Columns />
                         {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
                         {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }} />}
-                        <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center overflow-hidden rounded-md ${subBar.clipL ? "rounded-l-none" : ""} ${subBar.clipR ? "rounded-r-none" : ""} ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`} cursor-grab active:cursor-grabbing`} style={{ left: subBar.left, width: subBar.width }}>
-                          <div className={`absolute inset-y-0 left-0 rounded-md ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
-                          {sub.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-md" style={{ width: `${subPct}%`, backgroundImage: STRIPE }} />}
+                        <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-5 -translate-y-1/2 items-center overflow-hidden rounded-md ${subBar.clipL ? "rounded-l-none" : ""} ${subBar.clipR ? "rounded-r-none" : ""} ${STATUS_TRACK[subColor]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[subColor]}`} cursor-grab active:cursor-grabbing`} style={{ left: subBar.left, width: subBar.width }}>
+                          {/* 진도 채움 — 채운 만큼만 흰 이름이 잘려 보인다 */}
+                          <div className={`absolute inset-y-0 left-0 z-10 overflow-hidden rounded-md ${STATUS_FILL[subColor]} transition-[width] duration-300`} style={{ width: `${subPct}%` }}>
+                            {subColor === "pending" && <div className="absolute inset-0" style={{ backgroundImage: STRIPE }} />}
+                            <span className="pointer-events-none absolute left-0 top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap text-[12px] font-semibold text-white">{sub.title}</span>
+                          </div>
+                          {/* 빈 구간용 어두운 이름 — 채움 아래에 깔려, 안 채워진 부분에서만 드러난다. 막대 폭에서 잘림 */}
+                          <span className="pointer-events-none absolute left-0 top-1/2 z-0 ml-2 -translate-y-1/2 whitespace-nowrap text-[12px] font-semibold text-gray-800">{sub.title}</span>
                           <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "l", sub); }} className="absolute inset-y-0 left-0 z-30 w-1.5 cursor-ew-resize" />
                           <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "r", sub); }} className="absolute inset-y-0 right-0 z-30 w-1.5 cursor-ew-resize" />
                         </div>
+                        <HoverAssignees assignees={sub.assignees} rightPct={subRightPct} />
                       </div>
                     </div>
                   );
                 })}
-                <button onClick={() => handleAddTask(row.id)} className="flex items-center gap-1.5 py-2 pl-[44px] text-xs text-gray-300 hover:text-blue-500">
+                <button onClick={() => handleAddTask(row.id)} className="flex items-center gap-1.5 py-2 pl-[78px] text-xs text-gray-300 hover:text-blue-500">
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addSub")}
                 </button>
               </div>
@@ -638,7 +696,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       <div className="flex items-center border-t border-gray-100 bg-amber-50/30">
         <div className="flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 px-5 py-3">
           <svg className="h-3 w-3 text-amber-500" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1l9 9-9 9-9-9z" /></svg>
-          <span className="text-xs font-medium text-amber-700">마일스톤</span>
+          <span className="text-[13px] font-semibold text-amber-700">마일스톤</span>
           <button onClick={() => setAddingMs((v) => !v)} className="ml-1 text-amber-500 hover:text-amber-700"><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button>
         </div>
         <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative h-11 flex-1">
@@ -682,7 +740,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       )}
 
       {selected && (
-        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} isDraft={selected.id === draftId} onClose={() => { setSelected(null); setDraftId(null); }} />
+        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} isDraft={selected.id === draftId} subtasks={order.find((m) => m.id === selected.id)?.subtasks ?? []} onClose={() => { setSelected(null); setDraftId(null); }} />
       )}
     </div>
   );

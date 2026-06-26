@@ -32,7 +32,7 @@ const statusStyles: Record<string, { bg: string; text: string; dot: string }> = 
   on_hold: { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
 };
 
-function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string; memberId: string; onDone: () => void }) {
+function RemoveMemberButton({ projectId, memberId, onRemoved }: { projectId: string; memberId: string; onRemoved: () => void }) {
   const t = useT();
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +40,7 @@ function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string
     if (!confirm(t("tasks.removeMemberConfirm"))) return;
     setLoading(true);
     await removeProjectMember(projectId, memberId);
-    onDone();
+    onRemoved();
   }
 
   return (
@@ -50,8 +50,10 @@ function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string
   );
 }
 
-export default function ProjectDetail({ project, members, allMembers, mainTasks, objectives, milestones, currentUserId }: Props) {
+export default function ProjectDetail({ project, members: initialMembers, allMembers, mainTasks, objectives, milestones, currentUserId }: Props) {
   const t = useT();
+  // 멤버는 클라이언트 상태로 관리 — 추가/삭제 시 router.refresh()로 페이지 전체를 다시 그리지 않고 즉시 반영
+  const [members, setMembers] = useState(initialMembers);
   const [view, setView] = useState<"timeline" | "board">("timeline");
   const [showOkr, setShowOkr] = useState(false);
   const sc = statusStyles[project.status] || statusStyles.active;
@@ -150,7 +152,7 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
                             <p className="text-[11px] text-gray-600">{m.position || m.email}</p>
                           </div>
                         </div>
-                        <RemoveMemberButton projectId={project.id} memberId={m.id} onDone={() => setShowMembers(false)} />
+                        <RemoveMemberButton projectId={project.id} memberId={m.id} onRemoved={() => setMembers((prev) => prev.filter((x) => x.id !== m.id))} />
                       </div>
                     ))
                   )}
@@ -200,7 +202,13 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
       {/* 모달들 (dynamic import) */}
       {showEdit && <EditProjectModal project={project} onClose={() => setShowEdit(false)} />}
       {showAddMember && (
-        <AddMemberModal projectId={project.id} currentMemberIds={members.map((m) => m.id)} allMembers={allMembers} onClose={() => setShowAddMember(false)} />
+        <AddMemberModal
+          projectId={project.id}
+          currentMemberIds={members.map((m) => m.id)}
+          allMembers={allMembers}
+          onAdded={(m) => setMembers((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]))}
+          onClose={() => setShowAddMember(false)}
+        />
       )}
     </div>
   );

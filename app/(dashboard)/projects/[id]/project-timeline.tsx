@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition, useMemo } from "react";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks, createTaskDraft } from "../actions";
@@ -39,13 +38,6 @@ const SUB_RING = "ring-slate-200";
 const effProgress = (s: { status: string; progress?: number | null }) =>
   s.status === "done" ? 100 : Math.max(0, Math.min(100, s.progress ?? 0));
 
-
-function Avatar({ a, size = "sm" }: { a: { name: string; avatarUrl: string | null }; size?: "sm" | "xs" }) {
-  const cls = size === "sm" ? "h-5 w-5 text-[9px]" : "h-4 w-4 text-[8px]";
-  return <span className={`flex ${cls} items-center justify-center rounded-full bg-white font-medium text-gray-600 ring-2 ring-white`}>
-    {a.avatarUrl ? <Image src={a.avatarUrl} alt="" width={20} height={20} className="h-full w-full rounded-full object-cover" /> : a.name[0]}
-  </span>;
-}
 
 function Check({ done, onClick }: { done: boolean; onClick: () => void }) {
   return (
@@ -283,7 +275,10 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const dayToPct = (day: number) => ((day - axisStart + leftPad) / totalDays) * 100;
   const pctDay = (day: number, end: boolean) => dayToPct(clamp(day + (end ? 1 : 0), axisStart, axisEnd));
   const todayIdx = columns.findIndex((c) => todayDay >= c.start && todayDay < c.end);
-  const todayPct = dayToPct(todayDay + 0.5);
+  // 일 보기는 막대가 '칸 왼쪽 경계' 기준이라 라벨/선도 경계(+0)에 맞춰야 시작일과 정렬된다.
+  // 월/연 보기는 라벨이 칸 전체를 의미하므로 칸 중앙(+0.5)에 둔다.
+  const markOffset = scale === "week" ? 0 : 0.5;
+  const todayPct = dayToPct(todayDay + markOffset);
 
   function span(startDate: string | null, dueDate: string | null) {
     let left: number, right: number, sNum: number, eNum: number;
@@ -311,9 +306,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       <div style={{ width: `${(leftPad / totalDays) * 100}%` }} className="shrink-0" />
       {columns.map((c, i) => (
         scale === "week" ? (
-          // 일 보기: 라벨 찍히는 격자점(tick)마다 옅은 점선 세로선. 라벨이 칸 중앙이라 선도 중앙(left-1/2)에 맞춤.
+          // 일 보기: 라벨 찍히는 격자점(tick)마다 옅은 점선 세로선. 막대가 칸 왼쪽 경계 기준이라 선도 경계(left-0)에 맞춤.
           <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="relative">
-            {c.tick && <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l border-dashed border-gray-100" />}
+            {c.tick && <span className="absolute inset-y-0 left-0 border-l border-dashed border-gray-100" />}
           </div>
         ) : (
         <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={`relative border-r border-gray-100 last:border-r-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
@@ -502,7 +497,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           <div style={{ width: `${(leftPad / totalDays) * 100}%` }} className="shrink-0" />
           {columns.map((c, i) => (
             <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="relative">
-              {c.tick && <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-medium ${i === todayIdx ? "text-gray-900" : "text-gray-500"}`}>{c.label}</span>}
+              {c.tick && <span className={`absolute bottom-0 -translate-x-1/2 whitespace-nowrap text-xs font-medium ${scale === "week" ? "left-0" : "left-1/2"} ${i === todayIdx ? "text-gray-900" : "text-gray-500"}`}>{c.label}</span>}
             </div>
           ))}
           {todayIdx >= 0 && todayIdx < N && (
@@ -512,7 +507,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           )}
           {/* 호버 날짜 배지 — 선은 트랙 안에, 날짜 읽기는 헤더 상단에 */}
           {!dragging && hoverDay !== null && (
-            <div className="pointer-events-none absolute top-1.5 z-30 -translate-x-1/2" style={{ left: `${dayToPct(hoverDay + 0.5)}%` }}>
+            <div className="pointer-events-none absolute top-1.5 z-30 -translate-x-1/2" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }}>
               <span className="whitespace-nowrap rounded-full bg-slate-500 px-2 py-0.5 text-[11px] font-semibold text-white">{fmtHover(hoverDay)}</span>
             </div>
           )}
@@ -563,12 +558,11 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
               <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-12 flex-1 cursor-default">
                 <Columns />
                 {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
-                {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + 0.5)}%` }} />}
+                {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }} />}
                 <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${barClipL ? "rounded-l-none" : ""} ${barClipR ? "rounded-r-none" : ""} ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
                   <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
                   {effStatus === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
                   <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-gray-700"}`}>{pctV}%</span>
-                  {row.assignees.length > 0 && <span className="absolute -right-1 top-1/2 z-10 flex -translate-y-1/2 -space-x-1.5">{row.assignees.slice(0, 3).map((a, i) => <Avatar key={i} a={a} />)}</span>}
                   {!hasSubs && <>
                     <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "l", row); }} className="absolute inset-y-0 left-0 z-30 w-2 cursor-ew-resize" />
                     <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "r", row); }} className="absolute inset-y-0 right-0 z-30 w-2 cursor-ew-resize" />
@@ -598,11 +592,10 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                       <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-9 flex-1 cursor-default">
                         <Columns />
                         {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
-                        {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + 0.5)}%` }} />}
+                        {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }} />}
                         <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center overflow-hidden rounded-md ${subBar.clipL ? "rounded-l-none" : ""} ${subBar.clipR ? "rounded-r-none" : ""} ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`} cursor-grab active:cursor-grabbing`} style={{ left: subBar.left, width: subBar.width }}>
                           <div className={`absolute inset-y-0 left-0 rounded-md bg-gradient-to-r ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
                           {sub.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-md" style={{ width: `${subPct}%`, backgroundImage: STRIPE }} />}
-                          {sub.assignees.length > 0 && <span className="absolute -right-0.5 top-1/2 flex -translate-y-1/2 -space-x-1.5">{sub.assignees.slice(0, 3).map((a, i) => <Avatar key={i} a={a} size="xs" />)}</span>}
                           <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "l", sub); }} className="absolute inset-y-0 left-0 z-30 w-1.5 cursor-ew-resize" />
                           <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "r", sub); }} className="absolute inset-y-0 right-0 z-30 w-1.5 cursor-ew-resize" />
                         </div>

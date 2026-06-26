@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { addProjectMember } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member } from "./project-types";
 
-export default function AddMemberModal({ projectId, currentMemberIds, allMembers, onClose }: { projectId: string; currentMemberIds: string[]; allMembers: Member[]; onClose: () => void }) {
+export default function AddMemberModal({ projectId, currentMemberIds, allMembers, onAdded, onClose }: { projectId: string; currentMemberIds: string[]; allMembers: Member[]; onAdded: (m: Member) => void; onClose: () => void }) {
   const t = useT();
-  const router = useRouter();
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
@@ -24,12 +22,15 @@ export default function AddMemberModal({ projectId, currentMemberIds, allMembers
     setLoading(memberId);
     const result = await addProjectMember(projectId, memberId);
     if (result?.error) alert(result.error);
-    else setAddedIds((prev) => new Set(prev).add(memberId));
+    else {
+      setAddedIds((prev) => new Set(prev).add(memberId));
+      const m = allMembers.find((x) => x.id === memberId);
+      if (m) onAdded(m);
+    }
     setLoading(null);
   }
 
-  // 닫을 때 새로고침으로 참여 멤버 반영
-  function close() { router.refresh(); onClose(); }
+  function close() { onClose(); }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">

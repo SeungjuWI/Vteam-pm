@@ -168,7 +168,7 @@ export default function DashboardShell({
   return (
     <I18nProvider value={t}>
     <LocaleProvider value={uiLang}>
-      <div className="flex min-h-screen">
+      <div className="flex h-screen overflow-hidden">
         {/* Sidebar */}
         <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
           <div className="flex h-14 items-center px-3">

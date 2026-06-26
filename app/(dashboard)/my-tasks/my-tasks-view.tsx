@@ -71,7 +71,7 @@ export default function MyTasksView({ activeTasks, doneTasks, projects, stats, t
     if (dueDate < today) return <span className="text-xs px-1.5 py-0.5 rounded bg-red-50 text-red-600">{t("myTasks.overdue")}</span>;
     if (dueDate === today) return <span className="text-xs px-1.5 py-0.5 rounded bg-orange-50 text-orange-600">{t("myTasks.dueToday")}</span>;
     const dDay = Math.ceil((new Date(dueDate).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24));
-    return <span className="text-xs text-gray-400">D-{dDay}</span>;
+    return <span className="text-xs text-gray-600">D-{dDay}</span>;
   };
 
   const statusTabs: { key: StatusFilter; label: string; count: number }[] = [
@@ -83,7 +83,7 @@ export default function MyTasksView({ activeTasks, doneTasks, projects, stats, t
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold text-gray-900">{t("myTasks.title")}</h1>
+      <h1 className="text-lg font-bold text-gray-900">{t("myTasks.title")}</h1>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -119,7 +119,7 @@ export default function MyTasksView({ activeTasks, doneTasks, projects, stats, t
               }`}
             >
               {tab.label}
-              <span className={`ml-1 text-xs ${statusFilter === tab.key ? "text-blue-400" : "text-gray-400"}`}>
+              <span className={`ml-1 text-xs ${statusFilter === tab.key ? "text-blue-400" : "text-gray-600"}`}>
                 {tab.count}
               </span>
               {statusFilter === tab.key && (
@@ -164,7 +164,7 @@ export default function MyTasksView({ activeTasks, doneTasks, projects, stats, t
         {/* Task List */}
         {filtered.length === 0 ? (
           <div className="flex h-40 items-center justify-center">
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-600">
               {statusFilter === "done" ? t("myTasks.emptyDone") : t("myTasks.empty")}
             </p>
           </div>
@@ -181,9 +181,9 @@ export default function MyTasksView({ activeTasks, doneTasks, projects, stats, t
                   <div className="min-w-0">
                     <p className="text-sm text-gray-900 truncate">{task.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-gray-400">{task.projects.name}</span>
+                      <span className="text-xs text-gray-600">{task.projects.name}</span>
                       <span className="text-xs text-gray-300">·</span>
-                      <span className="text-xs text-gray-400">{statusLabel(task.status)}</span>
+                      <span className="text-xs text-gray-600">{statusLabel(task.status)}</span>
                     </div>
                   </div>
                 </div>

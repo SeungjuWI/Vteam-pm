@@ -163,7 +163,7 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
                 </select>
               </div>
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-600">
               {flexStart} ~ {flexEnd} {t("work.flexBetween")}
             </p>
           </div>
@@ -256,7 +256,7 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
                   key={opt.value}
                   type="button"
                   onClick={() => setLunchDuration(opt.value)}
-                  className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                  className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold shadow-soft-sm transition-all duration-200 ease-spring hover:shadow-brand active:scale-[0.98] ${
                     lunchDuration === opt.value
                       ? "bg-blue-500 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -268,7 +268,7 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
             </div>
           </div>
         </div>
-        <p className="mt-2 text-xs text-gray-400">
+        <p className="mt-2 text-xs text-gray-600">
           {lunchStart} ~ {(() => {
             const [h, m] = lunchStart.split(":").map(Number);
             const total = h * 60 + m + lunchDuration;
@@ -281,7 +281,7 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
         >
           {loading ? t("common.saving") : t("common.save")}
         </button>

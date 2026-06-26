@@ -158,7 +158,7 @@ export default function ChannelsView({
 
         <div className="flex-1 overflow-y-auto px-2 py-3">
           {departments.length === 0 ? (
-            <div className="px-3 py-8 text-center text-xs text-gray-400">
+            <div className="px-3 py-8 text-center text-xs text-gray-600">
               {isAdmin ? t("channels.emptyAdmin") : t("channels.empty")}
             </div>
           ) : (
@@ -258,7 +258,7 @@ export default function ChannelsView({
             currentUserLang={currentUserLang}
           />
         ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+          <div className="flex flex-1 items-center justify-center text-sm text-gray-600">
             {t("channels.selectChannel")}
           </div>
         )}
@@ -536,7 +536,7 @@ function ChannelChat({
                 )}
                 {isShowingOriginal && hasTranslation && (
                   <div className="mt-1 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                    <div className="mb-1 text-[10px] text-gray-400">
+                    <div className="mb-1 text-[10px] text-gray-600">
                       {t("dm.original")}{" "}
                       {senderLang
                         ? `${senderLang.flag} ${senderLang.label}`
@@ -562,13 +562,13 @@ function ChannelChat({
             <span className="text-gray-400"># </span>
             {channelName}
           </span>
-          <span className="text-xs text-gray-400">{deptName}</span>
+          <span className="text-xs text-gray-600">{deptName}</span>
           <span className="flex h-4 items-center rounded-full bg-gray-100 px-1.5 text-[10px] font-medium text-gray-500">
             {members.length}
           </span>
         </div>
         {hasMultiLang && (
-          <span className="flex items-center gap-1 text-[11px] text-gray-400">
+          <span className="flex items-center gap-1 text-[11px] text-gray-600">
             <svg
               className="h-3.5 w-3.5"
               fill="none"
@@ -590,7 +590,7 @@ function ChannelChat({
       {/* 메시지 영역 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4">
         {loading ? (
-          <div className="flex h-full items-center justify-center text-xs text-gray-400">
+          <div className="flex h-full items-center justify-center text-xs text-gray-600">
             {t("common.loading")}
           </div>
         ) : messages.length === 0 ? (
@@ -599,7 +599,7 @@ function ChannelChat({
             <p className="text-sm font-medium text-gray-500">
               #{channelName}
             </p>
-            <p className="text-xs text-gray-400">{t("channels.startChat")}</p>
+            <p className="text-xs text-gray-600">{t("channels.startChat")}</p>
           </div>
         ) : (
           messageList
@@ -626,7 +626,7 @@ function ChannelChat({
           <button
             type="submit"
             disabled={!input.trim() || sending}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-500 text-white transition-colors hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-500 text-white transition-all duration-200 ease-spring shadow-soft-sm hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400"
           >
             <svg
               className="h-4 w-4"

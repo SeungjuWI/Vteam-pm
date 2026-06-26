@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks, createTaskDraft } from "../actions";
 import { useT } from "@/lib/i18n";
+import TimelineRangePicker, { type DateRange } from "./range-picker";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
 
 const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
@@ -65,6 +66,16 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const scaleKey = `vteam:timeline-scale:${projectId}`;
   useEffect(() => { try { const v = localStorage.getItem(scaleKey); if (v === "week" || v === "year") setScale(v); } catch {} }, [scaleKey]);
   const chooseScale = (v: "week" | "month" | "year") => { setScale(v); try { localStorage.setItem(scaleKey, v); } catch {} };
+
+  // 보이는 날짜 범위(차트 단위와 독립). 기본값=이번 분기(이번 달 ~ +2개월).
+  const [range, setRange] = useState<DateRange>(() => {
+    const t = new Date();
+    const f = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { start: f(new Date(t.getFullYear(), t.getMonth(), 1)), end: f(new Date(t.getFullYear(), t.getMonth() + 3, 0)) };
+  });
+  const rangeKey = `vteam:timeline-range:${projectId}`;
+  useEffect(() => { try { const v = localStorage.getItem(rangeKey); if (v) { const r = JSON.parse(v); if (r?.start && r?.end) setRange(r); } } catch {} }, [rangeKey]);
+  const chooseRange = (r: DateRange) => { setRange(r); try { localStorage.setItem(rangeKey, JSON.stringify(r)); } catch {} };
   const [selected, setSelected] = useState<Task | null>(null);
   // 대시보드 마감현황 등에서 ?task=<id>로 진입하면 해당 태스크 모달 자동 오픈 (최초 1회만 — 닫은 뒤 refresh로 재오픈되는 것 방지)
   const searchParams = useSearchParams();
@@ -193,7 +204,6 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const pad = (n: number) => String(n).padStart(2, "0");
   const daysInM = (y: number, m0: number) => new Date(y, m0 + 1, 0).getDate();
   const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  const nowYear = now.getFullYear();
   const dayNum = (str: string) => { const dt = new Date(str); return Math.floor(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()) / 86400000); };
   const fromDayNum = (n: number) => { const dt = new Date(n * 86400000); return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`; };
 
@@ -213,7 +223,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   };
   const unitLabel = (day: number) => {
     const { y, m, d } = utc(day);
-    if (scale === "week") return d === 1 ? `${m + 1}월` : `${d}`;  // 일: 날짜(월초엔 "7월")
+    if (scale === "week") return d === 1 ? `${m + 1}월` : `${d}일`; // 일: 날짜(월초엔 "7월")
     if (scale === "month") return `${m + 1}/${d}`;                 // 주: 그 주 월요일 날짜
     return m === 0 ? `${y}` : `${m + 1}월`;                        // 월: 1월엔 연도 표기
   };
@@ -221,7 +231,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   // 데이터 날짜 수집 → 축 범위(단위 경계로 스냅).
   // 드래그(dragOverride/msOverride)와 무관하게 mainTasks/milestones/scale 에만 의존하므로
   // useMemo로 묶어 드래그 중 매 프레임 재계산되지 않게 한다.
-  const { axisStart, axisEnd, totalDays, columns, N, todayDay } = useMemo(() => {
+  const { axisStart, axisEnd, totalDays, columns, N, todayDay, dataStart, dataEnd } = useMemo(() => {
     const todayDay = dayNum(todayStr);
     const allDays = [todayDay];
     for (const mt of mainTasks) {
@@ -230,29 +240,39 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     }
     for (const ms of milestones) if (ms.date) allDays.push(dayNum(ms.date));
     const minAll = Math.min(...allDays), maxAll = Math.max(...allDays);
-    let axisStart: number, axisEnd: number;
-    if (scale === "week") {
-      // 일(日) 보기: 오늘 근처 약 한 달 창(최대 7일 전 ~ 31일치)으로 제한해서 빽빽함 방지.
-      // 더 먼 일정은 주/월 보기에서 확인.
-      axisStart = unitStart(Math.max(Math.min(minAll, todayDay), todayDay - 7));
-      axisEnd = axisStart + 31;
-    } else {
-      // 주(주 칸)=6주, 월(월 칸)=올해 말까지 기본 범위
-      const defaultEnd = scale === "month" ? todayDay + 42 : dayNum(`${nowYear}-12-31`);
-      axisStart = unitStart(minAll);
-      axisEnd = unitNext(Math.max(maxAll, defaultEnd));   // 제외(exclusive) 경계
-    }
+    const dataStart = fromDayNum(minAll), dataEnd = fromDayNum(maxAll); // '전체' 프리셋용 데이터 전체범위
+
+    // 축 범위 = 사용자가 고른 날짜 범위(range)를 현재 단위(scale) 경계로 스냅. 차트 단위와 독립.
+    const axisStart = unitStart(dayNum(range.start));
+    const axisEnd = Math.max(unitNext(dayNum(range.end)), axisStart + 1); // 제외(exclusive) 경계
     const totalDays = Math.max(1, axisEnd - axisStart);
-    // 컬럼 목록(각 단위의 시작·끝 일수와 라벨). 일 보기는 1·6·11·16·21·26일에만 라벨/격자(tick).
+    // 일(日) 보기 라벨 간격: 범위 시작점부터 '균등 step'으로 찍는다(애플 분석탭 방식).
+    // 날짜%5 식이 아니라 step 고정이라 월초(N월)와 직전 날짜가 빠짝 붙는 충돌이 없다.
+    // step은 보이는 일수에 맞춰 라벨이 ~20개 이하가 되도록 1·2·5·7·10·14·21·28 중 택1.
+    let stepWeek = 30;
+    if (scale === "week") for (const s of [1, 2, 5, 7, 10, 14, 21, 28]) { if (totalDays / s <= 20) { stepWeek = s; break; } }
+    // 컬럼 목록(각 단위의 시작·끝 일수와 라벨). tick=라벨/격자 표시 여부.
+    // 일 보기: 라벨은 step 간격으로 '완전 균등'. 각 달의 첫 격자점만 날짜 대신 "N월"(6월·7월…)로 표기.
+    //         → 간격은 항상 step 그대로 유지되고, 달마다 정확히 1개의 월 라벨이 붙는다(점프 없음).
     const columns: { start: number; end: number; label: string; tick: boolean }[] = [];
+    let idx = 0;
     for (let c = axisStart; c < axisEnd; c = unitNext(c)) {
-      const tick = scale !== "week" || utc(c).d % 5 === 1;
-      columns.push({ start: c, end: Math.min(unitNext(c), axisEnd), label: unitLabel(c), tick });
+      let tick: boolean;
+      let label = unitLabel(c);
+      if (scale !== "week") tick = true;
+      else {
+        tick = idx % stepWeek === 0;
+        const u = utc(c);
+        // 그 달에서 처음 등장하는 격자점(직전 격자점이 다른 달)이면 월 이름, 아니면 N일.
+        label = u.d <= stepWeek ? `${u.m + 1}월` : `${u.d}일`;
+      }
+      columns.push({ start: c, end: Math.min(unitNext(c), axisEnd), label, tick });
+      idx++;
     }
-    return { axisStart, axisEnd, totalDays, columns, N: columns.length, todayDay };
+    return { axisStart, axisEnd, totalDays, columns, N: columns.length, todayDay, dataStart, dataEnd };
     // unitStart/unitNext/unitLabel/dayNum 은 scale 에만 의존하는 순수 헬퍼(매 렌더 재생성되지만 동작 동일) → deps 생략
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainTasks, milestones, scale, todayStr, nowYear]);
+  }, [mainTasks, milestones, scale, todayStr, range]);
 
   // 날짜 → 축 위 좌표(%)
   const pctDay = (day: number, end: boolean) => ((clamp(day + (end ? 1 : 0), axisStart, axisEnd) - axisStart) / totalDays) * 100;
@@ -279,8 +299,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     <div className="pointer-events-none absolute inset-0 flex">
       {columns.map((c, i) => (
         scale === "week" ? (
-          // 일 보기: 줄무늬 없이 5일/월초(tick)에만 옅은 점선 세로 격자
-          <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={c.tick ? "border-l border-dashed border-gray-200" : ""} />
+          // 일 보기: 라벨 찍히는 격자점(tick)마다 아주 옅은 점선 세로선 (라벨과 정렬, 균등 간격)
+          <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={c.tick ? "border-l border-dashed border-gray-100" : ""} />
         ) : (
         <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={`relative border-r border-gray-100 last:border-r-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
           {/* 연 보기(월 칸)에선 칸을 4등분하는 옅은 주(週) 보조선 */}
@@ -441,8 +461,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white">
-      {/* 보기 단위 전환 (일/주/월) — 내부 scale 키(week/month/year)는 localStorage 호환 위해 유지 */}
-      <div className="flex items-center justify-end border-b border-gray-100 px-4 py-2">
+      {/* 우측에 날짜 범위 선택 + 보기 단위 전환(일/주/월) 나란히 — 내부 scale 키(week/month/year)는 localStorage 호환 위해 유지 */}
+      <div className="flex items-center justify-end gap-2 border-b border-gray-100 px-4 py-2">
+        <TimelineRangePicker value={range} todayStr={todayStr} dataStart={dataStart} dataEnd={dataEnd} onChange={chooseRange} />
         <div className="flex gap-0.5 rounded-lg bg-gray-100 p-0.5">
           {([["week", "일"], ["month", "주"], ["year", "월"]] as const).map(([v, ko]) => (
             <button key={v} onClick={() => chooseScale(v)}
@@ -453,7 +474,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       {/* 헤더 */}
       <div className="flex items-stretch border-b border-gray-100 bg-gray-50/30">
         <div className="flex w-60 shrink-0 items-end justify-between px-5 pb-3">
-          <span className="text-xs font-medium text-gray-400">{t("tasks.mainTasks")}</span>
+          <span className="text-xs font-medium text-gray-600">{t("tasks.mainTasks")}</span>
           {expandableIds.length > 0 && (
             <button onClick={toggleAll} title={allOpen ? "모두 접기" : "모두 펼치기"} className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-blue-500">
               <svg className={`h-3.5 w-3.5 transition-transform ${allOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
@@ -463,16 +484,11 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         </div>
         <div className="relative flex flex-1 pt-7">
           {columns.map((c, i) => (
-            <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="overflow-visible px-1 pb-3 text-center">{c.tick && <span className={`whitespace-nowrap text-xs font-medium ${i === todayIdx ? "text-rose-500" : "text-gray-500"}`}>{c.label}</span>}</div>
+            <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="overflow-visible px-1 pb-3 text-center">{c.tick && <span className={`whitespace-nowrap text-xs font-medium ${i === todayIdx ? "text-gray-900" : "text-gray-500"}`}>{c.label}</span>}</div>
           ))}
           {todayIdx >= 0 && todayIdx < N && (
-            <div className="pointer-events-none absolute top-1.5 z-20 flex -translate-x-1/2 flex-col items-center" style={{ left: `${todayPct}%` }}>
-              <div className="flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5">
-                <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.27 5.82.846-4.21 4.104.994 5.795L10 14.99l-5.204 2.735.994-5.795-4.21-4.104 5.82-.846z" /></svg>
-                <span className="text-[9px] font-bold tracking-wide text-white">TODAY</span>
-                <span className="text-[9px] font-semibold text-rose-100">{now.getMonth() + 1}/{now.getDate()}</span>
-              </div>
-              <span className="h-1.5 w-px bg-rose-400" />
+            <div className="pointer-events-none absolute top-1.5 z-20 -translate-x-1/2" style={{ left: `${todayPct}%` }}>
+              <span className="whitespace-nowrap rounded-full bg-gray-700 px-2 py-0.5 text-[9px] font-semibold text-white">오늘 {now.getMonth() + 1}/{now.getDate()}</span>
             </div>
           )}
         </div>
@@ -517,6 +533,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
               </div>
               <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-12 flex-1 cursor-default">
                 <Columns />
+                {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
                 <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
                   <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
                   {effStatus === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
@@ -549,6 +566,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                       </div>
                       <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-9 flex-1 cursor-default">
                         <Columns />
+                        {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
                         <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center overflow-hidden rounded-md ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`} cursor-grab active:cursor-grabbing`} style={span(dsv(sub), dev(sub))}>
                           <div className={`absolute inset-y-0 left-0 rounded-md bg-gradient-to-r ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
                           {sub.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-md" style={{ width: `${subPct}%`, backgroundImage: STRIPE }} />}

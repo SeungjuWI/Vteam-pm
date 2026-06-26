@@ -86,7 +86,7 @@ function MemberRow({
           ) : null}
         </div>
         {member.is_bot && (
-          <span className="truncate text-[11px] text-gray-400">
+          <span className="truncate text-[11px] text-gray-600">
             {t("dm.aiAssistant")}
           </span>
         )}
@@ -171,7 +171,7 @@ function CreateGroupDmModal({
           <span className="text-sm font-medium text-gray-900">
             {t("groupDm.create")}
           </span>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 transition-colors hover:text-gray-600 active:scale-[0.95]">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -221,7 +221,7 @@ function CreateGroupDmModal({
 
           {/* 선택된 멤버 수 */}
           {selected.size > 0 && (
-            <div className="mt-2 text-xs text-gray-400">
+            <div className="mt-2 text-xs text-gray-600">
               {selected.size}{t("groupDm.selected")}
             </div>
           )}
@@ -230,7 +230,7 @@ function CreateGroupDmModal({
           <button
             onClick={handleCreate}
             disabled={selected.size < 2 || creating}
-            className="w-full rounded-lg bg-blue-500 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400"
+            className="w-full rounded-lg bg-blue-500 py-2 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400"
           >
             {creating ? t("common.creating") : t("groupDm.createButton")}
           </button>
@@ -384,7 +384,7 @@ export default function SidebarTeamList({
             </button>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]"
               title={t("groupDm.create")}
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -418,7 +418,7 @@ export default function SidebarTeamList({
                       <span className="max-w-28 truncate text-sm text-gray-700">
                         {room.name}
                       </span>
-                      <span className="text-[10px] text-gray-400">{room.memberCount}</span>
+                      <span className="text-[10px] text-gray-600">{room.memberCount}</span>
                       {room.unreadCount > 0 && (
                         <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] text-white">
                           {room.unreadCount}
@@ -426,7 +426,7 @@ export default function SidebarTeamList({
                       )}
                     </div>
                     {room.lastMessage && (
-                      <span className="block max-w-32 truncate text-[11px] text-gray-400">
+                      <span className="block max-w-32 truncate text-[11px] text-gray-600">
                         {room.lastMessage}
                       </span>
                     )}
@@ -440,7 +440,7 @@ export default function SidebarTeamList({
 
       {/* 헤더 */}
       <div className="flex items-center justify-between px-3 py-1.5">
-        <span className="text-[11px] font-medium tracking-wide text-gray-400">
+        <span className="text-[11px] font-medium tracking-wide text-gray-600">
           {t("team.title")} {onlineCount > 0 && `(${onlineCount})`}
         </span>
         <div className="flex items-center gap-1">
@@ -448,7 +448,7 @@ export default function SidebarTeamList({
           {groupRooms.length === 0 && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]"
               title={t("groupDm.create")}
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -461,7 +461,7 @@ export default function SidebarTeamList({
               setShowSearch(!showSearch);
               if (showSearch) setSearch("");
             }}
-            className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -487,9 +487,9 @@ export default function SidebarTeamList({
       {/* 활동중 + 자리비움 */}
       <div className="space-y-0.5">
         {loading ? (
-          <div className="px-3 py-2 text-xs text-gray-400">{t("common.loading")}</div>
+          <div className="px-3 py-2 text-xs text-gray-600">{t("common.loading")}</div>
         ) : activeMembers.length === 0 && offlineMembers.length === 0 ? (
-          <div className="px-3 py-2 text-xs text-gray-400">
+          <div className="px-3 py-2 text-xs text-gray-600">
             {search ? t("team.noResults") : t("team.noMembers")}
           </div>
         ) : (

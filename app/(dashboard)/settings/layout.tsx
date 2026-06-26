@@ -22,7 +22,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     const title = pathname === "/settings" ? t("settings.myProfile") : t("settings.settings");
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
+        <h1 className="text-lg font-bold text-gray-900">{title}</h1>
         {children}
       </div>
     );
@@ -30,7 +30,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold text-gray-900">{t("settings.companyInfo")}</h1>
+      <h1 className="text-lg font-bold text-gray-900">{t("settings.companyInfo")}</h1>
       <div className="flex gap-1 border-b border-gray-200">
         {companyTabs.map((tab) => {
           const isActive = pathname === tab.href;

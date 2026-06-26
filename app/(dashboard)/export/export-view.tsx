@@ -56,7 +56,7 @@ export default function ExportView() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-gray-900">데이터 내보내기</h1>
+        <h1 className="text-lg font-bold text-gray-900">데이터 내보내기</h1>
         <p className="mt-1 text-sm text-gray-500">
           근태, 멤버, 휴가 데이터를 CSV 파일로 내보냅니다.
         </p>

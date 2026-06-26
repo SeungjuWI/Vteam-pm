@@ -232,7 +232,7 @@ export default function DeptManageModal({
           </div>
           <div className="flex-1 overflow-y-auto p-2">
             {loading ? (
-              <div className="px-3 py-6 text-center text-xs text-gray-400">
+              <div className="px-3 py-6 text-center text-xs text-gray-600">
                 {t("common.loading")}
               </div>
             ) : (
@@ -254,7 +254,7 @@ export default function DeptManageModal({
                     style={{ backgroundColor: dept.color }}
                   />
                   <span className="truncate">{dept.name}</span>
-                  <span className="ml-auto text-[10px] text-gray-400">
+                  <span className="ml-auto text-[10px] text-gray-600">
                     {dept.members.length}
                   </span>
                 </button>
@@ -285,7 +285,7 @@ export default function DeptManageModal({
             <button
               onClick={handleCreate}
               disabled={!newName.trim() || creating}
-              className="w-full rounded-lg bg-blue-500 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400"
+              className="w-full rounded-lg bg-blue-500 py-1.5 text-sm font-bold text-white transition-all duration-200 ease-spring shadow-soft-sm hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400"
             >
               {t("channels.createDept")}
             </button>
@@ -337,13 +337,13 @@ export default function DeptManageModal({
                 )}
               </span>
             ) : (
-              <span className="text-sm text-gray-400">
+              <span className="text-sm text-gray-600">
                 {t("channels.selectDept")}
               </span>
             )}
             <button
               onClick={onClose}
-              className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]"
             >
               <svg
                 className="h-5 w-5"
@@ -424,7 +424,7 @@ export default function DeptManageModal({
                         <div className="flex-1">
                           <div className="text-sm text-gray-900">{m.name}</div>
                           {m.position && (
-                            <div className="text-[11px] text-gray-400">
+                            <div className="text-[11px] text-gray-600">
                               {m.position}
                             </div>
                           )}
@@ -493,7 +493,7 @@ export default function DeptManageModal({
               </div>
             </div>
           ) : (
-            <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+            <div className="flex flex-1 items-center justify-center text-sm text-gray-600">
               {t("channels.selectDept")}
             </div>
           )}

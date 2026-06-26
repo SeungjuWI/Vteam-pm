@@ -32,7 +32,7 @@ export default function BalanceManager({ members }: { members: Member[] }) {
       </div>
       {members.length === 0 ? (
         <div className="flex h-32 items-center justify-center">
-          <p className="text-sm text-gray-400">{t("leaveSettings.balanceEmpty")}</p>
+          <p className="text-sm text-gray-600">{t("leaveSettings.balanceEmpty")}</p>
         </div>
       ) : (
         <div className="divide-y divide-gray-50">
@@ -46,16 +46,16 @@ export default function BalanceManager({ members }: { members: Member[] }) {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">{m.name}</p>
-                    <p className="text-xs text-gray-400">{m.email}</p>
+                    <p className="text-xs text-gray-600">{m.email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <p className="text-sm text-gray-900">
                       <span className="font-medium">{remaining}</span>
-                      <span className="text-gray-400">/{m.total}{t("common.days")}</span>
+                      <span className="text-gray-600">/{m.total}{t("common.days")}</span>
                     </p>
-                    <p className="text-xs text-gray-400">{t("leaves.used")} {m.used}{t("common.days")}</p>
+                    <p className="text-xs text-gray-600">{t("leaves.used")} {m.used}{t("common.days")}</p>
                   </div>
                   {editing === m.id ? (
                     <div className="flex items-center gap-1.5">
@@ -69,13 +69,13 @@ export default function BalanceManager({ members }: { members: Member[] }) {
                       />
                       <button
                         onClick={() => handleSave(m.id)}
-                        className="rounded-lg bg-blue-500 px-2.5 py-1 text-xs font-medium text-white"
+                        className="rounded-lg bg-blue-500 px-2.5 py-1 text-xs font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:shadow-brand active:scale-[0.98]"
                       >
                         {t("common.save")}
                       </button>
                       <button
                         onClick={() => setEditing(null)}
-                        className="text-xs text-gray-400"
+                        className="text-xs text-gray-600"
                       >
                         {t("common.cancel")}
                       </button>

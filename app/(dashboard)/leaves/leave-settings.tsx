@@ -104,7 +104,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                     max={50}
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                   />
-                  <p className="mt-1 text-xs text-gray-400">{t("leaveSettings.defaultDaysDesc")}</p>
+                  <p className="mt-1 text-xs text-gray-600">{t("leaveSettings.defaultDaysDesc")}</p>
                 </div>
 
                 <div>
@@ -126,7 +126,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                       </button>
                     ))}
                   </div>
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 text-xs text-gray-600">
                     {grantBasis === "join_date"
                       ? t("leaveSettings.joinDateDesc")
                       : t("leaveSettings.fiscalYearDesc")}
@@ -163,7 +163,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                       max={50}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                     />
-                    <p className="mt-1 text-xs text-gray-400">{t("leaveSettings.maxAnnualDaysDesc")}</p>
+                    <p className="mt-1 text-xs text-gray-600">{t("leaveSettings.maxAnnualDaysDesc")}</p>
                   </div>
                 )}
               </>
@@ -197,7 +197,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                   max={50}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                 />
-                <p className="mt-1 text-xs text-gray-400">{t("leaveSettings.carryOverMaxDaysDesc")}</p>
+                <p className="mt-1 text-xs text-gray-600">{t("leaveSettings.carryOverMaxDaysDesc")}</p>
               </div>
             )}
             {!carryOver && <input type="hidden" name="carryOverMaxDays" value={carryOverMaxDays} />}
@@ -227,7 +227,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                 max={30}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
               />
-              <p className="mt-1 text-xs text-gray-400">{t("leaveSettings.sickLeaveDaysDesc")}</p>
+              <p className="mt-1 text-xs text-gray-600">{t("leaveSettings.sickLeaveDaysDesc")}</p>
             </div>
 
             <div className="flex items-center justify-between">
@@ -265,7 +265,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
                 max={30}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
               />
-              <p className="mt-1 text-xs text-gray-400">{t("leaveSettings.familyCareDaysDesc")}</p>
+              <p className="mt-1 text-xs text-gray-600">{t("leaveSettings.familyCareDaysDesc")}</p>
             </div>
           </div>
         </div>
@@ -275,7 +275,7 @@ export default function LeaveSettings({ current, onSaved }: Props) {
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
           >
             {loading ? t("common.saving") : t("common.save")}
           </button>

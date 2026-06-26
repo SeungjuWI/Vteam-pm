@@ -77,7 +77,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
       <div className="w-full max-w-md rounded-2xl bg-white p-8">
         {/* 헤더: 회사 로고 + 이름 */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <h1 className="text-xl font-semibold text-gray-900">{t("welcome.title")}</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t("welcome.title")}</h1>
           {companyName && (
             <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-4 py-2">
               {companyLogoUrl ? (
@@ -208,7 +208,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
           <button
             type="submit"
             disabled={saving}
-            className="w-full rounded-lg bg-blue-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+            className="w-full rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? t("common.saving") : t("welcome.submit")}
           </button>

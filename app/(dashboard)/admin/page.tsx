@@ -96,7 +96,7 @@ export default async function AdminPage() {
     <div>
       <div className="mx-auto max-w-6xl">
         <div className="mb-6">
-          <h1 className="text-xl font-semibold text-gray-900">가입현황</h1>
+          <h1 className="text-xl font-bold text-gray-900">가입현황</h1>
           <p className="mt-1 text-sm text-gray-500">
             운영자 전용 — Vteam을 도입한 기업 현황 ({operator.email})
           </p>
@@ -114,13 +114,13 @@ export default async function AdminPage() {
         <div className="overflow-hidden rounded-xl bg-white">
           <div className="border-b border-gray-100 px-6 py-4">
             <h2 className="text-sm font-medium text-gray-900">
-              회사 목록 <span className="ml-1 text-gray-400">{totalCompanies}</span>
+              회사 목록 <span className="ml-1 text-gray-600">{totalCompanies}</span>
             </h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
+                <tr className="border-b border-gray-100 text-left text-xs text-gray-600">
                   <th className="px-6 py-3 font-medium">회사명</th>
                   <th className="px-6 py-3 font-medium">가입일</th>
                   <th className="px-6 py-3 font-medium">멤버</th>
@@ -132,7 +132,7 @@ export default async function AdminPage() {
               <tbody className="divide-y divide-gray-50">
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-400">
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-600">
                       아직 가입한 회사가 없습니다.
                     </td>
                   </tr>
@@ -146,7 +146,7 @@ export default async function AdminPage() {
                       {r.owner ? (
                         <div>
                           <p className="text-gray-900">{r.owner.name}</p>
-                          <p className="text-xs text-gray-400">{r.owner.email}</p>
+                          <p className="text-xs text-gray-600">{r.owner.email}</p>
                         </div>
                       ) : (
                         <span className="text-gray-300">-</span>
@@ -171,7 +171,7 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        <p className="mt-4 text-xs text-gray-400">
+        <p className="mt-4 text-xs text-gray-600">
           ※ 상태는 최근 {ACTIVE_DAYS}일 내 출퇴근 활동 기준입니다. 휴면 회사는 추가 안내 대상입니다.
         </p>
       </div>
@@ -192,7 +192,7 @@ function SummaryCard({
     accent === "blue" ? "text-blue-600" : accent === "amber" ? "text-amber-600" : "text-gray-900";
   return (
     <div className="rounded-xl bg-white px-5 py-4">
-      <p className="text-xs text-gray-400">{label}</p>
+      <p className="text-xs text-gray-600">{label}</p>
       <p className={`mt-1 text-2xl font-semibold ${valueColor}`}>{value}</p>
     </div>
   );

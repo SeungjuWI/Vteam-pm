@@ -103,7 +103,7 @@ export default function LeaveRequestForm() {
           <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.type")}</label>
           {LEAVE_CATEGORIES_DATA.map((cat) => (
             <div key={cat.labelKey} className="mb-2">
-              <p className="mb-1 text-[11px] text-gray-400">{t(cat.labelKey)}</p>
+              <p className="mb-1 text-[11px] text-gray-600">{t(cat.labelKey)}</p>
               <div className="flex flex-wrap gap-1.5">
                 {cat.types.map((tp) => (
                   <button
@@ -198,7 +198,7 @@ export default function LeaveRequestForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-blue-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+          className="w-full rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
         >
           {loading ? t("leaves.requesting") : t("leaves.submit")}
         </button>

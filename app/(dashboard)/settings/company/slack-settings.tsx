@@ -51,7 +51,7 @@ export default function SlackSettings({
           />
         </label>
       </div>
-      <p className="mb-4 text-xs leading-relaxed text-gray-400">
+      <p className="mb-4 text-xs leading-relaxed text-gray-600">
         매일 평일 오전 10시에, 마감일이 지난 업무를 담당자 이름과 함께 슬랙 채널로 보냅니다.
         슬랙에서 <span className="font-medium text-gray-500">Incoming Webhook</span> 주소를 만들어 붙여넣어 주세요.
       </p>
@@ -73,7 +73,7 @@ export default function SlackSettings({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+          className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
         >
           {saving ? "저장 중…" : "저장"}
         </button>

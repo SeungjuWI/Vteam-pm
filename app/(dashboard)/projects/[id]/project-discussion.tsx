@@ -306,7 +306,7 @@ export default function ProjectDiscussion({ projectId, currentUserId }: { projec
             <button
               onClick={handleSubmit}
               disabled={isPending || !input.trim()}
-              className="rounded-lg bg-blue-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+              className="rounded-lg bg-blue-500 px-4 py-1.5 text-sm font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 disabled:opacity-50 shadow-soft-sm active:scale-[0.98] hover:shadow-brand"
             >
               {t("discussion.submit")}
             </button>
@@ -316,7 +316,7 @@ export default function ProjectDiscussion({ projectId, currentUserId }: { projec
 
       {posts.length === 0 ? (
         <div className="flex h-24 items-center justify-center">
-          <p className="text-sm text-gray-400">{t("discussion.empty")}</p>
+          <p className="text-sm text-gray-600">{t("discussion.empty")}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -335,13 +335,13 @@ export default function ProjectDiscussion({ projectId, currentUserId }: { projec
                     <Avatar url={post.profiles.avatar_url} name={post.profiles.name} size={28} />
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-medium text-gray-900">{post.profiles.name}</span>
-                      {post.profiles.position && <span className="text-xs text-gray-400">{post.profiles.position}</span>}
+                      {post.profiles.position && <span className="text-xs text-gray-600">{post.profiles.position}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-300">{timeAgo(post.created_at)}</span>
                     {isMe && (
-                      <button onClick={() => handleDelete(post.id)} className="text-xs text-gray-300 transition-colors hover:text-red-500">
+                      <button onClick={() => handleDelete(post.id)} className="text-xs text-gray-300 transition-colors hover:text-red-500 active:scale-[0.95]">
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                         </svg>
@@ -380,7 +380,7 @@ export default function ProjectDiscussion({ projectId, currentUserId }: { projec
                 {threadOpen && (
                   <div className="mt-3 flex flex-col gap-2.5 border-l-2 border-gray-200 pl-3.5">
                     {replies.length === 0 ? (
-                      <p className="py-1 text-xs text-gray-400">{t("discussion.noReplies")}</p>
+                      <p className="py-1 text-xs text-gray-600">{t("discussion.noReplies")}</p>
                     ) : (
                       replies.map((reply) => {
                         const replyIsMe = reply.author_id === currentUserId;
@@ -395,7 +395,7 @@ export default function ProjectDiscussion({ projectId, currentUserId }: { projec
                                 <span className="text-xs font-medium text-gray-900">{reply.profiles.name}</span>
                                 <span className="text-[11px] text-gray-300">{timeAgo(reply.created_at)}</span>
                                 {replyIsMe && (
-                                  <button onClick={() => handleReplyDelete(post.id, reply.id)} className="text-[11px] text-gray-300 transition-colors hover:text-red-500">
+                                  <button onClick={() => handleReplyDelete(post.id, reply.id)} className="text-[11px] text-gray-300 transition-colors hover:text-red-500 active:scale-[0.95]">
                                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
@@ -427,7 +427,7 @@ export default function ProjectDiscussion({ projectId, currentUserId }: { projec
                       <button
                         onClick={() => handleReplySubmit(post.id)}
                         disabled={isPending || !(replyInputs[post.id] ?? "").trim()}
-                        className="rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+                        className="rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 disabled:opacity-50 shadow-soft-sm active:scale-[0.98] hover:shadow-brand"
                       >
                         {t("common.send")}
                       </button>

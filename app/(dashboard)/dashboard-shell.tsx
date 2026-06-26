@@ -180,7 +180,7 @@ export default function DashboardShell({
 
               {isAdmin && (
                 <>
-                  <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
+                  <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-600">
                     {t("nav.adminSection")}
                   </div>
                   {adminNavItems.map(renderNavItem)}
@@ -189,7 +189,7 @@ export default function DashboardShell({
 
               {isSuperAdmin && (
                 <>
-                  <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
+                  <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-600">
                     운영자
                   </div>
                   <Link

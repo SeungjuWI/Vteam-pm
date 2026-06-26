@@ -68,7 +68,7 @@ function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
 
   return (
     <div className="border-t border-gray-100 px-6 py-4">
-      <p className="mb-3 text-xs font-medium text-gray-400">{t("comments.title")} {comments.length > 0 && comments.length}</p>
+      <p className="mb-3 text-xs font-medium text-gray-600">{t("comments.title")} {comments.length > 0 && comments.length}</p>
       {!loaded ? (
         <p className="py-4 text-center text-xs text-gray-300">{t("common.loading")}</p>
       ) : comments.length === 0 ? (
@@ -85,7 +85,7 @@ function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-gray-900">{c.authorName}</span>
-                    <span className="text-[11px] text-gray-400">{timeAgo(c.createdAt, t)}</span>
+                    <span className="text-[11px] text-gray-600">{timeAgo(c.createdAt, t)}</span>
                     {isMine && (
                       <button onClick={() => handleDelete(c.id)} className="ml-auto hidden text-[11px] text-gray-300 hover:text-red-500 group-hover:block">
                         {t("common.delete")}
@@ -240,7 +240,7 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
                     <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-[10px] font-medium text-blue-600">@</div>
                     <div>
                       <p className="text-sm font-medium text-blue-600">@all</p>
-                      <p className="text-[11px] text-gray-400">{t("common.notifyAll")}</p>
+                      <p className="text-[11px] text-gray-600">{t("common.notifyAll")}</p>
                     </div>
                   </>
                 ) : (
@@ -250,7 +250,7 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
                     </div>
                     <div>
                       <p className="text-sm text-gray-900">{opt.name}</p>
-                      <p className="text-[11px] text-gray-400">{member?.position || member?.email}</p>
+                      <p className="text-[11px] text-gray-600">{member?.position || member?.email}</p>
                     </div>
                   </>
                 )}
@@ -430,10 +430,10 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
         {/* 헤더: 상태 토글 + 저장표시 + 삭제 + 닫기 */}
         <div className="flex items-center justify-end border-b border-gray-100 px-6 py-3.5">
           <div className="flex items-center gap-1.5">
-            <button onClick={handleDelete} disabled={deleting} title={t("common.delete")} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50">
+            <button onClick={handleDelete} disabled={deleting} title={t("common.delete")} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 active:scale-[0.95]">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
             </button>
-            <button onClick={closeSave} disabled={saving} className="rounded-lg bg-blue-500 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-60">
+            <button onClick={closeSave} disabled={saving} className="rounded-lg bg-blue-500 px-4 py-1.5 text-xs font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 disabled:opacity-60 shadow-soft-sm active:scale-[0.98] hover:shadow-brand">
               {saving ? t("common.saving") : t("common.save")}
             </button>
           </div>
@@ -481,10 +481,10 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
             <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
               <p className="mb-2 text-xs font-semibold text-gray-600">② {t("tasks.when")}</p>
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-xs text-gray-400">{t("tasks.startDate")}</span>
+                <span className="text-xs text-gray-600">{t("tasks.startDate")}</span>
                 <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); persist({ startDate: e.target.value }); }} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
                 <span className="text-gray-300">→</span>
-                <span className="text-xs text-gray-400">{t("tasks.dueDate")}</span>
+                <span className="text-xs text-gray-600">{t("tasks.dueDate")}</span>
                 <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); persist({ dueDate: e.target.value }); }} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" />
               </div>
             </div>
@@ -493,7 +493,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
               {/* 상태 + 우선순위 (보조, 드롭다운) */}
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-10 shrink-0 text-xs font-medium text-gray-400">{t("tasks.status")}</span>
+                  <span className="w-10 shrink-0 text-xs font-medium text-gray-600">{t("tasks.status")}</span>
                   <select value={status} onChange={(e) => changeStatus(e.target.value as "todo" | "in_progress" | "pending" | "done")} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none">
                     <option value="todo">{statusLabels.todo}</option>
                     <option value="in_progress">{statusLabels.in_progress}</option>
@@ -502,7 +502,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                   </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="shrink-0 text-xs font-medium text-gray-400">{t("tasks.priority")}</span>
+                  <span className="shrink-0 text-xs font-medium text-gray-600">{t("tasks.priority")}</span>
                   <select value={priority} onChange={(e) => { const p = e.target.value as "low" | "medium" | "high"; setPriority(p); persist({ priority: p }); }} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none">
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -512,7 +512,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
               </div>
               {/* 담당자 (인라인) */}
               <div className="flex items-start gap-3">
-                <span className="mt-2 w-16 shrink-0 text-xs font-medium text-gray-400">{t("tasks.assignee")}</span>
+                <span className="mt-2 w-16 shrink-0 text-xs font-medium text-gray-600">{t("tasks.assignee")}</span>
                 <div className="relative flex-1">
                   {selectedIds.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1.5">
@@ -535,12 +535,12 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                       <div className="fixed inset-0 z-[5]" onClick={() => setShowDropdown(false)} />
                       <div className="absolute top-full left-0 z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1">
                         {filtered.length === 0 ? (
-                          <p className="px-3.5 py-2 text-sm text-gray-400">{t("common.noResults")}</p>
+                          <p className="px-3.5 py-2 text-sm text-gray-600">{t("common.noResults")}</p>
                         ) : (
                           filtered.map((m) => (
                             <button key={m.id} type="button" onClick={() => { const ids = [...selectedIds, m.id]; setSelectedIds(ids); setSearch(""); setShowDropdown(false); persist({ selectedIds: ids }); }} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors hover:bg-gray-50">
                               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-600">{m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : m.name[0]}</div>
-                              <div><p className="text-sm text-gray-900">{m.name}</p><p className="text-[11px] text-gray-400">{m.position || m.email}</p></div>
+                              <div><p className="text-sm text-gray-900">{m.name}</p><p className="text-[11px] text-gray-600">{m.position || m.email}</p></div>
                             </button>
                           ))
                         )}
@@ -555,8 +555,8 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
           {/* 체크리스트 (세부 할일) */}
           <div className="px-6 pt-5">
             <div className="mb-2 flex items-center gap-2">
-              <p className="text-xs font-medium text-gray-400">{t("tasks.checklist")}</p>
-              {checklist.length > 0 && <span className="text-[11px] font-medium text-gray-400">{checklist.filter((c) => c.done).length}/{checklist.length}</span>}
+              <p className="text-xs font-medium text-gray-600">{t("tasks.checklist")}</p>
+              {checklist.length > 0 && <span className="text-[11px] font-medium text-gray-600">{checklist.filter((c) => c.done).length}/{checklist.length}</span>}
             </div>
             {checklist.length > 0 && (
               <div className="mb-2 h-1 w-full overflow-hidden rounded-full bg-gray-100">
@@ -591,7 +591,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
 
           {/* 설명 (인라인) */}
           <div className="px-6 pb-3 pt-5">
-            <p className="mb-2 text-xs font-medium text-gray-400">{t("tasks.content")}</p>
+            <p className="mb-2 text-xs font-medium text-gray-600">{t("tasks.content")}</p>
             <textarea value={description} onChange={(e) => { setDescription(e.target.value); dirty.current = true; }} onBlur={() => persist()} rows={4} placeholder={t("tasks.contentPlaceholder")} className="w-full resize-none rounded-lg bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
             {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
           </div>

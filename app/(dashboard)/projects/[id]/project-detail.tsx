@@ -44,7 +44,7 @@ function RemoveMemberButton({ projectId, memberId, onDone }: { projectId: string
   }
 
   return (
-    <button onClick={handleRemove} disabled={loading} className="rounded-md p-1 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50">
+    <button onClick={handleRemove} disabled={loading} className="rounded-md p-1 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 active:scale-[0.95]">
       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
     </button>
   );
@@ -93,13 +93,13 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
                 <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
                 {statusLabelMap[project.status] || statusLabelMap.active}
               </span>
-              <button onClick={() => setShowEdit(true)} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+              <button onClick={() => setShowEdit(true)} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
                 </svg>
               </button>
             </div>
-            <h1 className="mt-2 text-xl font-semibold text-gray-900">{project.name}</h1>
+            <h1 className="mt-2 text-xl font-bold text-gray-900">{project.name}</h1>
             {project.description && <p className="mt-1 text-sm text-gray-500">{project.description}</p>}
           </div>
 
@@ -114,14 +114,14 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
                       </div>
                     ))}
                   </div>
-                  <span className="text-xs text-gray-400">{members.length}{t("projects.members")}</span>
+                  <span className="text-xs text-gray-600">{members.length}{t("projects.members")}</span>
                 </>
               ) : (
-                <span className="text-xs text-gray-400">{t("projects.noMembers")}</span>
+                <span className="text-xs text-gray-600">{t("projects.noMembers")}</span>
               )}
             </button>
 
-            <button onClick={() => setShowAddMember(true)} className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-blue-400 hover:text-blue-500">
+            <button onClick={() => setShowAddMember(true)} className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-blue-400 hover:text-blue-500 active:scale-[0.95]">
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
@@ -135,9 +135,9 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMembers(false)} />
                 <div className="absolute top-full left-0 z-20 mt-2 w-64 rounded-xl border border-gray-200 bg-white py-2">
-                  <p className="px-4 pb-2 text-xs font-medium text-gray-400">{t("projects.participatingMembers")}</p>
+                  <p className="px-4 pb-2 text-xs font-medium text-gray-600">{t("projects.participatingMembers")}</p>
                   {members.length === 0 ? (
-                    <p className="px-4 py-3 text-sm text-gray-400">{t("projects.noParticipatingMembers")}</p>
+                    <p className="px-4 py-3 text-sm text-gray-600">{t("projects.noParticipatingMembers")}</p>
                   ) : (
                     members.map((m) => (
                       <div key={m.id} className="flex items-center justify-between px-4 py-2">
@@ -147,7 +147,7 @@ export default function ProjectDetail({ project, members, allMembers, mainTasks,
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-900">{m.name}</p>
-                            <p className="text-[11px] text-gray-400">{m.position || m.email}</p>
+                            <p className="text-[11px] text-gray-600">{m.position || m.email}</p>
                           </div>
                         </div>
                         <RemoveMemberButton projectId={project.id} memberId={m.id} onDone={() => setShowMembers(false)} />

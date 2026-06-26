@@ -34,12 +34,12 @@ export default function MemberList({
       <div className="rounded-xl bg-white">
         <div className="border-b border-gray-100 px-6 py-4">
           <h2 className="text-sm font-medium text-gray-900">
-            {t("members.member")} <span className="ml-1 text-gray-400">{members.length}</span>
+            {t("members.member")} <span className="ml-1 text-gray-600">{members.length}</span>
           </h2>
         </div>
         {members.length === 0 ? (
           <div className="flex h-48 items-center justify-center">
-            <p className="text-sm text-gray-400">{t("members.empty")}</p>
+            <p className="text-sm text-gray-600">{t("members.empty")}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
@@ -55,7 +55,7 @@ export default function MemberList({
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-medium text-gray-900">{member.name}</p>
                       {member.position && (
-                        <span className="text-xs text-gray-400">{member.position}</span>
+                        <span className="text-xs text-gray-600">{member.position}</span>
                       )}
                     </div>
                     <p className="text-xs text-gray-500">{member.email}</p>

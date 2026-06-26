@@ -26,7 +26,7 @@ export default function PillarsMock() {
           <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${p.accent}`} />
 
           <div>
-            <h3 className="text-2xl font-semibold tracking-tight text-gray-900">{p.name}</h3>
+            <h3 className="text-2xl font-bold tracking-tight text-gray-900">{p.name}</h3>
             {/* 팀 */}
             <div className="mt-3 flex items-center gap-2">
               <div className="flex -space-x-2">
@@ -34,7 +34,7 @@ export default function PillarsMock() {
                   <span key={i} className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-[11px] font-medium text-gray-600 ring-2 ring-white">{m[0]}</span>
                 ))}
               </div>
-              <span className="text-xs text-gray-400">{p.members.length}명</span>
+              <span className="text-xs text-gray-600">{p.members.length}명</span>
             </div>
           </div>
 

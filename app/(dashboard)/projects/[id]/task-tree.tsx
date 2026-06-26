@@ -116,7 +116,7 @@ export default function TaskTree({ projectId, mainTasks, members, currentUserId 
         <h2 className="text-base font-semibold text-gray-900">{t("tasks.mainTasks")}</h2>
         <button
           onClick={() => setAddingMain(true)}
-          className="flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-600"
+          className="flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 shadow-soft-sm active:scale-[0.98] hover:shadow-brand"
         >
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
           {t("tasks.addMain")}
@@ -142,7 +142,7 @@ export default function TaskTree({ projectId, mainTasks, members, currentUserId 
                   {/* 펼침 토글 */}
                   <button
                     onClick={() => toggleExpand(main.id)}
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors active:scale-[0.95]"
                   >
                     <svg className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -160,7 +160,7 @@ export default function TaskTree({ projectId, mainTasks, members, currentUserId 
 
                   {/* 제목 */}
                   <button onClick={() => setSelectedTask(main)} className="min-w-0 flex-1 text-left">
-                    <span className={`text-sm font-medium ${pct === 100 ? "text-gray-400 line-through" : "text-gray-900"}`}>{main.title}</span>
+                    <span className={`text-sm font-semibold ${pct === 100 ? "text-gray-400 line-through" : "text-gray-900"}`}>{main.title}</span>
                   </button>
 
                   {/* 진행률 바 */}
@@ -168,7 +168,7 @@ export default function TaskTree({ projectId, mainTasks, members, currentUserId 
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
                       <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="w-7 text-right text-[11px] text-gray-400 tabular-nums">{pct}%</span>
+                    <span className="w-7 text-right text-[11px] text-gray-600 tabular-nums">{pct}%</span>
                   </div>
 
                   {/* 우선순위 */}
@@ -178,7 +178,7 @@ export default function TaskTree({ projectId, mainTasks, members, currentUserId 
                   <div className="hidden w-14 justify-end sm:flex"><Avatars assignees={main.assignees} /></div>
 
                   {/* 마감일 */}
-                  <span className="hidden w-12 shrink-0 text-right text-[11px] text-gray-400 sm:block">
+                  <span className="hidden w-12 shrink-0 text-right text-[11px] text-gray-600 sm:block">
                     {main.dueDate ? new Date(main.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}
                   </span>
                 </div>
@@ -197,7 +197,7 @@ export default function TaskTree({ projectId, mainTasks, members, currentUserId 
                           </button>
                           <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${spc.bg} ${spc.text}`}>{spc.label}</span>
                           <div className="hidden w-14 justify-end sm:flex"><Avatars assignees={sub.assignees} /></div>
-                          <span className="hidden w-12 shrink-0 text-right text-[11px] text-gray-400 sm:block">
+                          <span className="hidden w-12 shrink-0 text-right text-[11px] text-gray-600 sm:block">
                             {sub.dueDate ? new Date(sub.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}
                           </span>
                         </div>

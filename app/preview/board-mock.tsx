@@ -37,7 +37,7 @@ export default function BoardMock() {
             <div className="flex items-center gap-2 px-1">
               <span className={`h-2 w-2 rounded-full ${col.dot}`} />
               <h3 className="text-sm font-medium text-gray-700">{col.label}</h3>
-              <span className="text-xs text-gray-400">{cards.length}</span>
+              <span className="text-xs text-gray-600">{cards.length}</span>
             </div>
             <div className="flex min-h-[120px] flex-col gap-2 rounded-xl bg-white p-3">
               {cards.map((c) => {
@@ -51,7 +51,7 @@ export default function BoardMock() {
                     {c.assignee !== "-" && (
                       <div className="mt-2 flex items-center gap-1.5">
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[9px] font-medium text-gray-600">{c.assignee[0]}</span>
-                        <span className="text-[11px] text-gray-400">{c.assignee}</span>
+                        <span className="text-[11px] text-gray-600">{c.assignee}</span>
                       </div>
                     )}
                   </div>

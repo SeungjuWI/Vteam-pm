@@ -90,7 +90,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
       <div className="relative w-full max-w-lg rounded-2xl bg-white p-6">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">{t("createProject.title")}</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -118,7 +118,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-blue-400 hover:text-blue-500"
+                className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-blue-400 hover:text-blue-500 active:scale-[0.95]"
               >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.41a2.25 2.25 0 013.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
@@ -133,7 +133,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
               onChange={handleImageChange}
               className="hidden"
             />
-            <p className="mt-1 text-[11px] text-gray-400">{t("createProject.imageDesc")}</p>
+            <p className="mt-1 text-[11px] text-gray-600">{t("createProject.imageDesc")}</p>
           </div>
 
           {/* 프로젝트 이름 */}
@@ -213,7 +213,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
                 <div className="fixed inset-0 z-[5]" onClick={() => setShowDropdown(false)} />
                 <div className="absolute top-full left-0 z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1">
                   {filteredMembers.length === 0 ? (
-                    <p className="px-3.5 py-2 text-sm text-gray-400">
+                    <p className="px-3.5 py-2 text-sm text-gray-600">
                       {members.length === selectedMembers.length ? t("common.allSelected") : t("common.noResults")}
                     </p>
                   ) : (
@@ -233,7 +233,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
                         </div>
                         <div>
                           <p className="text-sm text-gray-900">{m.name}</p>
-                          <p className="text-[11px] text-gray-400">{m.email}</p>
+                          <p className="text-[11px] text-gray-600">{m.email}</p>
                         </div>
                       </button>
                     ))
@@ -256,7 +256,7 @@ export default function CreateProjectModal({ members, onClose }: Props) {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 disabled:opacity-50 shadow-soft-sm active:scale-[0.98] hover:shadow-brand"
             >
               {loading ? t("common.creating") : t("createProject.submit")}
             </button>

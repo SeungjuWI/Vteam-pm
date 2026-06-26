@@ -51,7 +51,7 @@ function StatCard({
       <p className={`mt-1 text-2xl font-medium ${accent ?? "text-gray-900"}`}>
         {value}
       </p>
-      {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
+      {sub && <p className="mt-0.5 text-xs text-gray-600">{sub}</p>}
     </div>
   );
 }
@@ -77,7 +77,7 @@ export default function AttendanceDashboardView({
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-gray-900">근태 대시보드</h1>
+        <h1 className="text-lg font-bold text-gray-900">근태 대시보드</h1>
         <p className="mt-1 text-sm text-gray-500">
           오늘의 팀 출퇴근 현황을 한눈에 확인합니다.
         </p>
@@ -126,7 +126,7 @@ export default function AttendanceDashboardView({
                     }`}
                     style={{ height: Math.max(height, 4) }}
                   />
-                  <span className="text-xs text-gray-400">{label}</span>
+                  <span className="text-xs text-gray-600">{label}</span>
                 </div>
               );
             })}
@@ -166,13 +166,13 @@ export default function AttendanceDashboardView({
             </div>
             <div className="space-y-2">
               <div>
-                <p className="text-xs text-gray-400">평균 근무</p>
+                <p className="text-xs text-gray-600">평균 근무</p>
                 <p className="text-sm font-medium text-gray-900">
                   {data.avgWorkHours}시간
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">기준 시간</p>
+                <p className="text-xs text-gray-600">기준 시간</p>
                 <p className="text-sm font-medium text-gray-900">
                   {data.requiredHours}시간
                 </p>
@@ -186,7 +186,7 @@ export default function AttendanceDashboardView({
       <div className="rounded-2xl border border-gray-200 bg-white">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <h2 className="text-sm font-medium text-gray-900">멤버별 현황</h2>
-          <div className="flex gap-3 text-xs text-gray-400">
+          <div className="flex gap-3 text-xs text-gray-600">
             <span className="flex items-center gap-1">
               <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
               근무중 {data.todayWorking}
@@ -226,7 +226,7 @@ export default function AttendanceDashboardView({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-gray-900">{m.name}</p>
                   {m.position && (
-                    <p className="truncate text-xs text-gray-400">
+                    <p className="truncate text-xs text-gray-600">
                       {m.position}
                     </p>
                   )}
@@ -250,7 +250,7 @@ export default function AttendanceDashboardView({
             );
           })}
           {data.memberStatus.length === 0 && (
-            <div className="px-5 py-8 text-center text-sm text-gray-400">
+            <div className="px-5 py-8 text-center text-sm text-gray-600">
               멤버가 없습니다.
             </div>
           )}

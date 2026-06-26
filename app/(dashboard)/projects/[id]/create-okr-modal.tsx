@@ -65,13 +65,13 @@ export default function CreateOkrModal({
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6">
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">{t("okr.add")}</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <p className="mb-5 text-xs text-gray-400">{periodLabel}</p>
+        <p className="mb-5 text-xs text-gray-600">{periodLabel}</p>
 
         <div className="flex flex-col gap-4">
           {/* 목표 */}
@@ -117,7 +117,7 @@ export default function CreateOkrModal({
                   <span className="text-gray-900">{owner.name}</span>
                 </span>
               ) : (
-                <span className="text-gray-400">{t("okr.noOwner")}</span>
+                <span className="text-gray-600">{t("okr.noOwner")}</span>
               )}
               <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -130,7 +130,7 @@ export default function CreateOkrModal({
                   <button
                     type="button"
                     onClick={() => { setOwnerId(null); setShowOwner(false); }}
-                    className="w-full px-3.5 py-2 text-left text-sm text-gray-400 transition-colors hover:bg-gray-50"
+                    className="w-full px-3.5 py-2 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50"
                   >
                     {t("okr.noOwner")}
                   </button>
@@ -146,7 +146,7 @@ export default function CreateOkrModal({
                       </div>
                       <div>
                         <p className="text-sm text-gray-900">{m.name}</p>
-                        <p className="text-[11px] text-gray-400">{m.position || m.email}</p>
+                        <p className="text-[11px] text-gray-600">{m.position || m.email}</p>
                       </div>
                     </button>
                   ))}
@@ -197,7 +197,7 @@ export default function CreateOkrModal({
             <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
               {t("common.cancel")}
             </button>
-            <button onClick={handleSubmit} disabled={loading} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50">
+            <button onClick={handleSubmit} disabled={loading} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 disabled:opacity-50 shadow-soft-sm active:scale-[0.98] hover:shadow-brand">
               {loading ? t("common.creating") : t("okr.create")}
             </button>
           </div>

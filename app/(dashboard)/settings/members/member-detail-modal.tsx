@@ -269,7 +269,7 @@ export default function MemberDetailModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 className="text-sm font-medium text-gray-900">{t("members.detail")}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 transition-colors hover:text-gray-600 active:scale-[0.95]">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -293,7 +293,7 @@ export default function MemberDetailModal({
                   </span>
                 </div>
                 <p className="text-xs text-gray-500">{data.email}</p>
-                {data.position && <p className="text-xs text-gray-400">{data.position}</p>}
+                {data.position && <p className="text-xs text-gray-600">{data.position}</p>}
               </div>
             </div>
 
@@ -345,12 +345,12 @@ export default function MemberDetailModal({
                         />
                       </div>
                     ) : (
-                      <p className="mt-0.5 text-lg font-semibold text-gray-900">{data.balance.total}<span className="text-xs font-normal text-gray-400">{t("common.days")}</span></p>
+                      <p className="mt-0.5 text-lg font-semibold text-gray-900">{data.balance.total}<span className="text-xs font-normal text-gray-600">{t("common.days")}</span></p>
                     )}
                   </div>
                   <div className="rounded-lg bg-gray-50 p-3 text-center">
                     <p className="text-[11px] text-gray-500">{t("leaves.used")}</p>
-                    <p className="mt-0.5 text-lg font-semibold text-gray-900">{data.balance.used}<span className="text-xs font-normal text-gray-400">{t("common.days")}</span></p>
+                    <p className="mt-0.5 text-lg font-semibold text-gray-900">{data.balance.used}<span className="text-xs font-normal text-gray-600">{t("common.days")}</span></p>
                   </div>
                   <div className="rounded-lg bg-blue-50 p-3 text-center">
                     <p className="text-[11px] text-blue-500">{t("leaves.remaining")}</p>
@@ -358,14 +358,14 @@ export default function MemberDetailModal({
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-gray-400">{t("leaveSettings.balanceNotGranted")}</p>
+                <p className="text-sm text-gray-600">{t("leaveSettings.balanceNotGranted")}</p>
               )}
 
               {editingBalance && (
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={handleSaveBalance}
-                    className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600"
+                    className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98]"
                   >
                     {t("common.save")}
                   </button>
@@ -388,13 +388,13 @@ export default function MemberDetailModal({
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-medium text-gray-900">{t("attendance.record")}</h3>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => navigateMonth(-1)} className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                      <button onClick={() => navigateMonth(-1)} className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
                       <span className="min-w-[80px] text-center text-xs text-gray-600">{attMonth.year}년 {attMonth.month}월</span>
-                      <button onClick={() => navigateMonth(1)} className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                      <button onClick={() => navigateMonth(1)} className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                         </svg>
@@ -455,7 +455,7 @@ export default function MemberDetailModal({
                         <div className="flex gap-2">
                           <button
                             onClick={handleCreateAttendance}
-                            className="rounded-md bg-blue-500 px-3 py-1 text-xs font-medium text-white hover:bg-blue-600"
+                            className="rounded-md bg-blue-500 px-3 py-1 text-xs font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98]"
                           >
                             {t("common.add")}
                           </button>
@@ -475,7 +475,7 @@ export default function MemberDetailModal({
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
                     </div>
                   ) : attendances.length === 0 ? (
-                    <p className="text-sm text-gray-400">{t("attendance.noRecord")}</p>
+                    <p className="text-sm text-gray-600">{t("attendance.noRecord")}</p>
                   ) : (
                     <div className="flex flex-col gap-2">
                       {attendances.map((att) => {
@@ -517,7 +517,7 @@ export default function MemberDetailModal({
                                 <div className="flex gap-2">
                                   <button
                                     onClick={handleSaveAttendance}
-                                    className="rounded-md bg-blue-500 px-3 py-1 text-xs font-medium text-white hover:bg-blue-600"
+                                    className="rounded-md bg-blue-500 px-3 py-1 text-xs font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98]"
                                   >
                                     {t("common.save")}
                                   </button>
@@ -542,7 +542,7 @@ export default function MemberDetailModal({
                                   <span className="rounded bg-blue-50 px-1 py-0.5 text-[10px] text-blue-500">{t("attendance.working")}</span>
                                 )}
                               </div>
-                              <p className="mt-0.5 text-[11px] text-gray-400">
+                              <p className="mt-0.5 text-[11px] text-gray-600">
                                 {formatTime(att.clock_in)}
                                 {att.clock_out && ` ~ ${formatTime(att.clock_out)}`}
                                 {att.clock_out && (
@@ -552,13 +552,13 @@ export default function MemberDetailModal({
                                 )}
                               </p>
                               {att.memo && (
-                                <p className="mt-0.5 text-[10px] text-gray-400">{att.memo}</p>
+                                <p className="mt-0.5 text-[10px] text-gray-600">{att.memo}</p>
                               )}
                             </div>
                             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                               <button
                                 onClick={() => startEdit(att)}
-                                className="rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                                className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 active:scale-[0.95]"
                                 title={t("common.edit")}
                               >
                                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -583,7 +583,7 @@ export default function MemberDetailModal({
                               ) : (
                                 <button
                                   onClick={() => setConfirmDeleteId(att.id)}
-                                  className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                                  className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 active:scale-[0.95]"
                                   title={t("common.delete")}
                                 >
                                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -608,7 +608,7 @@ export default function MemberDetailModal({
               <>
                 <div className="my-5">
                   <h3 className="mb-1 text-sm font-medium text-gray-900">{t("memberDetail.permission")}</h3>
-                  <p className="mb-3 text-xs text-gray-400">
+                  <p className="mb-3 text-xs text-gray-600">
                     {data.role === "admin" ? t("memberDetail.adminDesc") : t("memberDetail.employeeDesc")}
                   </p>
                   {roleError && <p className="mb-2 text-xs text-red-500">{roleError}</p>}
@@ -627,7 +627,7 @@ export default function MemberDetailModal({
                         <button
                           onClick={() => handleChangeRole(confirmRole)}
                           disabled={changingRole}
-                          className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+                          className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
                         >
                           {confirmRole === "admin" ? t("memberDetail.promote") : t("memberDetail.demote")}
                         </button>
@@ -642,7 +642,7 @@ export default function MemberDetailModal({
                   ) : data.role === "employee" ? (
                     <button
                       onClick={() => { setConfirmRole("admin"); setRoleError(null); }}
-                      className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600"
+                      className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98]"
                     >
                       {t("memberDetail.promote")}
                     </button>
@@ -665,7 +665,7 @@ export default function MemberDetailModal({
               <>
                 <div className="my-5">
                   <h3 className="mb-1 text-sm font-medium text-gray-900">{t("ipPolicy.memberSectionTitle")}</h3>
-                  <p className="mb-3 text-xs text-gray-400">{t("ipPolicy.memberSectionDesc")}</p>
+                  <p className="mb-3 text-xs text-gray-600">{t("ipPolicy.memberSectionDesc")}</p>
                   <select
                     value={data.ipPolicyId ?? ""}
                     onChange={(e) => handleAssignIpPolicy(e.target.value || null)}
@@ -680,7 +680,7 @@ export default function MemberDetailModal({
                     ))}
                   </select>
                   {ipPolicies.length === 0 && (
-                    <p className="mt-1.5 text-[11px] text-gray-400">{t("ipPolicy.noPolicyHint")}</p>
+                    <p className="mt-1.5 text-[11px] text-gray-600">{t("ipPolicy.noPolicyHint")}</p>
                   )}
                 </div>
 
@@ -692,7 +692,7 @@ export default function MemberDetailModal({
             <div className="mt-5">
               <h3 className="mb-3 text-sm font-medium text-gray-900">{t("memberDetail.recentLeaves")}</h3>
               {data.recentLeaves.length === 0 ? (
-                <p className="text-sm text-gray-400">{t("memberDetail.noLeaves")}</p>
+                <p className="text-sm text-gray-600">{t("memberDetail.noLeaves")}</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {data.recentLeaves.map((leave) => {
@@ -705,7 +705,7 @@ export default function MemberDetailModal({
                             <span className="text-xs font-medium text-gray-700">{TYPE_KEYS[leave.type] ? t(TYPE_KEYS[leave.type] as any) : leave.type}</span>
                             <span className={`rounded px-1 py-0.5 text-[10px] ${stClass}`}>{t(stKey as any)}</span>
                           </div>
-                          <p className="mt-0.5 text-[11px] text-gray-400">
+                          <p className="mt-0.5 text-[11px] text-gray-600">
                             {leave.startDate}{leave.startDate !== leave.endDate && ` ~ ${leave.endDate}`}
                           </p>
                         </div>
@@ -757,7 +757,7 @@ export default function MemberDetailModal({
           </div>
         ) : (
           <div className="flex h-48 items-center justify-center">
-            <p className="text-sm text-gray-400">{t("members.noDetail")}</p>
+            <p className="text-sm text-gray-600">{t("members.noDetail")}</p>
           </div>
         )}
       </div>

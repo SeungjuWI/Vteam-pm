@@ -20,15 +20,15 @@ export default function DetailView({ projectName }: { projectName: string }) {
         {/* 프로젝트 + 팀 구성 (OKR·대시보드 없이 바로 마일스톤으로) */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">{projectName}</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">{projectName}</h1>
             <div className="mt-2 flex items-center gap-2">
               <div className="flex -space-x-1.5">
                 {["남영훈", "위승주", "Mavis", "My"].map((m, i) => (
                   <span key={i} className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-[11px] font-medium text-gray-600 ring-2 ring-white">{m[0]}</span>
                 ))}
               </div>
-              <span className="text-xs text-gray-400">4명 참여</span>
-              <button className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-500">
+              <span className="text-xs text-gray-600">4명 참여</span>
+              <button className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-gray-300 text-gray-400 transition-colors active:scale-[0.95] hover:border-blue-400 hover:text-blue-500">
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               </button>
             </div>

@@ -44,7 +44,7 @@ export default async function MembersPage() {
         <div className="rounded-xl bg-white">
           <div className="border-b border-gray-100 px-6 py-4">
             <h2 className="text-sm font-medium text-gray-900">
-              {t("members.inviteSent")} <span className="ml-1 text-gray-400">{invitations.length}</span>
+              {t("members.inviteSent")} <span className="ml-1 text-gray-600">{invitations.length}</span>
             </h2>
           </div>
           <div className="divide-y divide-gray-50">

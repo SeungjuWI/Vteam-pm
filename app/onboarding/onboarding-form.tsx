@@ -24,7 +24,7 @@ export default function OnboardingForm() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8">
         <div className="mb-8 flex flex-col items-center gap-2">
           <Image src="/logo.png" alt="Vteam" width={36} height={36} />
-          <h1 className="text-xl font-semibold text-gray-900">회사 등록</h1>
+          <h1 className="text-xl font-bold text-gray-900">회사 등록</h1>
           <p className="text-sm text-gray-500">관리자로 시작합니다. 회사 정보를 입력해주세요.</p>
         </div>
         <form action={handleSubmit} className="flex flex-col gap-4">
@@ -58,7 +58,7 @@ export default function OnboardingForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-blue-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+            className="w-full rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
           >
             {loading ? "생성 중..." : "시작하기"}
           </button>

@@ -141,7 +141,7 @@ export default function CompanyInfoView({
                   {t("common.delete")}
                 </button>
               )}
-              <span className="text-[11px] text-gray-400">{t("company.logoSpec")}</span>
+              <span className="text-[11px] text-gray-600">{t("company.logoSpec")}</span>
             </div>
           </div>
           <input
@@ -169,7 +169,7 @@ export default function CompanyInfoView({
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>

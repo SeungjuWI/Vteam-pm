@@ -7,7 +7,7 @@ export default function PendingPage() {
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 text-center">
         <div className="mb-6 flex flex-col items-center gap-2">
           <Image src="/logo.png" alt="Vteam" width={36} height={36} />
-          <h1 className="text-xl font-semibold text-gray-900">승인 대기 중</h1>
+          <h1 className="text-xl font-bold text-gray-900">승인 대기 중</h1>
         </div>
         <p className="text-sm text-gray-500">
           관리자의 승인을 기다리고 있습니다.<br />

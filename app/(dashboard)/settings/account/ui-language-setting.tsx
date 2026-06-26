@@ -38,7 +38,7 @@ export default function UiLanguageSetting({ currentUiLang }: { currentUiLang: st
             <button
               key={lang.code}
               onClick={() => handleChange(lang.code)}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold shadow-soft-sm transition-all duration-200 ease-spring hover:shadow-brand active:scale-[0.98] ${
                 currentUiLang === lang.code
                   ? "bg-blue-500 text-white"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -49,10 +49,10 @@ export default function UiLanguageSetting({ currentUiLang }: { currentUiLang: st
             </button>
           ))}
         </div>
-        {saving && <span className="text-xs text-gray-400">{t("common.saving")}</span>}
+        {saving && <span className="text-xs text-gray-600">{t("common.saving")}</span>}
         {saved && <span className="text-xs text-emerald-500">{t("common.saved")}</span>}
       </div>
-      <p className="mt-2 text-xs text-gray-400">
+      <p className="mt-2 text-xs text-gray-600">
         {t("account.uiLanguageDesc")}
       </p>
     </div>

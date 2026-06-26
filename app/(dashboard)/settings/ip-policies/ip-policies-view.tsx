@@ -106,14 +106,14 @@ export default function IpPoliciesView({
             placeholder={"203.0.113.0/24\n1.2.3.4\n2001:db8::/32"}
             className="w-full resize-y rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs focus:border-blue-500 focus:outline-none"
           />
-          <p className="mt-1 text-[11px] text-gray-400">{t("ipPolicy.cidrsHelp")}</p>
+          <p className="mt-1 text-[11px] text-gray-600">{t("ipPolicy.cidrsHelp")}</p>
         </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
         <div className="flex gap-2">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>
@@ -141,12 +141,12 @@ export default function IpPoliciesView({
       <div className="rounded-xl bg-white">
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 className="text-sm font-medium text-gray-900">
-            {t("ipPolicy.listTitle")} <span className="ml-1 text-gray-400">{policies.length}</span>
+            {t("ipPolicy.listTitle")} <span className="ml-1 text-gray-600">{policies.length}</span>
           </h2>
           {!adding && !editingId && (
             <button
               onClick={startAdd}
-              className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600"
+              className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98]"
             >
               {t("ipPolicy.addPolicy")}
             </button>
@@ -157,7 +157,7 @@ export default function IpPoliciesView({
           {adding && formCard}
 
           {policies.length === 0 && !adding ? (
-            <p className="py-6 text-center text-sm text-gray-400">{t("ipPolicy.empty")}</p>
+            <p className="py-6 text-center text-sm text-gray-600">{t("ipPolicy.empty")}</p>
           ) : (
             policies.map((p) =>
               editingId === p.id ? (
@@ -174,7 +174,7 @@ export default function IpPoliciesView({
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {p.cidrs.length === 0 ? (
-                          <span className="text-xs text-gray-400">{t("ipPolicy.noCidr")}</span>
+                          <span className="text-xs text-gray-600">{t("ipPolicy.noCidr")}</span>
                         ) : (
                           p.cidrs.map((c) => (
                             <span
@@ -190,7 +190,7 @@ export default function IpPoliciesView({
                     <div className="flex shrink-0 items-center gap-1">
                       <button
                         onClick={() => startEdit(p)}
-                        className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                        className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]"
                         title={t("common.edit")}
                       >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -215,7 +215,7 @@ export default function IpPoliciesView({
                       ) : (
                         <button
                           onClick={() => setConfirmDeleteId(p.id)}
-                          className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                          className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 active:scale-[0.95]"
                           title={t("common.delete")}
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

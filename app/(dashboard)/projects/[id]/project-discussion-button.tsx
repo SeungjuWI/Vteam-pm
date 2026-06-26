@@ -51,7 +51,7 @@ export default function ProjectDiscussionButton({ projectId, currentUserId }: { 
     <>
       <button
         onClick={handleOpen}
-        className="relative flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-400 transition-colors hover:border-blue-400 hover:text-blue-500"
+        className="relative flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-400 transition-colors hover:border-blue-400 hover:text-blue-500 active:scale-[0.95]"
         aria-label={t("discussion.title")}
       >
         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -72,7 +72,7 @@ export default function ProjectDiscussionButton({ projectId, currentUserId }: { 
               <h2 className="text-base font-semibold text-gray-900">{t("discussion.title")}</h2>
               <button
                 onClick={handleClose}
-                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]"
                 aria-label={t("common.close")}
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

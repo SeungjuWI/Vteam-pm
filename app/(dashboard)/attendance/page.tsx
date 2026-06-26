@@ -74,7 +74,7 @@ export default async function AttendancePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold text-gray-900">{t("attendance.title")}</h1>
+      <h1 className="text-lg font-bold text-gray-900">{t("attendance.title")}</h1>
 
       <div className="rounded-xl bg-white p-6">
         <ClockButton

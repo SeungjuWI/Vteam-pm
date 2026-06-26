@@ -231,7 +231,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   // 데이터 날짜 수집 → 축 범위(단위 경계로 스냅).
   // 드래그(dragOverride/msOverride)와 무관하게 mainTasks/milestones/scale 에만 의존하므로
   // useMemo로 묶어 드래그 중 매 프레임 재계산되지 않게 한다.
-  const { axisStart, axisEnd, totalDays, columns, N, todayDay, dataStart, dataEnd } = useMemo(() => {
+  const { axisStart, axisEnd, totalDays, leftPad, columns, N, todayDay, dataStart, dataEnd } = useMemo(() => {
     const todayDay = dayNum(todayStr);
     const allDays = [todayDay];
     for (const mt of mainTasks) {
@@ -245,7 +245,12 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     // 축 범위 = 사용자가 고른 날짜 범위(range)를 현재 단위(scale) 경계로 스냅. 차트 단위와 독립.
     const axisStart = unitStart(dayNum(range.start));
     const axisEnd = Math.max(unitNext(dayNum(range.end)), axisStart + 1); // 제외(exclusive) 경계
-    const totalDays = Math.max(1, axisEnd - axisStart);
+    // 좌/우 여백(gutter): 컬럼은 axisStart~axisEnd까지만 생성하고, 좌측 스페이서 + 남는 우측 폭으로
+    // 양끝에 빈 공간을 둔다 → 첫 라벨이 구분선과 겹치지 않고, 끝이 가장자리에 붙어 답답하지 않게.
+    const spanDays = axisEnd - axisStart;
+    const leftPad = Math.max(1, Math.ceil(spanDays * 0.025));
+    const rightPad = Math.max(2, Math.ceil(spanDays * 0.05));
+    const totalDays = Math.max(1, spanDays + leftPad + rightPad);
     // 일(日) 보기 라벨 간격: 범위 시작점부터 '균등 step'으로 찍는다(애플 분석탭 방식).
     // 날짜%5 식이 아니라 step 고정이라 월초(N월)와 직전 날짜가 빠짝 붙는 충돌이 없다.
     // step은 보이는 일수에 맞춰 라벨이 ~20개 이하가 되도록 1·2·5·7·10·14·21·28 중 택1.
@@ -269,38 +274,47 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       columns.push({ start: c, end: Math.min(unitNext(c), axisEnd), label, tick });
       idx++;
     }
-    return { axisStart, axisEnd, totalDays, columns, N: columns.length, todayDay, dataStart, dataEnd };
+    return { axisStart, axisEnd, totalDays, leftPad, columns, N: columns.length, todayDay, dataStart, dataEnd };
     // unitStart/unitNext/unitLabel/dayNum 은 scale 에만 의존하는 순수 헬퍼(매 렌더 재생성되지만 동작 동일) → deps 생략
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainTasks, milestones, scale, todayStr, range]);
 
-  // 날짜 → 축 위 좌표(%)
-  const pctDay = (day: number, end: boolean) => ((clamp(day + (end ? 1 : 0), axisStart, axisEnd) - axisStart) / totalDays) * 100;
+  // 날짜 → 축 위 좌표(%). 좌측 여백(leftPad)만큼 밀어서 컬럼 스페이서와 정렬.
+  const dayToPct = (day: number) => ((day - axisStart + leftPad) / totalDays) * 100;
+  const pctDay = (day: number, end: boolean) => dayToPct(clamp(day + (end ? 1 : 0), axisStart, axisEnd));
   const todayIdx = columns.findIndex((c) => todayDay >= c.start && todayDay < c.end);
-  const todayPct = ((todayDay + 0.5 - axisStart) / totalDays) * 100;
+  const todayPct = dayToPct(todayDay + 0.5);
 
   function span(startDate: string | null, dueDate: string | null) {
-    let left: number, right: number;
+    let left: number, right: number, sNum: number, eNum: number;
     if (startDate) {
-      left = pctDay(dayNum(startDate), false);
-      right = pctDay(dayNum(dueDate ?? startDate), true);
+      sNum = dayNum(startDate);
+      eNum = dayNum(dueDate ?? startDate);
+      left = pctDay(sNum, false);
+      right = pctDay(eNum, true);
     } else {
       // 시작일이 없으면 마감일이 속한 '한 칸'(주/월/연)을 막대로 표시
       const due = dayNum(dueDate ?? todayStr);
-      left = pctDay(unitStart(due), false);
-      right = pctDay(unitNext(due) - 1, true);
+      sNum = unitStart(due);
+      eNum = unitNext(due) - 1;
+      left = pctDay(sNum, false);
+      right = pctDay(eNum, true);
     }
     const width = Math.max(right - left, scale === "year" ? 0.8 : 2);
-    return { left: `${left}%`, width: `${width}%` };
+    // 범위 밖으로 삐져나가면 그쪽 모서리를 직선으로 끊는다(라운드 X) → "범위 밖으로 이어짐" 표시
+    return { left: `${left}%`, width: `${width}%`, clipL: sNum < axisStart, clipR: eNum > axisEnd - 1 };
   }
-  function msPct(date: string) { return ((dayNum(date) + 0.5 - axisStart) / totalDays) * 100; }
+  function msPct(date: string) { return dayToPct(dayNum(date) + 0.5); }
 
   const Columns = () => (
     <div className="pointer-events-none absolute inset-0 flex">
+      <div style={{ width: `${(leftPad / totalDays) * 100}%` }} className="shrink-0" />
       {columns.map((c, i) => (
         scale === "week" ? (
-          // 일 보기: 라벨 찍히는 격자점(tick)마다 아주 옅은 점선 세로선 (라벨과 정렬, 균등 간격)
-          <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={c.tick ? "border-l border-dashed border-gray-100" : ""} />
+          // 일 보기: 라벨 찍히는 격자점(tick)마다 옅은 점선 세로선. 라벨이 칸 중앙이라 선도 중앙(left-1/2)에 맞춤.
+          <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="relative">
+            {c.tick && <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l border-dashed border-gray-100" />}
+          </div>
         ) : (
         <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={`relative border-r border-gray-100 last:border-r-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
           {/* 연 보기(월 칸)에선 칸을 4등분하는 옅은 주(週) 보조선 */}
@@ -318,7 +332,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   // 드래그(마일스톤 이동)용 날짜 역산
   const dateAt = (clientX: number, rect: DOMRect) => {
     const frac = clamp((clientX - rect.left) / rect.width, 0, 0.999999);
-    return fromDayNum(Math.floor(axisStart + frac * totalDays));
+    // 좌측 여백(leftPad) 보정 후 범위[axisStart, axisEnd-1]로 클램프 → 여백을 끌어도 범위 밖 날짜 안 나옴
+    return fromDayNum(clamp(Math.floor(axisStart + frac * totalDays - leftPad), axisStart, axisEnd - 1));
   };
   const minDay = axisStart;
   const maxDay = axisEnd - 1;
@@ -447,7 +462,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     if (dragging) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const frac = clamp((e.clientX - rect.left) / rect.width, 0, 0.999999);
-    setHoverDay(Math.floor(axisStart + frac * totalDays)); // 같은 날이면 동일 값 → 리렌더 안 됨
+    // 좌측 여백 보정 + 범위로 클램프 → 우측 빈 여백을 호버해도 범위 밖(예: 9/2) 날짜가 안 뜸
+    setHoverDay(clamp(Math.floor(axisStart + frac * totalDays - leftPad), axisStart, axisEnd - 1)); // 같은 날이면 동일 값 → 리렌더 안 됨
   };
   const WD = ["일", "월", "화", "수", "목", "금", "토"];
   const fmtHover = (day: number) => { const dt = new Date(day * 86400000); return `${dt.getUTCMonth() + 1}/${dt.getUTCDate()} (${WD[dt.getUTCDay()]})`; };
@@ -473,7 +489,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       </div>
       {/* 헤더 */}
       <div className="flex items-stretch border-b border-gray-100 bg-gray-50/30">
-        <div className="flex w-60 shrink-0 items-end justify-between px-5 pb-3">
+        <div className="flex w-72 shrink-0 items-end justify-between border-r border-gray-100 px-5 pb-3">
           <span className="text-xs font-medium text-gray-600">{t("tasks.mainTasks")}</span>
           {expandableIds.length > 0 && (
             <button onClick={toggleAll} title={allOpen ? "모두 접기" : "모두 펼치기"} className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-blue-500">
@@ -482,13 +498,22 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
             </button>
           )}
         </div>
-        <div className="relative flex flex-1 pt-7">
+        <div className="relative flex flex-1 pt-7 pb-3">
+          <div style={{ width: `${(leftPad / totalDays) * 100}%` }} className="shrink-0" />
           {columns.map((c, i) => (
-            <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="overflow-visible px-1 pb-3 text-center">{c.tick && <span className={`whitespace-nowrap text-xs font-medium ${i === todayIdx ? "text-gray-900" : "text-gray-500"}`}>{c.label}</span>}</div>
+            <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="relative">
+              {c.tick && <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-medium ${i === todayIdx ? "text-gray-900" : "text-gray-500"}`}>{c.label}</span>}
+            </div>
           ))}
           {todayIdx >= 0 && todayIdx < N && (
             <div className="pointer-events-none absolute top-1.5 z-20 -translate-x-1/2" style={{ left: `${todayPct}%` }}>
-              <span className="whitespace-nowrap rounded-full bg-gray-700 px-2 py-0.5 text-[9px] font-semibold text-white">오늘 {now.getMonth() + 1}/{now.getDate()}</span>
+              <span className="whitespace-nowrap rounded-full bg-gray-700 px-2.5 py-1 text-xs font-semibold text-white">Today</span>
+            </div>
+          )}
+          {/* 호버 날짜 배지 — 선은 트랙 안에, 날짜 읽기는 헤더 상단에 */}
+          {!dragging && hoverDay !== null && (
+            <div className="pointer-events-none absolute top-1.5 z-30 -translate-x-1/2" style={{ left: `${dayToPct(hoverDay + 0.5)}%` }}>
+              <span className="whitespace-nowrap rounded-full bg-slate-500 px-2 py-0.5 text-[11px] font-semibold text-white">{fmtHover(hoverDay)}</span>
             </div>
           )}
         </div>
@@ -514,13 +539,17 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           ? Math.round(subs.reduce((a, s) => a + effProgress(s), 0) / subs.length)
           : effProgress(row);
         const barStyle = rollupSpan(row);
+        // 메인 막대도 합집합 범위가 차트 범위를 벗어나면 그쪽 모서리를 직선으로 끊는다.
+        const rd = rollupDates(row);
+        const barClipL = !!rd.s && dayNum(rd.s) < axisStart;
+        const barClipR = !!rd.d && dayNum(rd.d) > axisEnd - 1;
         const warn = hasSubs
           ? subs.some((s) => isLate(s.status, s.progress ?? 0, s.startDate, s.dueDate))
           : isLate(row.status, pctV, row.startDate, row.dueDate);
         return (
           <div key={row.id}>
             <div onDragEnter={() => onRowDragEnter(row.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center transition-colors hover:bg-gray-50/40 ${rowDragging === row.id ? "opacity-40" : ""}`}>
-              <div className="flex w-60 shrink-0 items-center gap-1.5 px-3 py-3">
+              <div className="flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 px-3 py-3">
                 <span draggable onDragStart={() => { rowDrag.current = row.id; setRowDragging(row.id); }} onDragEnd={onRowDragEnd} title="드래그로 순서 변경" className="shrink-0 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
                   <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
                 </span>
@@ -534,7 +563,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
               <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-12 flex-1 cursor-default">
                 <Columns />
                 {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
-                <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
+                {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + 0.5)}%` }} />}
+                <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${barClipL ? "rounded-l-none" : ""} ${barClipR ? "rounded-r-none" : ""} ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
                   <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
                   {effStatus === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
                   <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-gray-700"}`}>{pctV}%</span>
@@ -554,9 +584,10 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                   const sDone = sub.status === "done";
                   const subPct = effProgress(sub);
                   const subWarn = isLate(sub.status, subPct, sub.startDate, sub.dueDate);
+                  const subBar = span(dsv(sub), dev(sub));
                   return (
                     <div key={sub.id} onDragEnter={() => onSubDragEnter(row.id, sub.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center hover:bg-gray-50/40 ${subDragging === sub.id ? "opacity-40" : ""}`}>
-                      <div className="flex w-60 shrink-0 items-center gap-1.5 py-2 pr-4 pl-[26px]">
+                      <div className="flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 py-2 pr-4 pl-[26px]">
                         <span draggable onDragStart={() => { subDrag.current = { parentId: row.id, id: sub.id }; setSubDragging(sub.id); }} onDragEnd={() => onSubDragEnd(row.id)} title="드래그로 순서 변경" className="shrink-0 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
                           <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
                         </span>
@@ -567,7 +598,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                       <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-9 flex-1 cursor-default">
                         <Columns />
                         {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
-                        <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center overflow-hidden rounded-md ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`} cursor-grab active:cursor-grabbing`} style={span(dsv(sub), dev(sub))}>
+                        {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + 0.5)}%` }} />}
+                        <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center overflow-hidden rounded-md ${subBar.clipL ? "rounded-l-none" : ""} ${subBar.clipR ? "rounded-r-none" : ""} ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`} cursor-grab active:cursor-grabbing`} style={{ left: subBar.left, width: subBar.width }}>
                           <div className={`absolute inset-y-0 left-0 rounded-md bg-gradient-to-r ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
                           {sub.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-md" style={{ width: `${subPct}%`, backgroundImage: STRIPE }} />}
                           {sub.assignees.length > 0 && <span className="absolute -right-0.5 top-1/2 flex -translate-y-1/2 -space-x-1.5">{sub.assignees.slice(0, 3).map((a, i) => <Avatar key={i} a={a} size="xs" />)}</span>}
@@ -612,7 +644,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
 
       {/* 마일스톤 */}
       <div className="flex items-center border-t border-gray-100 bg-amber-50/30">
-        <div className="flex w-60 shrink-0 items-center gap-1.5 px-5 py-3">
+        <div className="flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 px-5 py-3">
           <svg className="h-3 w-3 text-amber-500" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1l9 9-9 9-9-9z" /></svg>
           <span className="text-xs font-medium text-amber-700">마일스톤</span>
           <button onClick={() => setAddingMs((v) => !v)} className="ml-1 text-amber-500 hover:text-amber-700"><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button>
@@ -645,20 +677,14 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         </div>
       )}
 
-      {/* 드래그/호버 날짜 가이드선 (트랙 영역에만 정렬: 좌측 w-60 라벨열 제외) */}
-      {(dragging ? (dragOverride || msOverride) : hoverDay !== null) && (
+      {/* 드래그 중 날짜 가이드선만 전체 정렬 오버레이로 표시 (호버 선은 각 트랙 안에서 그림) */}
+      {dragging && (dragOverride || msOverride) && (
         <div className="pointer-events-none absolute inset-0 z-40 flex">
-          <div className="w-60 shrink-0" />
+          <div className="w-72 shrink-0" />
           <div className="relative flex-1">
-            {dragging ? (
-              <>
-                {dragOverride && guideLine(pctDay(dayNum(dragOverride.startDate), false), fmtD(dragOverride.startDate), "g-s", "start", "blue")}
-                {dragOverride && guideLine(pctDay(dayNum(dragOverride.dueDate), true), fmtD(dragOverride.dueDate), "g-e", "end", "blue")}
-                {msOverride && guideLine(msPct(msOverride.date), fmtD(msOverride.date), "g-m", "start", "blue")}
-              </>
-            ) : (
-              hoverDay !== null && guideLine(((hoverDay + 0.5 - axisStart) / totalDays) * 100, fmtHover(hoverDay), "g-h", "start", "slate")
-            )}
+            {dragOverride && guideLine(pctDay(dayNum(dragOverride.startDate), false), fmtD(dragOverride.startDate), "g-s", "start", "blue")}
+            {dragOverride && guideLine(pctDay(dayNum(dragOverride.dueDate), true), fmtD(dragOverride.dueDate), "g-e", "end", "blue")}
+            {msOverride && guideLine(msPct(msOverride.date), fmtD(msOverride.date), "g-m", "start", "blue")}
           </div>
         </div>
       )}

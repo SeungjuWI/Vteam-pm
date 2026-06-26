@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { updateTask, updateTaskStatus, deleteTask, getTaskComments, createTaskComment, updateTaskComment, deleteTaskComment } from "../actions";
 import { useT, type TFunction } from "@/lib/i18n";
 import type { Member, Task } from "./project-types";
-import { taskProgress } from "./project-types";
+import { taskProgress, effectiveStatus } from "./project-types";
 
 function errOf(r: unknown): string | undefined {
   return (r as { error?: string } | null | undefined)?.error;
@@ -383,6 +383,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   // 보기 모드 기본 — 새로 만든 드래프트만 바로 편집 모드로 진입
   const [mode, setMode] = useState<"view" | "edit">(isDraft ? "edit" : "view");
   const [menuOpen, setMenuOpen] = useState(false);  // ⋯ 더보기 메뉴
+  const [closing, setClosing] = useState(false);    // 닫힘 슬라이드 애니메이션
 
   const filtered = allMembers.filter(
     (m) => !selectedIds.includes(m.id) &&
@@ -406,6 +407,8 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   // 진행도: 서브태스크가 있으면 자동 집계(타임라인·트리와 동일 공식), 없으면 완료=100/직접 입력값.
   const hasSubs = subtasks.length > 0;
   const displayProgress = taskProgress({ status, progress, subtasks });
+  // 진도율이 있으면 '진행 중'으로 표시 (status가 todo로 남아도)
+  const displayStatus = effectiveStatus({ status, progress: displayProgress });
   const fieldLabel = "mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-500";
   const inputBase = "w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 transition-all focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-50";
 
@@ -429,6 +432,13 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     setSaving(false);
     setError(errOf(r) || "");
     dirty.current = false;
+    return !errOf(r);
+  }
+  // 진도율 조정 확정: 진도가 생겼는데 '시작 전'이면 '진행 중'으로 자동 승격 후 저장
+  async function commitProgress() {
+    if (progress > 0 && status === "todo") await changeStatus("in_progress");
+    await persist();
+    router.refresh();
   }
   async function changeStatus(s: "todo" | "in_progress" | "pending" | "done") {
     const prev = status;
@@ -440,9 +450,9 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   }
   // 편집 모드에서 저장 → 보기 모드로 복귀 (미저장 변경만 반영)
   async function saveAndView() {
-    if (isDraft && !title.trim()) { closeSave(); return; }  // 빈 드래프트는 정리(삭제)
-    if (dirty.current) await persist();
-    setMode("view");
+    if (isDraft && !title.trim()) { requestClose(); return; }  // 빈 드래프트는 정리(삭제)
+    if (dirty.current) { const ok = await persist(); if (!ok) return; }  // 저장 실패면 편집 화면 유지
+    setMode("view");   // 저장 성공 → 읽기 전용 보기로 복귀
     router.refresh();
   }
   // 즉시 닫고, 미저장 변경은 백그라운드로 저장 후 새로고침
@@ -461,9 +471,16 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     })();
   }
 
-  // ESC로 닫기 (최신 closeSave 참조)
+  // 슬라이드로 접은 뒤 닫기 (패널이 우측으로 사라지는 모션)
+  function requestClose() {
+    if (closing) return;
+    setClosing(true);
+    setTimeout(() => closeSave(), 220);
+  }
+
+  // ESC로 닫기 (최신 requestClose 참조)
   const escRef = useRef<() => void>(() => {});
-  escRef.current = closeSave;
+  escRef.current = requestClose;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") escRef.current(); };
     window.addEventListener("keydown", onKey);
@@ -478,21 +495,24 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={closeSave} />
-      <div className="relative flex h-[88vh] max-h-[860px] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-soft-xl">
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-gray-900/30" onClick={requestClose} style={{ animation: closing ? "overlay-in 0.2s ease reverse forwards" : "overlay-in 0.2s ease" }} />
+      <div
+        className="absolute right-0 top-0 flex h-full w-full max-w-[540px] flex-col overflow-hidden border-l border-gray-100 bg-white shadow-soft-xl"
+        style={{ animation: `${closing ? "drawer-out" : "drawer-in"} 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards` }}
+      >
         {/* 상단 바 */}
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
           {mode === "view" ? (
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${statusMeta[status].pill}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${statusMeta[status].dot}`} />{statusLabels[status]}
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${statusMeta[displayStatus].pill}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${statusMeta[displayStatus].dot}`} />{statusLabels[displayStatus]}
             </span>
           ) : (
             <span className="text-sm font-bold tracking-[-0.01em] text-gray-900">{t("tasks.edited")}</span>
           )}
           <div className="flex items-center gap-1">
             {mode === "edit" && (
-              <button onClick={saveAndView} disabled={saving} className="mr-1 rounded-xl bg-blue-500 px-4 py-2 text-xs font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 disabled:opacity-60 shadow-soft-sm active:scale-[0.97] hover:shadow-brand">
+              <button onMouseDown={(e) => e.preventDefault()} onClick={saveAndView} className="mr-1 rounded-xl bg-blue-500 px-4 py-2 text-xs font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 shadow-soft-sm active:scale-[0.97] hover:shadow-brand">
                 {saving ? t("common.saving") : t("common.save")}
               </button>
             )}
@@ -519,7 +539,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                 </>
               )}
             </div>
-            <button onClick={closeSave} title={t("common.close")} className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
+            <button onClick={requestClose} title={t("common.close")} className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
               <IcX className="h-4 w-4" />
             </button>
           </div>
@@ -617,7 +637,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                 <p className="mt-2 text-[11px] text-gray-400">{hasSubs ? t("tasks.progressAuto") : t("tasks.progressDone")}</p>
               </div>
             ) : (
-              <input type="range" min={0} max={100} step={5} value={progress} onChange={(e) => { const v = Number(e.target.value); setProgress(v); dirty.current = true; }} onMouseUp={async () => { await persist(); router.refresh(); }} onTouchEnd={async () => { await persist(); router.refresh(); }} className="h-1.5 w-full accent-blue-500" />
+              <input type="range" min={0} max={100} step={5} value={progress} onChange={(e) => { const v = Number(e.target.value); setProgress(v); dirty.current = true; }} onMouseUp={commitProgress} onTouchEnd={commitProgress} className="h-1.5 w-full accent-blue-500" />
             )}
           </div>
 

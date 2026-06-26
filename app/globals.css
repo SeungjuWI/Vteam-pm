@@ -88,6 +88,20 @@
   --text-caption--font-weight: 700;
 }
 
+/* 우측 슬라이드 패널(노션식 페이지 peek) */
+@keyframes drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes drawer-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 body {
   color: #191F28;
   background: #F7F8FA;

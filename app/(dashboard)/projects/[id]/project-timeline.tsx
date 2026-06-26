@@ -100,6 +100,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const [dragOverride, setDragOverride] = useState<{ id: string; startDate: string; dueDate: string } | null>(null);
   const [msOverride, setMsOverride] = useState<{ id: string; date: string } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [hoverDay, setHoverDay] = useState<number | null>(null); // 마우스 호버 중인 날짜(가이드선)
   const drag = useRef<null | { kind: "task" | "ms"; mode: "move" | "l" | "r"; id: string; rect: DOMRect; anchorDay: number; downX: number; origS: number; origE: number; latest?: { startDate?: string; dueDate?: string; date?: string } }>(null);
   const moved = useRef(false);
   useEffect(() => { setDragOverride(null); setMsOverride(null); }, [mainTasks, milestones]);
@@ -212,7 +213,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   };
   const unitLabel = (day: number) => {
     const { y, m, d } = utc(day);
-    if (scale === "week") return d === 1 ? `${m + 1}/1` : `${d}`;  // 일: 날짜(월초엔 6/1)
+    if (scale === "week") return d === 1 ? `${m + 1}월` : `${d}`;  // 일: 날짜(월초엔 "7월")
     if (scale === "month") return `${m + 1}/${d}`;                 // 주: 그 주 월요일 날짜
     return m === 0 ? `${y}` : `${m + 1}월`;                        // 월: 1월엔 연도 표기
   };
@@ -228,16 +229,26 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       for (const s of mt.subtasks) for (const x of [s.startDate, s.dueDate]) if (x) allDays.push(dayNum(x));
     }
     for (const ms of milestones) if (ms.date) allDays.push(dayNum(ms.date));
-    // 기본 표시 범위: 주(일 칸)=오늘부터 2주, 월(주 칸)=6주, 연(월 칸)=올해 말까지
-    const defaultEnd = scale === "week" ? todayDay + 13
-      : scale === "month" ? todayDay + 42
-      : dayNum(`${nowYear}-12-31`);
-    const axisStart = unitStart(Math.min(...allDays));
-    const axisEnd = unitNext(Math.max(...allDays, defaultEnd));   // 제외(exclusive) 경계
+    const minAll = Math.min(...allDays), maxAll = Math.max(...allDays);
+    let axisStart: number, axisEnd: number;
+    if (scale === "week") {
+      // 일(日) 보기: 오늘 근처 약 한 달 창(최대 7일 전 ~ 31일치)으로 제한해서 빽빽함 방지.
+      // 더 먼 일정은 주/월 보기에서 확인.
+      axisStart = unitStart(Math.max(Math.min(minAll, todayDay), todayDay - 7));
+      axisEnd = axisStart + 31;
+    } else {
+      // 주(주 칸)=6주, 월(월 칸)=올해 말까지 기본 범위
+      const defaultEnd = scale === "month" ? todayDay + 42 : dayNum(`${nowYear}-12-31`);
+      axisStart = unitStart(minAll);
+      axisEnd = unitNext(Math.max(maxAll, defaultEnd));   // 제외(exclusive) 경계
+    }
     const totalDays = Math.max(1, axisEnd - axisStart);
-    // 컬럼 목록(각 단위의 시작·끝 일수와 라벨)
-    const columns: { start: number; end: number; label: string }[] = [];
-    for (let c = axisStart; c < axisEnd; c = unitNext(c)) columns.push({ start: c, end: Math.min(unitNext(c), axisEnd), label: unitLabel(c) });
+    // 컬럼 목록(각 단위의 시작·끝 일수와 라벨). 일 보기는 1·6·11·16·21·26일에만 라벨/격자(tick).
+    const columns: { start: number; end: number; label: string; tick: boolean }[] = [];
+    for (let c = axisStart; c < axisEnd; c = unitNext(c)) {
+      const tick = scale !== "week" || utc(c).d % 5 === 1;
+      columns.push({ start: c, end: Math.min(unitNext(c), axisEnd), label: unitLabel(c), tick });
+    }
     return { axisStart, axisEnd, totalDays, columns, N: columns.length, todayDay };
     // unitStart/unitNext/unitLabel/dayNum 은 scale 에만 의존하는 순수 헬퍼(매 렌더 재생성되지만 동작 동일) → deps 생략
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -267,6 +278,10 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const Columns = () => (
     <div className="pointer-events-none absolute inset-0 flex">
       {columns.map((c, i) => (
+        scale === "week" ? (
+          // 일 보기: 줄무늬 없이 5일/월초(tick)에만 옅은 점선 세로 격자
+          <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={c.tick ? "border-l border-dashed border-gray-200" : ""} />
+        ) : (
         <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={`relative border-r border-gray-100 last:border-r-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
           {/* 연 보기(월 칸)에선 칸을 4등분하는 옅은 주(週) 보조선 */}
           {scale === "year" && <>
@@ -275,6 +290,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
             <span className="absolute inset-y-0 left-[75%] w-px bg-gray-100/80" />
           </>}
         </div>
+        )
       ))}
     </div>
   );
@@ -354,6 +370,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       drag.current = { kind, mode, id: item.id, rect, anchorDay, downX: e.clientX, origS: sd, origE: ed };
     }
     moved.current = false;
+    setHoverDay(null);
     setDragging(true);
   }
 
@@ -405,12 +422,29 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     setMsTitle(""); setMsDate(""); setAddingMs(false); router.refresh();
   }
 
+  // 트랙 위 마우스 호버 → 커서가 가리키는 '날짜'를 가이드선으로 표시 (드래그 중엔 드래그 가이드 우선)
+  const onTrackHover = (e: React.MouseEvent) => {
+    if (dragging) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const frac = clamp((e.clientX - rect.left) / rect.width, 0, 0.999999);
+    setHoverDay(Math.floor(axisStart + frac * totalDays)); // 같은 날이면 동일 값 → 리렌더 안 됨
+  };
+  const WD = ["일", "월", "화", "수", "목", "금", "토"];
+  const fmtHover = (day: number) => { const dt = new Date(day * 86400000); return `${dt.getUTCMonth() + 1}/${dt.getUTCDate()} (${WD[dt.getUTCDay()]})`; };
+
+  // 세로 가이드선 + 날짜 배지 (드래그=파랑, 호버=회색). pct는 트랙 폭 기준 %.
+  const guideLine = (pct: number, label: string, key: string, align: "start" | "end" = "start", tone: "blue" | "slate" = "blue") => (
+    <div key={key} className={`absolute bottom-0 top-9 z-40 w-px -translate-x-1/2 ${tone === "blue" ? "bg-blue-500" : "bg-slate-400"}`} style={{ left: `${pct}%` }}>
+      <span className={`absolute top-0.5 ${align === "end" ? "right-1" : "left-1"} whitespace-nowrap rounded ${tone === "blue" ? "bg-blue-500" : "bg-slate-600"} px-1.5 py-0.5 text-[10px] font-semibold text-white`}>{label}</span>
+    </div>
+  );
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
-      {/* 보기 단위 전환 (주/월/연) */}
+    <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white">
+      {/* 보기 단위 전환 (일/주/월) — 내부 scale 키(week/month/year)는 localStorage 호환 위해 유지 */}
       <div className="flex items-center justify-end border-b border-gray-100 px-4 py-2">
         <div className="flex gap-0.5 rounded-lg bg-gray-100 p-0.5">
-          {([["week", "주"], ["month", "월"], ["year", "연"]] as const).map(([v, ko]) => (
+          {([["week", "일"], ["month", "주"], ["year", "월"]] as const).map(([v, ko]) => (
             <button key={v} onClick={() => chooseScale(v)}
               className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${scale === v ? "bg-white text-gray-900" : "text-gray-400 hover:text-gray-600"}`}>{ko}</button>
           ))}
@@ -429,7 +463,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         </div>
         <div className="relative flex flex-1 pt-7">
           {columns.map((c, i) => (
-            <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="overflow-hidden px-1 pb-3 text-center"><span className={`text-xs font-medium ${i === todayIdx ? "text-rose-500" : "text-gray-500"}`}>{c.label}</span></div>
+            <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="overflow-visible px-1 pb-3 text-center">{c.tick && <span className={`whitespace-nowrap text-xs font-medium ${i === todayIdx ? "text-rose-500" : "text-gray-500"}`}>{c.label}</span>}</div>
           ))}
           {todayIdx >= 0 && todayIdx < N && (
             <div className="pointer-events-none absolute top-1.5 z-20 flex -translate-x-1/2 flex-col items-center" style={{ left: `${todayPct}%` }}>
@@ -481,7 +515,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 {warn && <span title="시작일이 지났는데 시작 전이거나 마감이 지났어요" className="shrink-0 text-red-500"><svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg></span>}
                 <button onClick={() => setSelected(row)} title={row.title} className={`truncate text-left text-sm font-medium hover:text-blue-600 ${isDone ? "text-gray-300 line-through" : warn ? "text-red-700" : "text-gray-900"}`}>{row.title}</button>
               </div>
-              <div data-track className="relative block h-12 flex-1 cursor-default">
+              <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-12 flex-1 cursor-default">
                 <Columns />
                 <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
                   <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
@@ -513,7 +547,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                         {subWarn && <span title="시작일이 지났는데 시작 전이거나 마감이 지났어요" className="shrink-0 text-red-500"><svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg></span>}
                         <button onClick={() => setSelected(sub)} title={sub.title} className={`truncate text-left text-[13px] hover:text-blue-600 ${sDone ? "text-gray-300 line-through" : subWarn ? "text-red-700" : "text-gray-600"}`}>{sub.title}</button>
                       </div>
-                      <div data-track className="relative block h-9 flex-1 cursor-default">
+                      <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-9 flex-1 cursor-default">
                         <Columns />
                         <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center overflow-hidden rounded-md ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`} cursor-grab active:cursor-grabbing`} style={span(dsv(sub), dev(sub))}>
                           <div className={`absolute inset-y-0 left-0 rounded-md bg-gradient-to-r ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
@@ -565,7 +599,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           <span className="text-xs font-medium text-amber-700">마일스톤</span>
           <button onClick={() => setAddingMs((v) => !v)} className="ml-1 text-amber-500 hover:text-amber-700"><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button>
         </div>
-        <div data-track className="relative h-11 flex-1">
+        <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative h-11 flex-1">
           <Columns />
           {milestones.map((ms) => {
             const d = msDateOf(ms);
@@ -590,6 +624,24 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           <input value={msTitle} onChange={(e) => setMsTitle(e.target.value)} placeholder="마일스톤 이름" className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none" />
           <input type="date" value={msDate} onChange={(e) => setMsDate(e.target.value)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none" />
           <button onClick={submitMilestone} className="rounded-lg bg-amber-400 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500">추가</button>
+        </div>
+      )}
+
+      {/* 드래그/호버 날짜 가이드선 (트랙 영역에만 정렬: 좌측 w-60 라벨열 제외) */}
+      {(dragging ? (dragOverride || msOverride) : hoverDay !== null) && (
+        <div className="pointer-events-none absolute inset-0 z-40 flex">
+          <div className="w-60 shrink-0" />
+          <div className="relative flex-1">
+            {dragging ? (
+              <>
+                {dragOverride && guideLine(pctDay(dayNum(dragOverride.startDate), false), fmtD(dragOverride.startDate), "g-s", "start", "blue")}
+                {dragOverride && guideLine(pctDay(dayNum(dragOverride.dueDate), true), fmtD(dragOverride.dueDate), "g-e", "end", "blue")}
+                {msOverride && guideLine(msPct(msOverride.date), fmtD(msOverride.date), "g-m", "start", "blue")}
+              </>
+            ) : (
+              hoverDay !== null && guideLine(((hoverDay + 0.5 - axisStart) / totalDays) * 100, fmtHover(hoverDay), "g-h", "start", "slate")
+            )}
+          </div>
         </div>
       )}
 

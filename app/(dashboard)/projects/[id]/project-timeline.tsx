@@ -138,7 +138,25 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const [hoverDay, setHoverDay] = useState<number | null>(null); // 마우스 호버 중인 날짜(가이드선)
   const drag = useRef<null | { kind: "task" | "ms"; mode: "move" | "l" | "r"; id: string; rect: DOMRect; anchorDay: number; downX: number; origS: number; origE: number; latest?: { startDate?: string; dueDate?: string; date?: string } }>(null);
   const moved = useRef(false);
-  useEffect(() => { setDragOverride(null); setMsOverride(null); }, [mainTasks, milestones]);
+  // 드래그 후 낙관적 위치(override)는 '서버가 따라잡았을 때만' 해제한다.
+  // revalidatePath(서버 액션) + router.refresh()로 새로고침이 여러 번 들어오는데, 그중 갱신 전(예전)
+  // 날짜를 담은 중간 새로고침이 먼저 오면 무조건 비울 경우 막대가 원위치로 튀었다가 다시 이동하는 깜빡임이 생긴다.
+  // → 들어온 데이터의 날짜가 override와 일치할 때만 비워서, 진짜 새 데이터가 올 때까지 새 위치를 유지한다.
+  useEffect(() => {
+    setDragOverride((ov) => {
+      if (!ov) return ov;
+      for (const m of mainTasks) {
+        const cand = m.id === ov.id ? m : m.subtasks.find((s) => s.id === ov.id);
+        if (cand) return cand.startDate === ov.startDate && cand.dueDate === ov.dueDate ? null : ov;
+      }
+      return ov;
+    });
+    setMsOverride((ov) => {
+      if (!ov) return ov;
+      const ms = milestones.find((x) => x.id === ov.id);
+      return ms ? (ms.date === ov.date ? null : ov) : ov;
+    });
+  }, [mainTasks, milestones]);
 
   // 메인태스크 행 순서(드래그 정렬)
   const [order, setOrder] = useState(mainTasks);
@@ -489,10 +507,10 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       if (!d || !moved.current || !d.latest) return;
       if (d.kind === "ms" && d.latest.date) {
         const date = d.latest.date;
-        startTx(async () => { const r = await updateMilestoneDate(d.id, projectId, date); if ((r as { error?: string })?.error) alert((r as { error?: string }).error); router.refresh(); });
+        startTx(async () => { const r = await updateMilestoneDate(d.id, projectId, date); if ((r as { error?: string })?.error) { alert((r as { error?: string }).error); setMsOverride(null); } router.refresh(); });
       } else if (d.latest.startDate && d.latest.dueDate) {
         const { startDate, dueDate } = d.latest;
-        startTx(async () => { const r = await updateTaskDates(d.id, projectId, startDate, dueDate); if ((r as { error?: string })?.error) alert((r as { error?: string }).error); router.refresh(); });
+        startTx(async () => { const r = await updateTaskDates(d.id, projectId, startDate, dueDate); if ((r as { error?: string })?.error) { alert((r as { error?: string }).error); setDragOverride(null); } router.refresh(); });
       }
     }
     window.addEventListener("mousemove", onMove);
@@ -611,7 +629,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
           ? subs.some((s) => isLate(s.status, s.progress ?? 0, s.startDate, s.dueDate))
           : isLate(row.status, pctV, row.startDate, row.dueDate);
         return (
-          <div key={row.id}>
+          // 메인태스크 = 카드 띠(흰 바탕 + 위아래 경계 + 그림자). 접힌 카드는 hover 시 그림자가 더 떠올라 강조되고, 펼친 카드는 메인+서브를 한 통에 담는다.
+          // 좌우는 풀블리드(가로 패딩/마진 X) → 드래그 가이드 오버레이·날짜축과 트랙 정렬이 어긋나지 않는다.
+          <div key={row.id} className={`border-y border-gray-200/70 bg-white transition-shadow ${isOpen ? "shadow-sm" : "shadow-sm hover:shadow-md"}`}>
             <div onDragEnter={() => onRowDragEnter(row.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center transition-colors hover:bg-gray-50/40 ${rowDragging === row.id ? "opacity-40" : ""}`}>
               <div className="flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 px-3 py-3">
                 <span draggable onDragStart={() => { rowDrag.current = row.id; setRowDragging(row.id); }} onDragEnd={onRowDragEnd} title="드래그로 순서 변경" className="shrink-0 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
@@ -646,7 +666,9 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
             </div>
 
             {isOpen && (
-              <div>
+              <div className="relative isolate">
+                {/* 펼친 카드 안에서 서브 영역만 옅은 음영 → 흰색(메인 행) ⊃ 음영(서브 묶음) 으로 카드 내부 위계를 잡는다. (z=-10이라 행 콘텐츠·격자 아래) */}
+                <span aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-gray-50/60" />
                 {row.subtasks.map((sub, si) => {
                   const sDone = sub.status === "done";
                   const subPct = effProgress(sub);
@@ -660,8 +682,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                     <div key={sub.id} onDragEnter={() => onSubDragEnter(row.id, sub.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center hover:bg-gray-50/40 ${subDragging === sub.id ? "opacity-40" : ""}`}>
                       <div className="relative flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 py-3 pr-4 pl-[78px]">
                         {/* 트리 연결선: 메인의 펼침 화살표(▸) 바로 아래에서 수직선이 내려와 각 서브 체크박스로 ㄴ자로 분기 → 메인/서브 위계를 또렷이 */}
-                        <span aria-hidden className={`pointer-events-none absolute left-[66px] w-px bg-gray-200 ${isLastSub ? "top-0 h-1/2" : "inset-y-0"}`} />
-                        <span aria-hidden className="pointer-events-none absolute left-[66px] top-1/2 h-px w-3 -translate-y-px bg-gray-200" />
+                        <span aria-hidden className={`pointer-events-none absolute left-[66px] w-0.5 -translate-x-px rounded-full bg-gray-300 ${isLastSub ? "top-0 h-1/2" : "inset-y-0"}`} />
+                        <span aria-hidden className="pointer-events-none absolute left-[66px] top-1/2 h-px w-3 -translate-y-px bg-gray-300" />
                         <span draggable onDragStart={() => { subDrag.current = { parentId: row.id, id: sub.id }; setSubDragging(sub.id); }} onDragEnd={() => onSubDragEnd(row.id)} title="드래그로 순서 변경" className="absolute left-2 top-1/2 z-10 -translate-y-1/2 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
                           <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
                         </span>
@@ -700,19 +722,20 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         const active = order.filter((r) => !isMainDone(r));
         const doneRows = order.filter((r) => isMainDone(r));
         return (
-          <>
+          // 카드들을 옅은 회색 배경 위에 세로 간격(space-y)으로 띄운다. 가로 패딩은 주지 않아 트랙↔날짜축 정렬을 보존.
+          <div className="space-y-2 bg-gray-50/50 py-2">
             {active.map(renderMainRow)}
             {doneRows.length > 0 && (
-              <div className="border-t border-gray-100">
+              <div className="border-t border-gray-100 pt-2">
                 <button onClick={() => setShowDone((v) => !v)} className="flex w-full items-center gap-1.5 px-5 py-2.5 text-xs font-medium text-gray-400 transition-colors hover:text-gray-600">
                   <svg className={`h-3.5 w-3.5 transition-transform ${showDone ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                   <svg className="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 011.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" /></svg>
                   {t("tasks.done")} {doneRows.length}
                 </button>
-                {showDone && doneRows.map(renderMainRow)}
+                {showDone && <div className="space-y-2">{doneRows.map(renderMainRow)}</div>}
               </div>
             )}
-          </>
+          </div>
         );
       })()}
 

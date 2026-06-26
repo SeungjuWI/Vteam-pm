@@ -74,86 +74,87 @@ export default function ProjectDetail({ project, members: initialMembers, allMem
         {t("projects.backToList")}
       </Link>
 
-      {/* 프로젝트 헤더 */}
-      <div className="flex gap-5 rounded-2xl bg-white p-5">
+      {/* 프로젝트 헤더 — 콤팩트 한 줄 바 */}
+      <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3">
         {project.imageUrl ? (
-          <Image src={project.imageUrl} alt={project.name} width={128} height={128} className="h-32 w-32 shrink-0 rounded-xl object-cover" />
+          <Image src={project.imageUrl} alt={project.name} width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
         ) : (
-          <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600">
-            <svg className="h-10 w-10 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+            <svg className="h-5 w-5 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
             </svg>
           </div>
         )}
 
-        <div className="flex flex-1 flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className={`inline-flex items-center gap-1.5 rounded-full ${sc.bg} px-2.5 py-0.5 text-[11px] font-medium ${sc.text}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
-                {statusLabelMap[project.status] || statusLabelMap.active}
-              </span>
-              <button onClick={() => setShowEdit(true)} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                </svg>
-              </button>
-            </div>
-            <h1 className="mt-2 text-xl font-bold text-gray-900">{project.name}</h1>
-            {project.description && <p className="mt-1 text-sm text-gray-500">{project.description}</p>}
+        {/* 이름 + 상태 + 설명 */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-base font-bold text-gray-900">{project.name}</h1>
+            <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full ${sc.bg} px-2.5 py-0.5 text-[11px] font-medium ${sc.text}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
+              {statusLabelMap[project.status] || statusLabelMap.active}
+            </span>
           </div>
+          {project.description && <p className="truncate text-xs text-gray-500">{project.description}</p>}
+        </div>
 
-          <div className="relative mt-3 flex items-center gap-2">
-            <button onClick={() => setShowMembers(!showMembers)} className="flex items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-gray-50">
-              {members.length > 0 ? (
-                <>
-                  <div className="flex -space-x-1.5">
-                    {members.slice(0, 5).map((m) => (
-                      <div key={m.id} className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-[10px] font-medium text-gray-600">
-                        {m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : m.name[0]}
-                      </div>
-                    ))}
-                  </div>
-                  <span className="text-xs text-gray-600">{members.length}{t("projects.members")}</span>
-                </>
-              ) : (
-                <span className="text-xs text-gray-600">{t("projects.noMembers")}</span>
-              )}
-            </button>
-
-            <button onClick={() => setShowAddMember(true)} className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-blue-400 hover:text-blue-500 active:scale-[0.95]">
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            </button>
-
-            {showMembers && (
+        {/* 멤버 + 추가 + 편집 */}
+        <div className="relative flex shrink-0 items-center gap-1.5">
+          <button onClick={() => setShowMembers(!showMembers)} className="flex items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-gray-50">
+            {members.length > 0 ? (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowMembers(false)} />
-                <div className="absolute top-full left-0 z-20 mt-2 w-64 rounded-xl border border-gray-200 bg-white py-2">
-                  <p className="px-4 pb-2 text-xs font-medium text-gray-600">{t("projects.participatingMembers")}</p>
-                  {members.length === 0 ? (
-                    <p className="px-4 py-3 text-sm text-gray-600">{t("projects.noParticipatingMembers")}</p>
-                  ) : (
-                    members.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between px-4 py-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-600">
-                            {m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" /> : m.name[0]}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{m.name}</p>
-                            <p className="text-[11px] text-gray-600">{m.position || m.email}</p>
-                          </div>
-                        </div>
-                        <RemoveMemberButton projectId={project.id} memberId={m.id} onRemoved={() => setMembers((prev) => prev.filter((x) => x.id !== m.id))} />
-                      </div>
-                    ))
-                  )}
+                <div className="flex -space-x-1.5">
+                  {members.slice(0, 5).map((m) => (
+                    <div key={m.id} className="flex h-7 w-7 items-center justify-center rounded-full border border-white bg-gray-100 text-[10px] font-medium text-gray-600">
+                      {m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : m.name[0]}
+                    </div>
+                  ))}
                 </div>
+                <span className="text-xs text-gray-600">{members.length}{t("projects.members")}</span>
               </>
+            ) : (
+              <span className="text-xs text-gray-600">{t("projects.noMembers")}</span>
             )}
-          </div>
+          </button>
+
+          <button onClick={() => setShowAddMember(true)} className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-blue-400 hover:text-blue-500 active:scale-[0.95]">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
+
+          <button onClick={() => setShowEdit(true)} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+            </svg>
+          </button>
+
+          {showMembers && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowMembers(false)} />
+              <div className="absolute top-full right-0 z-20 mt-2 w-64 rounded-xl border border-gray-200 bg-white py-2">
+                <p className="px-4 pb-2 text-xs font-medium text-gray-600">{t("projects.participatingMembers")}</p>
+                {members.length === 0 ? (
+                  <p className="px-4 py-3 text-sm text-gray-600">{t("projects.noParticipatingMembers")}</p>
+                ) : (
+                  members.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between px-4 py-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-600">
+                          {m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" /> : m.name[0]}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{m.name}</p>
+                          <p className="text-[11px] text-gray-600">{m.position || m.email}</p>
+                        </div>
+                      </div>
+                      <RemoveMemberButton projectId={project.id} memberId={m.id} onRemoved={() => setMembers((prev) => prev.filter((x) => x.id !== m.id))} />
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 

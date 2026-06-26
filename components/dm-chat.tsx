@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import Avatar from "@/components/avatar";
 import {
   getMessages,
@@ -40,6 +40,11 @@ const presenceKeys: Record<string, "dm.online" | "dm.away" | "dm.offline"> = {
   away: "dm.away",
   offline: "dm.offline",
 };
+
+function formatTime(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 // 봇 메시지용 간단한 마크다운 렌더러
 function ChatMarkdown({ text, isMine }: { text: string; isMine: boolean }) {
@@ -294,29 +299,19 @@ export default function DmChat({
       .channel(`dm-${member.id}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "direct_messages" },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "direct_messages",
+          // 나에게 온 메시지만 수신 (회사 전체 INSERT를 받아 클라에서 거르던 부하 제거)
+          filter: `receiver_id=eq.${currentUserId}`,
+        },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async (payload: any) => {
           const msg = payload.new as Message;
 
-          // 내가 보낸 메시지는 낙관적 업데이트로 이미 표시됨 → temp를 실제 ID로 교체만
-          if (msg.sender_id === currentUserId) {
-            setMessages((prev) => {
-              const tempIdx = prev.findIndex((m) => m.id.startsWith("temp-") && m.content === msg.content);
-              if (tempIdx !== -1) {
-                const next = [...prev];
-                next[tempIdx] = { ...msg, translated_content: null };
-                return next;
-              }
-              return prev;
-            });
-            return;
-          }
-
-          // 상대방 메시지
-          const isRelevant =
-            msg.sender_id === member.id && msg.receiver_id === currentUserId;
-          if (!isRelevant) return;
+          // 현재 열린 대화 상대가 보낸 메시지만 처리 (내가 보낸 건 낙관적 업데이트로 이미 표시됨)
+          if (msg.sender_id !== member.id) return;
 
           if (msg.sender_language && msg.sender_language !== currentUserLang) {
             const result = await translateSingleMessage(
@@ -382,26 +377,87 @@ export default function DmChat({
     }
   };
 
-  const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent, msg: Message) => {
     // 번역된 메시지에만 우클릭 메뉴
     if (!msg.translated_content) return;
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, msgId: msg.id });
-  };
+  }, []);
 
-  const toggleOriginal = (msgId: string) => {
+  const toggleOriginal = useCallback((msgId: string) => {
     setShowOriginal((prev) => {
       const next = new Set(prev);
       if (next.has(msgId)) next.delete(msgId);
       else next.add(msgId);
       return next;
     });
-  };
+  }, []);
+
+  // 메시지 리스트는 messages/showOriginal 변경 시에만 재계산
+  // (입력창 타이핑 등 다른 state 변경 시 버블 전체 재렌더 방지)
+  const messageList = useMemo(
+    () =>
+      messages.map((msg, idx) => {
+        const isMine = msg.sender_id === currentUserId;
+        const hasTranslation = !!msg.translated_content;
+        const displayText = hasTranslation ? msg.translated_content! : msg.content;
+        const isShowingOriginal = showOriginal.has(msg.id);
+
+        // 같은 시간 + 같은 발신자의 연속 메시지면 마지막 것만 시간 표시
+        const time = formatTime(msg.created_at);
+        const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
+        const showTime =
+          !nextMsg ||
+          nextMsg.sender_id !== msg.sender_id ||
+          formatTime(nextMsg.created_at) !== time;
+
+        return (
+          <div
+            key={msg.id}
+            className={`flex ${isMine ? "justify-end" : "justify-start"} ${showTime || hasTranslation ? "mb-3" : "mb-1"}`}
+          >
+            <div className={`flex max-w-[75%] flex-col ${isMine ? "items-end" : "items-start"}`}>
+              <div
+                onContextMenu={(e) => handleContextMenu(e, msg)}
+                className={`select-text rounded-2xl px-3 py-2 text-sm ${
+                  isMine
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-100 text-gray-900"
+                } ${hasTranslation ? "cursor-context-menu" : ""}`}
+              >
+                {!isMine && member.is_bot ? (
+                  <ChatMarkdown text={displayText} isMine={isMine} />
+                ) : (
+                  displayText
+                )}
+              </div>
+              {(showTime || hasTranslation) && (
+                <div className="flex items-center gap-1.5">
+                  {showTime && (
+                    <span className="mt-0.5 text-[10px] text-gray-300">
+                      {time}
+                    </span>
+                  )}
+                  {hasTranslation && (
+                    <span className="mt-0.5 text-[10px] text-blue-300">{t("dm.translated")}</span>
+                  )}
+                </div>
+              )}
+              {/* 원문 보기 */}
+              {isShowingOriginal && hasTranslation && (
+                <OriginalPopup
+                  original={msg.content}
+                  senderLang={msg.sender_language ?? ""}
+                  labelText={t("dm.original")}
+                  onClose={() => toggleOriginal(msg.id)}
+                />
+              )}
+            </div>
+          </div>
+        );
+      }),
+    [messages, showOriginal, currentUserId, member.is_bot, t, handleContextMenu, toggleOriginal]
+  );
 
   const isTranslated = member.language && member.language !== currentUserLang;
 
@@ -516,65 +572,7 @@ export default function DmChat({
           </div>
         ) : (
           <>
-          {messages.map((msg, idx) => {
-            const isMine = msg.sender_id === currentUserId;
-            const hasTranslation = !!msg.translated_content;
-            const displayText = hasTranslation ? msg.translated_content! : msg.content;
-            const isShowingOriginal = showOriginal.has(msg.id);
-
-            // 같은 시간 + 같은 발신자의 연속 메시지면 마지막 것만 시간 표시
-            const time = formatTime(msg.created_at);
-            const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
-            const showTime =
-              !nextMsg ||
-              nextMsg.sender_id !== msg.sender_id ||
-              formatTime(nextMsg.created_at) !== time;
-
-            return (
-              <div
-                key={msg.id}
-                className={`flex ${isMine ? "justify-end" : "justify-start"} ${showTime || hasTranslation ? "mb-3" : "mb-1"}`}
-              >
-                <div className={`flex max-w-[75%] flex-col ${isMine ? "items-end" : "items-start"}`}>
-                  <div
-                    onContextMenu={(e) => handleContextMenu(e, msg)}
-                    className={`select-text rounded-2xl px-3 py-2 text-sm ${
-                      isMine
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-100 text-gray-900"
-                    } ${hasTranslation ? "cursor-context-menu" : ""}`}
-                  >
-                    {!isMine && member.is_bot ? (
-                      <ChatMarkdown text={displayText} isMine={isMine} />
-                    ) : (
-                      displayText
-                    )}
-                  </div>
-                  {(showTime || hasTranslation) && (
-                    <div className="flex items-center gap-1.5">
-                      {showTime && (
-                        <span className="mt-0.5 text-[10px] text-gray-300">
-                          {time}
-                        </span>
-                      )}
-                      {hasTranslation && (
-                        <span className="mt-0.5 text-[10px] text-blue-300">{t("dm.translated")}</span>
-                      )}
-                    </div>
-                  )}
-                  {/* 원문 보기 */}
-                  {isShowingOriginal && hasTranslation && (
-                    <OriginalPopup
-                      original={msg.content}
-                      senderLang={msg.sender_language ?? ""}
-                      labelText={t("dm.original")}
-                      onClose={() => toggleOriginal(msg.id)}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {messageList}
           {botTyping && (
             <div className="flex justify-start">
               <div className="flex items-center gap-1.5 rounded-2xl bg-gray-100 px-4 py-2.5">

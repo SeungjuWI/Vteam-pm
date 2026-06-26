@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import Avatar from "@/components/avatar";
 import {
   getGroupDmMessages,
@@ -121,6 +121,11 @@ const MIN_W = 320;
 const MAX_W = 560;
 const MIN_H = 360;
 const MAX_H = 680;
+
+function formatTime(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 export default function GroupDmChat({
   room,
@@ -310,29 +315,98 @@ export default function GroupDmChat({
     }
   };
 
-  const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, msg: GroupMessage) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent, msg: GroupMessage) => {
     if (!msg.translated_content) return;
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, msgId: msg.id });
-  };
+  }, []);
 
-  const toggleOriginal = (msgId: string) => {
+  const toggleOriginal = useCallback((msgId: string) => {
     setShowOriginal((prev) => {
       const next = new Set(prev);
       if (next.has(msgId)) next.delete(msgId);
       else next.add(msgId);
       return next;
     });
-  };
+  }, []);
 
   // 다국어 여부
   const hasMultiLang = room.members.some(
     (m) => m.language && m.language !== currentUserLang
+  );
+
+  // 메시지 리스트는 messages/showOriginal 변경 시에만 재계산
+  // (입력창 타이핑 등 다른 state 변경 시 버블 전체 재렌더 방지)
+  const messageList = useMemo(
+    () =>
+      messages.map((msg, idx) => {
+        const isMine = msg.sender_id === currentUserId;
+        const hasTranslation = !!msg.translated_content;
+        const displayText = hasTranslation ? msg.translated_content! : msg.content;
+        const isShowingOriginal = showOriginal.has(msg.id);
+
+        // 이전 메시지와 같은 발신자면 이름/아바타 숨김
+        const prevMsg = idx > 0 ? messages[idx - 1] : null;
+        const showSenderInfo = !isMine && (!prevMsg || prevMsg.sender_id !== msg.sender_id);
+
+        // 같은 시간 + 같은 발신자의 연속 메시지면 마지막 것만 시간 표시
+        const time = formatTime(msg.created_at);
+        const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
+        const showTime =
+          !nextMsg ||
+          nextMsg.sender_id !== msg.sender_id ||
+          formatTime(nextMsg.created_at) !== time;
+
+        return (
+          <div key={msg.id} className={showTime || hasTranslation ? "mb-3" : "mb-1"}>
+            {/* 발신자 정보 (그룹에서만) */}
+            {showSenderInfo && (
+              <div className="mb-1 flex items-center gap-1.5">
+                <Avatar url={msg.sender_avatar_url} name={msg.sender_name} size={20} />
+                <span className="text-[11px] font-medium text-gray-500">
+                  {msg.sender_name}
+                </span>
+              </div>
+            )}
+            <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+              <div className={`flex max-w-[75%] flex-col ${isMine ? "items-end" : "items-start"}`}>
+                <div
+                  onContextMenu={(e) => handleContextMenu(e, msg)}
+                  className={`select-text rounded-2xl px-3 py-2 text-sm ${
+                    isMine
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-100 text-gray-900"
+                  } ${hasTranslation ? "cursor-context-menu" : ""} ${!isMine && !showSenderInfo ? "ml-[26px]" : ""}`}
+                >
+                  {displayText}
+                </div>
+                {(showTime || hasTranslation) && (
+                  <div className={`flex items-center gap-1.5 ${!isMine && !showSenderInfo ? "ml-[26px]" : ""}`}>
+                    {showTime && (
+                      <span className="mt-0.5 text-[10px] text-gray-300">
+                        {time}
+                      </span>
+                    )}
+                    {hasTranslation && (
+                      <span className="mt-0.5 text-[10px] text-blue-300">{t("dm.translated")}</span>
+                    )}
+                  </div>
+                )}
+                {/* 원문 보기 */}
+                {isShowingOriginal && hasTranslation && (
+                  <OriginalPopup
+                    original={msg.content}
+                    senderLang={msg.sender_language ?? ""}
+                    labelText={t("dm.original")}
+                    onClose={() => toggleOriginal(msg.id)}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }),
+    [messages, showOriginal, currentUserId, t, handleContextMenu, toggleOriginal]
   );
 
   if (isMinimized) {
@@ -491,73 +565,7 @@ export default function GroupDmChat({
             <p className="text-xs text-gray-400">{t("groupDm.startChat")}</p>
           </div>
         ) : (
-          messages.map((msg, idx) => {
-            const isMine = msg.sender_id === currentUserId;
-            const hasTranslation = !!msg.translated_content;
-            const displayText = hasTranslation ? msg.translated_content! : msg.content;
-            const isShowingOriginal = showOriginal.has(msg.id);
-
-            // 이전 메시지와 같은 발신자면 이름/아바타 숨김
-            const prevMsg = idx > 0 ? messages[idx - 1] : null;
-            const showSenderInfo = !isMine && (!prevMsg || prevMsg.sender_id !== msg.sender_id);
-
-            // 같은 시간 + 같은 발신자의 연속 메시지면 마지막 것만 시간 표시
-            const time = formatTime(msg.created_at);
-            const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
-            const showTime =
-              !nextMsg ||
-              nextMsg.sender_id !== msg.sender_id ||
-              formatTime(nextMsg.created_at) !== time;
-
-            return (
-              <div key={msg.id} className={showTime || hasTranslation ? "mb-3" : "mb-1"}>
-                {/* 발신자 정보 (그룹에서만) */}
-                {showSenderInfo && (
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <Avatar url={msg.sender_avatar_url} name={msg.sender_name} size={20} />
-                    <span className="text-[11px] font-medium text-gray-500">
-                      {msg.sender_name}
-                    </span>
-                  </div>
-                )}
-                <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                  <div className={`flex max-w-[75%] flex-col ${isMine ? "items-end" : "items-start"}`}>
-                    <div
-                      onContextMenu={(e) => handleContextMenu(e, msg)}
-                      className={`select-text rounded-2xl px-3 py-2 text-sm ${
-                        isMine
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-100 text-gray-900"
-                      } ${hasTranslation ? "cursor-context-menu" : ""} ${!isMine && !showSenderInfo ? "ml-[26px]" : ""}`}
-                    >
-                      {displayText}
-                    </div>
-                    {(showTime || hasTranslation) && (
-                      <div className={`flex items-center gap-1.5 ${!isMine && !showSenderInfo ? "ml-[26px]" : ""}`}>
-                        {showTime && (
-                          <span className="mt-0.5 text-[10px] text-gray-300">
-                            {time}
-                          </span>
-                        )}
-                        {hasTranslation && (
-                          <span className="mt-0.5 text-[10px] text-blue-300">{t("dm.translated")}</span>
-                        )}
-                      </div>
-                    )}
-                    {/* 원문 보기 */}
-                    {isShowingOriginal && hasTranslation && (
-                      <OriginalPopup
-                        original={msg.content}
-                        senderLang={msg.sender_language ?? ""}
-                        labelText={t("dm.original")}
-                        onClose={() => toggleOriginal(msg.id)}
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })
+          messageList
         )}
       </div>
 

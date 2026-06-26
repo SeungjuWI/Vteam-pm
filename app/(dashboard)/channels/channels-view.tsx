@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import Avatar from "@/components/avatar";
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
@@ -277,6 +277,13 @@ export default function ChannelsView({
 
 // ===== 채널 채팅 패널 (풀페이지) =====
 
+function formatTime(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes()
+  ).padStart(2, "0")}`;
+}
+
 function ChannelChat({
   channelId,
   channelName,
@@ -433,24 +440,117 @@ function ChannelChat({
     }
   };
 
-  const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${String(d.getHours()).padStart(2, "0")}:${String(
-      d.getMinutes()
-    ).padStart(2, "0")}`;
-  };
-
-  const toggleOriginal = (msgId: string) => {
+  const toggleOriginal = useCallback((msgId: string) => {
     setShowOriginal((prev) => {
       const next = new Set(prev);
       if (next.has(msgId)) next.delete(msgId);
       else next.add(msgId);
       return next;
     });
-  };
+  }, []);
 
   const hasMultiLang = members.some(
     (m) => m.language && m.language !== currentUserLang
+  );
+
+  // 메시지 리스트는 messages/showOriginal 변경 시에만 재계산
+  // (입력창 타이핑 등 다른 state 변경 시 버블 전체 재렌더 방지)
+  const messageList = useMemo(
+    () =>
+      messages.map((msg, idx) => {
+        const isMine = msg.sender_id === currentUserId;
+        const hasTranslation = !!msg.translated_content;
+        const displayText = hasTranslation
+          ? msg.translated_content!
+          : msg.content;
+        const isShowingOriginal = showOriginal.has(msg.id);
+
+        const prevMsg = idx > 0 ? messages[idx - 1] : null;
+        const showSenderInfo =
+          !isMine && (!prevMsg || prevMsg.sender_id !== msg.sender_id);
+
+        const time = formatTime(msg.created_at);
+        const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
+        const showTime =
+          !nextMsg ||
+          nextMsg.sender_id !== msg.sender_id ||
+          formatTime(nextMsg.created_at) !== time;
+        const senderLang = LANGUAGES.find(
+          (l) => l.code === msg.sender_language
+        );
+
+        return (
+          <div
+            key={msg.id}
+            className={showTime || hasTranslation ? "mb-3" : "mb-1"}
+          >
+            {showSenderInfo && (
+              <div className="mb-1 flex items-center gap-1.5">
+                <Avatar
+                  url={msg.sender_avatar_url}
+                  name={msg.sender_name}
+                  size={20}
+                />
+                <span className="text-[11px] font-medium text-gray-500">
+                  {msg.sender_name}
+                </span>
+              </div>
+            )}
+            <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`flex max-w-[70%] flex-col ${
+                  isMine ? "items-end" : "items-start"
+                }`}
+              >
+                <div
+                  onClick={() =>
+                    hasTranslation && toggleOriginal(msg.id)
+                  }
+                  className={`select-text rounded-2xl px-3.5 py-2 text-sm ${
+                    isMine
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-100 text-gray-900"
+                  } ${hasTranslation ? "cursor-pointer" : ""} ${
+                    !isMine && !showSenderInfo ? "ml-[26px]" : ""
+                  }`}
+                >
+                  {displayText}
+                </div>
+                {(showTime || hasTranslation) && (
+                  <div
+                    className={`flex items-center gap-1.5 ${
+                      !isMine && !showSenderInfo ? "ml-[26px]" : ""
+                    }`}
+                  >
+                    {showTime && (
+                      <span className="mt-0.5 text-[10px] text-gray-300">
+                        {time}
+                      </span>
+                    )}
+                    {hasTranslation && (
+                      <span className="mt-0.5 text-[10px] text-blue-400">
+                        {t("dm.translated")}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {isShowingOriginal && hasTranslation && (
+                  <div className="mt-1 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                    <div className="mb-1 text-[10px] text-gray-400">
+                      {t("dm.original")}{" "}
+                      {senderLang
+                        ? `${senderLang.flag} ${senderLang.label}`
+                        : ""}
+                    </div>
+                    <p className="text-xs text-gray-600">{msg.content}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }),
+    [messages, showOriginal, currentUserId, t, toggleOriginal]
   );
 
   return (
@@ -502,99 +602,7 @@ function ChannelChat({
             <p className="text-xs text-gray-400">{t("channels.startChat")}</p>
           </div>
         ) : (
-          messages.map((msg, idx) => {
-            const isMine = msg.sender_id === currentUserId;
-            const hasTranslation = !!msg.translated_content;
-            const displayText = hasTranslation
-              ? msg.translated_content!
-              : msg.content;
-            const isShowingOriginal = showOriginal.has(msg.id);
-
-            const prevMsg = idx > 0 ? messages[idx - 1] : null;
-            const showSenderInfo =
-              !isMine && (!prevMsg || prevMsg.sender_id !== msg.sender_id);
-
-            const time = formatTime(msg.created_at);
-            const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
-            const showTime =
-              !nextMsg ||
-              nextMsg.sender_id !== msg.sender_id ||
-              formatTime(nextMsg.created_at) !== time;
-            const senderLang = LANGUAGES.find(
-              (l) => l.code === msg.sender_language
-            );
-
-            return (
-              <div
-                key={msg.id}
-                className={showTime || hasTranslation ? "mb-3" : "mb-1"}
-              >
-                {showSenderInfo && (
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <Avatar
-                      url={msg.sender_avatar_url}
-                      name={msg.sender_name}
-                      size={20}
-                    />
-                    <span className="text-[11px] font-medium text-gray-500">
-                      {msg.sender_name}
-                    </span>
-                  </div>
-                )}
-                <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`flex max-w-[70%] flex-col ${
-                      isMine ? "items-end" : "items-start"
-                    }`}
-                  >
-                    <div
-                      onClick={() =>
-                        hasTranslation && toggleOriginal(msg.id)
-                      }
-                      className={`select-text rounded-2xl px-3.5 py-2 text-sm ${
-                        isMine
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-100 text-gray-900"
-                      } ${hasTranslation ? "cursor-pointer" : ""} ${
-                        !isMine && !showSenderInfo ? "ml-[26px]" : ""
-                      }`}
-                    >
-                      {displayText}
-                    </div>
-                    {(showTime || hasTranslation) && (
-                      <div
-                        className={`flex items-center gap-1.5 ${
-                          !isMine && !showSenderInfo ? "ml-[26px]" : ""
-                        }`}
-                      >
-                        {showTime && (
-                          <span className="mt-0.5 text-[10px] text-gray-300">
-                            {time}
-                          </span>
-                        )}
-                        {hasTranslation && (
-                          <span className="mt-0.5 text-[10px] text-blue-400">
-                            {t("dm.translated")}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {isShowingOriginal && hasTranslation && (
-                      <div className="mt-1 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                        <div className="mb-1 text-[10px] text-gray-400">
-                          {t("dm.original")}{" "}
-                          {senderLang
-                            ? `${senderLang.flag} ${senderLang.label}`
-                            : ""}
-                        </div>
-                        <p className="text-xs text-gray-600">{msg.content}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })
+          messageList
         )}
       </div>
 

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Pretendard + Nunito (loaded via next/font) */
+  /* Pretendard (loaded via next/font/local) */
   --font-sans: var(--font-pretendard), "-apple-system", "sans-serif";
 
   /* Toss Gray Scale */
@@ -43,6 +43,8 @@
 body {
   color: #191F28;
   background: #F7F8FA;
+  letter-spacing: -0.3px;
+  font-feature-settings: "ss01";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-user-select: none;

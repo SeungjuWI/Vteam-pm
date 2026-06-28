@@ -44,6 +44,42 @@ export function playNotificationSound() {
   }
 }
 
+// 멘션 전용 소리 — 일반 알림과 구분되는 밝은 3음 상승 차임
+export function playMentionSound() {
+  try {
+    const ctx = new AudioContext();
+    const t = ctx.currentTime;
+
+    // 도-미-솔 느낌의 맑은 상승음
+    const notes = [
+      { start: 0, freq: 880 },
+      { start: 0.1, freq: 1108 },
+      { start: 0.2, freq: 1318 },
+    ];
+
+    for (const note of notes) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(note.freq, t + note.start);
+
+      gain.gain.setValueAtTime(0.0001, t + note.start);
+      gain.gain.exponentialRampToValueAtTime(0.3, t + note.start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + note.start + 0.22);
+
+      osc.start(t + note.start);
+      osc.stop(t + note.start + 0.24);
+    }
+
+    setTimeout(() => ctx.close(), 700);
+  } catch {
+    // 미지원/백그라운드 차단 시 무시
+  }
+}
+
 export function requestNotificationPermission() {
   if (typeof window === "undefined" || !("Notification" in window)) return;
   if (Notification.permission === "default") {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Avatar from "@/components/avatar";
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
@@ -98,16 +99,32 @@ export default function ChannelsView({
   companyMembers: CompanyMember[];
 }) {
   const t = useT();
+  const searchParams = useSearchParams();
   const [departments, setDepartments] =
     useState<DepartmentItem[]>(initialDepartments);
+  // ?channel=<id> (멘션 알림 클릭 등)로 들어오면 해당 채널을 먼저 선택
+  const allChannelIds = initialDepartments.flatMap((d) =>
+    d.channels.map((c) => c.id)
+  );
+  const channelParam = searchParams.get("channel");
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
-    initialDepartments[0]?.channels[0]?.id ?? null
+    (channelParam && allChannelIds.includes(channelParam) ? channelParam : null) ??
+      initialDepartments[0]?.channels[0]?.id ??
+      null
   );
   const [showManage, setShowManage] = useState(false);
   const [addingChannelDeptId, setAddingChannelDeptId] = useState<string | null>(
     null
   );
   const [newChannelName, setNewChannelName] = useState("");
+
+  // 채널 페이지에 이미 있는 상태에서 ?channel= 링크로 다시 들어오면 선택 갱신
+  useEffect(() => {
+    if (channelParam && allChannelIds.includes(channelParam)) {
+      setSelectedChannelId(channelParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelParam]);
 
   const refreshDepartments = useCallback(async () => {
     const data = await getMyChannels();

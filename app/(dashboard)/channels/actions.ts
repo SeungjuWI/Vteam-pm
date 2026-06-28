@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { translateText } from "@/lib/translate";
+import { extractMentionIds, stripChatMarkup } from "@/lib/chat-markup";
 
 // ===== 공통 헬퍼 =====
 
@@ -563,6 +564,45 @@ export async function sendChannelMessage(
     .single();
 
   if (error) return { error: "메시지 전송에 실패했습니다" };
+
+  // 멘션된 사용자에게 벨 알림 생성 (본인 제외, 채널 멤버만)
+  const mentionIds = extractMentionIds(text).filter((id) => id !== userId);
+  if (mentionIds.length > 0) {
+    const { data: channel } = await adminClient
+      .from("dept_channels")
+      .select("name, department_id")
+      .eq("id", channelId)
+      .single();
+    const { data: sender } = await adminClient
+      .from("profiles")
+      .select("name")
+      .eq("id", userId)
+      .single();
+    // 멘션 대상이 같은 회사 멤버인지 확인 (잘못된/외부 uid 방지)
+    const { data: validMembers } = await adminClient
+      .from("profiles")
+      .select("id")
+      .in("id", mentionIds)
+      .eq("company_id", profile.company_id);
+    const validIds = (validMembers ?? []).map((m) => m.id);
+
+    if (validIds.length > 0) {
+      const senderName = sender?.name ?? "누군가";
+      const channelName = channel?.name ?? "채널";
+      const snippet = stripChatMarkup(text).slice(0, 80);
+      await adminClient.from("notifications").insert(
+        validIds.map((mid) => ({
+          user_id: mid,
+          company_id: profile.company_id,
+          type: "general",
+          title: `${senderName}님이 회원님을 멘션했어요`,
+          message: `#${channelName}: ${snippet}`,
+          link: `/channels?channel=${channelId}`,
+        }))
+      );
+    }
+  }
+
   return { success: true, id: data.id as string };
 }
 

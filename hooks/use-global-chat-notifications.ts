@@ -7,8 +7,10 @@ import {
   getTotalChatUnread,
 } from "@/app/(dashboard)/chat-notify-actions";
 import { isChatActive } from "@/lib/active-chat";
+import { stripChatMarkup } from "@/lib/chat-markup";
 import {
   playNotificationSound,
+  playMentionSound,
   requestNotificationPermission,
   showBrowserNotification,
 } from "@/lib/notification-sound";
@@ -25,6 +27,7 @@ interface Incoming {
   key: string; // active-chat 레지스트리 키
   senderId: string;
   content: string;
+  mentioned?: boolean; // 이 메시지가 나를 멘션했는지
 }
 
 // 페이지 어디에 있든(채팅창을 안 열어둬도) 들어오는 모든 메시지를 듣고
@@ -81,7 +84,7 @@ export function useGlobalChatNotifications(currentUserId: string) {
   useEffect(() => {
     const supabase = createClient();
 
-    const handle = ({ key, senderId, content }: Incoming) => {
+    const handle = ({ key, senderId, content, mentioned }: Incoming) => {
       if (senderId === currentUserId) return; // 내가 보낸 건 제외
 
       const viewing =
@@ -95,9 +98,13 @@ export function useGlobalChatNotifications(currentUserId: string) {
       if (viewing) return; // 지금 보고 있으면 소리/알림 생략
 
       const name = ctxRef.current.names[senderId] ?? "새 메시지";
-      playNotificationSound();
+      if (mentioned) playMentionSound();
+      else playNotificationSound();
       // 탭이 백그라운드일 때만 실제 OS 알림 (함수 내부에서 자체 판단)
-      showBrowserNotification(name, content);
+      showBrowserNotification(
+        mentioned ? `${name}님이 회원님을 멘션했어요` : name,
+        content
+      );
     };
 
     const channel = supabase
@@ -147,7 +154,11 @@ export function useGlobalChatNotifications(currentUserId: string) {
           handle({
             key: `channel-${m.channel_id}`,
             senderId: m.sender_id,
-            content: m.content,
+            content: stripChatMarkup(m.content ?? ""),
+            // 멘션 토큰 @[이름](uid) 에 내 uid가 들어있으면 멘션됨
+            mentioned:
+              typeof m.content === "string" &&
+              m.content.includes(`](${currentUserId})`),
           });
         }
       )

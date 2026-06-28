@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   getChatNotifyContext,
@@ -39,12 +39,12 @@ export function useGlobalChatNotifications(currentUserId: string) {
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 미읽음 합계 → 타이틀 갱신 (가벼운 디바운스로 연속 이벤트 합침)
-  const refreshTitle = useRef(() => {
+  const refreshTitle = useCallback(() => {
     if (titleTimer.current) clearTimeout(titleTimer.current);
     titleTimer.current = setTimeout(() => {
       getTotalChatUnread().then(setTitleBadge);
     }, 500);
-  }).current;
+  }, []);
 
   // 알림 권한 요청 + 컨텍스트 로드 + 초기 타이틀
   useEffect(() => {

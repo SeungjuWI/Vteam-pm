@@ -385,7 +385,9 @@ export async function getChannelMessages(channelId: string) {
 
   const { data } = await adminClient
     .from("dept_channel_messages")
-    .select("id, channel_id, sender_id, content, sender_language, created_at")
+    .select(
+      "id, channel_id, sender_id, content, sender_language, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name"
+    )
     .eq("channel_id", channelId)
     .order("created_at", { ascending: true })
     .limit(100);
@@ -402,6 +404,8 @@ export async function getChannelMessages(channelId: string) {
   const needsTranslation = data.filter(
     (m) =>
       m.sender_id !== userId &&
+      m.content &&
+      !m.deleted_at &&
       m.sender_language &&
       m.sender_language !== myLang
   );
@@ -463,17 +467,27 @@ export async function getChannelMessages(channelId: string) {
   });
 }
 
-export async function sendChannelMessage(channelId: string, content: string) {
+export async function sendChannelMessage(
+  channelId: string,
+  content: string,
+  attachment?: { url: string; type: "image" | "video" | "file"; name: string } | null
+) {
   const me = await getMe();
   if (!me) return { error: "로그인이 필요합니다" };
   const { userId, profile, adminClient } = me;
   if (!(await channelInCompany(adminClient, channelId, profile.company_id))) return { error: "권한이 없습니다" };
 
+  const text = content.trim();
+  if (!text && !attachment) return { error: "내용을 입력해주세요" };
+
   const { error } = await adminClient.from("dept_channel_messages").insert({
     channel_id: channelId,
     sender_id: userId,
-    content: content.trim(),
+    content: text,
     sender_language: profile.language ?? "ko",
+    attachment_url: attachment?.url ?? null,
+    attachment_type: attachment?.type ?? null,
+    attachment_name: attachment?.name ?? null,
   });
 
   if (error) return { error: "메시지 전송에 실패했습니다" };

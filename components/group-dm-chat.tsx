@@ -8,10 +8,22 @@ import {
   markGroupDmAsRead,
   translateSingleGroupMessage,
 } from "@/app/(dashboard)/group-dm/actions";
+import {
+  editGroupMessage,
+  deleteGroupMessage,
+  uploadChatAttachment,
+} from "@/app/(dashboard)/chat-message-actions";
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
 import { setChatActive } from "@/lib/active-chat";
+import {
+  AttachmentView,
+  AttachmentButton,
+  MessageActions,
+  EditBox,
+  type AttachmentType,
+} from "@/components/chat/message-extras";
 
 interface GroupMessage {
   id: string;
@@ -23,6 +35,11 @@ interface GroupMessage {
   sender_avatar_url: string | null;
   translated_content?: string | null;
   created_at: string;
+  edited_at?: string | null;
+  deleted_at?: string | null;
+  attachment_url?: string | null;
+  attachment_type?: AttachmentType | null;
+  attachment_name?: string | null;
 }
 
 interface RoomMember {
@@ -153,6 +170,8 @@ export default function GroupDmChat({
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msgId: string } | null>(null);
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
   const [showMembers, setShowMembers] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resizingRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
@@ -268,6 +287,50 @@ export default function GroupDmChat({
           markGroupDmAsRead(room.id);
         }
       )
+      // 멤버가 메시지를 수정/삭제하면 반영
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "group_dm_messages",
+          filter: `room_id=eq.${room.id}`,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async (payload: any) => {
+          const msg = payload.new as GroupMessage;
+          if (msg.sender_id === currentUserId) {
+            // 내 수정/삭제는 낙관적 반영됨 → id 기준 병합만
+            setMessages((prev) =>
+              prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m))
+            );
+            return;
+          }
+
+          let translated: string | null = null;
+          if (
+            !msg.deleted_at &&
+            msg.content &&
+            msg.sender_language &&
+            msg.sender_language !== currentUserLang
+          ) {
+            const result = await translateSingleGroupMessage(
+              msg.id,
+              msg.content,
+              msg.sender_language
+            );
+            translated = result.translated ?? null;
+          }
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === msg.id
+                ? { ...m, ...msg, translated_content: translated }
+                : m
+            )
+          );
+        }
+      )
       .subscribe();
 
     return () => {
@@ -320,6 +383,80 @@ export default function GroupDmChat({
     }
   };
 
+  // 첨부 파일 선택 → 업로드 후 메시지로 전송
+  const handleAttach = async (file: File) => {
+    if (uploading || sending) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const up = await uploadChatAttachment(fd);
+    if (up.error || !up.url) {
+      setUploading(false);
+      alert(up.error ?? "업로드 실패");
+      return;
+    }
+
+    const myProfile = room.members.find((m) => m.id === currentUserId);
+    const optimistic: GroupMessage = {
+      id: `temp-${Date.now()}`,
+      room_id: room.id,
+      sender_id: currentUserId,
+      content: "",
+      sender_language: currentUserLang,
+      sender_name: myProfile?.name ?? "",
+      sender_avatar_url: myProfile?.avatar_url ?? null,
+      translated_content: null,
+      created_at: new Date().toISOString(),
+      attachment_url: up.url,
+      attachment_type: up.type,
+      attachment_name: up.name,
+    };
+    setMessages((prev) => [...prev, optimistic]);
+    setTimeout(scrollToBottom, 50);
+
+    const result = await sendGroupDmMessage(room.id, "", {
+      url: up.url,
+      type: up.type!,
+      name: up.name!,
+    });
+    setUploading(false);
+    if (result.error) {
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+    }
+  };
+
+  // 내 메시지 수정 저장
+  const handleSaveEdit = useCallback(async (msgId: string, value: string) => {
+    setEditingId(null);
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? { ...m, content: value, edited_at: new Date().toISOString() }
+          : m
+      )
+    );
+    await editGroupMessage(msgId, value);
+  }, []);
+
+  // 내 메시지 삭제
+  const handleDelete = useCallback(async (msgId: string) => {
+    if (!confirm("메시지를 삭제할까요?")) return;
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              deleted_at: new Date().toISOString(),
+              content: "",
+              translated_content: null,
+              attachment_url: null,
+            }
+          : m
+      )
+    );
+    await deleteGroupMessage(msgId);
+  }, []);
+
   const handleContextMenu = useCallback((e: React.MouseEvent, msg: GroupMessage) => {
     if (!msg.translated_content) return;
     e.preventDefault();
@@ -346,13 +483,17 @@ export default function GroupDmChat({
     () =>
       messages.map((msg, idx) => {
         const isMine = msg.sender_id === currentUserId;
-        const hasTranslation = !!msg.translated_content;
+        const isDeleted = !!msg.deleted_at;
+        const hasAttachment = !!msg.attachment_url && !isDeleted;
+        const hasTranslation = !!msg.translated_content && !isDeleted;
         const displayText = hasTranslation ? msg.translated_content! : msg.content;
         const isShowingOriginal = showOriginal.has(msg.id);
+        const canManage = isMine && !isDeleted && !msg.id.startsWith("temp-");
 
         // 이전 메시지와 같은 발신자면 이름/아바타 숨김
         const prevMsg = idx > 0 ? messages[idx - 1] : null;
         const showSenderInfo = !isMine && (!prevMsg || prevMsg.sender_id !== msg.sender_id);
+        const offset = !isMine && !showSenderInfo ? "ml-[26px]" : "";
 
         // 같은 시간 + 같은 발신자의 연속 메시지면 마지막 것만 시간 표시
         const time = formatTime(msg.created_at);
@@ -375,18 +516,51 @@ export default function GroupDmChat({
             )}
             <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
               <div className={`flex max-w-[75%] flex-col ${isMine ? "items-end" : "items-start"}`}>
-                <div
-                  onContextMenu={(e) => handleContextMenu(e, msg)}
-                  className={`select-text rounded-2xl px-3 py-2 text-sm ${
-                    isMine
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 text-gray-900"
-                  } ${hasTranslation ? "cursor-context-menu" : ""} ${!isMine && !showSenderInfo ? "ml-[26px]" : ""}`}
-                >
-                  {displayText}
-                </div>
-                {(showTime || hasTranslation) && (
-                  <div className={`flex items-center gap-1.5 ${!isMine && !showSenderInfo ? "ml-[26px]" : ""}`}>
+                {editingId === msg.id ? (
+                  <EditBox
+                    initialValue={msg.content}
+                    onSave={(v) => handleSaveEdit(msg.id, v)}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : isDeleted ? (
+                  <div className={`rounded-2xl bg-gray-50 px-3 py-2 text-sm italic text-gray-400 ${offset}`}>
+                    삭제된 메시지입니다
+                  </div>
+                ) : (
+                  <div className={`group flex items-center gap-1 ${offset}`}>
+                    {canManage && (
+                      <MessageActions
+                        canEdit={!hasAttachment}
+                        onEdit={() => setEditingId(msg.id)}
+                        onDelete={() => handleDelete(msg.id)}
+                      />
+                    )}
+                    <div className="flex flex-col gap-1">
+                      {hasAttachment && (
+                        <AttachmentView
+                          url={msg.attachment_url!}
+                          type={msg.attachment_type ?? null}
+                          name={msg.attachment_name ?? null}
+                          isMine={isMine}
+                        />
+                      )}
+                      {displayText && (
+                        <div
+                          onContextMenu={(e) => handleContextMenu(e, msg)}
+                          className={`select-text rounded-2xl px-3 py-2 text-sm ${
+                            isMine
+                              ? "bg-blue-500 text-white"
+                              : "bg-gray-100 text-gray-900"
+                          } ${hasTranslation ? "cursor-context-menu" : ""}`}
+                        >
+                          {displayText}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {!isDeleted && (showTime || hasTranslation || msg.edited_at) && (
+                  <div className={`flex items-center gap-1.5 ${offset}`}>
                     {showTime && (
                       <span className="mt-0.5 text-[10px] text-gray-300">
                         {time}
@@ -394,6 +568,9 @@ export default function GroupDmChat({
                     )}
                     {hasTranslation && (
                       <span className="mt-0.5 text-[10px] text-blue-300">{t("dm.translated")}</span>
+                    )}
+                    {msg.edited_at && (
+                      <span className="mt-0.5 text-[10px] text-gray-300">수정됨</span>
                     )}
                   </div>
                 )}
@@ -411,7 +588,17 @@ export default function GroupDmChat({
           </div>
         );
       }),
-    [messages, showOriginal, currentUserId, t, handleContextMenu, toggleOriginal]
+    [
+      messages,
+      showOriginal,
+      editingId,
+      currentUserId,
+      t,
+      handleContextMenu,
+      toggleOriginal,
+      handleSaveEdit,
+      handleDelete,
+    ]
   );
 
   if (isMinimized) {
@@ -583,12 +770,13 @@ export default function GroupDmChat({
           }}
           className="flex items-center gap-2"
         >
+          <AttachmentButton onPicked={handleAttach} disabled={uploading || sending} />
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={t("dm.typeMessage")}
+            placeholder={uploading ? "업로드 중..." : t("dm.typeMessage")}
             className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
           />
           <button

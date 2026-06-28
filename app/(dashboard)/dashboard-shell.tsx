@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import CompanyChip from "@/components/company-chip";
 import WorkTimer from "@/components/work-timer";
 import NotificationButton from "@/components/notification-button";
+import EnableNotifications from "@/components/enable-notifications";
 import ProfileMenu from "@/components/profile-menu";
 import DmChatManager from "@/components/dm-chat-manager";
 import { I18nProvider, LocaleProvider, makeT, type TFunction } from "@/lib/i18n";
@@ -215,6 +216,7 @@ export default function DashboardShell({
           {/* Header */}
           <header className="flex h-14 items-center justify-end gap-3 border-b border-gray-200 bg-white px-6">
             <WorkTimer initialStatus={initialWorkStatus} />
+            <EnableNotifications />
             <NotificationButton />
             <ProfileMenu profile={{ ...profileData, email: userEmail }} />
           </header>

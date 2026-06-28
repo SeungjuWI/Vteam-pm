@@ -15,6 +15,18 @@ import {
   createChannel,
   getMyChannels,
 } from "./actions";
+import {
+  editChannelMessage,
+  deleteChannelMessage,
+  uploadChatAttachment,
+} from "@/app/(dashboard)/chat-message-actions";
+import {
+  AttachmentView,
+  AttachmentButton,
+  MessageActions,
+  EditBox,
+  type AttachmentType,
+} from "@/components/chat/message-extras";
 import DeptManageModal from "./dept-manage-modal";
 
 interface ChannelItem {
@@ -48,6 +60,11 @@ interface ChannelMessage {
   sender_avatar_url: string | null;
   translated_content?: string | null;
   created_at: string;
+  edited_at?: string | null;
+  deleted_at?: string | null;
+  attachment_url?: string | null;
+  attachment_type?: AttachmentType | null;
+  attachment_name?: string | null;
 }
 
 interface ChannelMember {
@@ -304,6 +321,8 @@ function ChannelChat({
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -395,6 +414,49 @@ function ChannelChat({
           markChannelAsRead(channelId);
         }
       )
+      // 멤버가 메시지를 수정/삭제하면 반영
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "dept_channel_messages",
+          filter: `channel_id=eq.${channelId}`,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async (payload: any) => {
+          const msg = payload.new as ChannelMessage;
+          if (msg.sender_id === currentUserId) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m))
+            );
+            return;
+          }
+
+          let translated: string | null = null;
+          if (
+            !msg.deleted_at &&
+            msg.content &&
+            msg.sender_language &&
+            msg.sender_language !== currentUserLang
+          ) {
+            const result = await translateSingleChannelMessage(
+              msg.id,
+              msg.content,
+              msg.sender_language
+            );
+            translated = result.translated ?? null;
+          }
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === msg.id
+                ? { ...m, ...msg, translated_content: translated }
+                : m
+            )
+          );
+        }
+      )
       .subscribe();
 
     return () => {
@@ -444,6 +506,80 @@ function ChannelChat({
     }
   };
 
+  // 첨부 파일 선택 → 업로드 후 메시지로 전송
+  const handleAttach = async (file: File) => {
+    if (uploading || sending) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const up = await uploadChatAttachment(fd);
+    if (up.error || !up.url) {
+      setUploading(false);
+      alert(up.error ?? "업로드 실패");
+      return;
+    }
+
+    const me = members.find((m) => m.id === currentUserId);
+    const optimistic: ChannelMessage = {
+      id: `temp-${Date.now()}`,
+      channel_id: channelId,
+      sender_id: currentUserId,
+      content: "",
+      sender_language: currentUserLang,
+      sender_name: me?.name ?? "",
+      sender_avatar_url: me?.avatar_url ?? null,
+      translated_content: null,
+      created_at: new Date().toISOString(),
+      attachment_url: up.url,
+      attachment_type: up.type,
+      attachment_name: up.name,
+    };
+    setMessages((prev) => [...prev, optimistic]);
+    setTimeout(scrollToBottom, 50);
+
+    const result = await sendChannelMessage(channelId, "", {
+      url: up.url,
+      type: up.type!,
+      name: up.name!,
+    });
+    setUploading(false);
+    if (result.error) {
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+    }
+  };
+
+  // 내 메시지 수정 저장
+  const handleSaveEdit = useCallback(async (msgId: string, value: string) => {
+    setEditingId(null);
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? { ...m, content: value, edited_at: new Date().toISOString() }
+          : m
+      )
+    );
+    await editChannelMessage(msgId, value);
+  }, []);
+
+  // 내 메시지 삭제
+  const handleDelete = useCallback(async (msgId: string) => {
+    if (!confirm("메시지를 삭제할까요?")) return;
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              deleted_at: new Date().toISOString(),
+              content: "",
+              translated_content: null,
+              attachment_url: null,
+            }
+          : m
+      )
+    );
+    await deleteChannelMessage(msgId);
+  }, []);
+
   const toggleOriginal = useCallback((msgId: string) => {
     setShowOriginal((prev) => {
       const next = new Set(prev);
@@ -463,7 +599,9 @@ function ChannelChat({
     () =>
       messages.map((msg, idx) => {
         const isMine = msg.sender_id === currentUserId;
-        const hasTranslation = !!msg.translated_content;
+        const isDeleted = !!msg.deleted_at;
+        const hasAttachment = !!msg.attachment_url && !isDeleted;
+        const hasTranslation = !!msg.translated_content && !isDeleted;
         const displayText = hasTranslation
           ? msg.translated_content!
           : msg.content;
@@ -472,6 +610,8 @@ function ChannelChat({
         const prevMsg = idx > 0 ? messages[idx - 1] : null;
         const showSenderInfo =
           !isMine && (!prevMsg || prevMsg.sender_id !== msg.sender_id);
+        const offset = !isMine && !showSenderInfo ? "ml-[26px]" : "";
+        const canManage = isMine && !isDeleted && !msg.id.startsWith("temp-");
 
         const time = formatTime(msg.created_at);
         const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
@@ -506,25 +646,54 @@ function ChannelChat({
                   isMine ? "items-end" : "items-start"
                 }`}
               >
-                <div
-                  onClick={() =>
-                    hasTranslation && toggleOriginal(msg.id)
-                  }
-                  className={`select-text rounded-2xl px-3.5 py-2 text-sm ${
-                    isMine
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 text-gray-900"
-                  } ${hasTranslation ? "cursor-pointer" : ""} ${
-                    !isMine && !showSenderInfo ? "ml-[26px]" : ""
-                  }`}
-                >
-                  {displayText}
-                </div>
-                {(showTime || hasTranslation) && (
+                {editingId === msg.id ? (
+                  <EditBox
+                    initialValue={msg.content}
+                    onSave={(v) => handleSaveEdit(msg.id, v)}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : isDeleted ? (
+                  <div className={`rounded-2xl bg-gray-50 px-3.5 py-2 text-sm italic text-gray-400 ${offset}`}>
+                    삭제된 메시지입니다
+                  </div>
+                ) : (
+                  <div className={`group flex items-center gap-1 ${offset}`}>
+                    {canManage && (
+                      <MessageActions
+                        canEdit={!hasAttachment}
+                        onEdit={() => setEditingId(msg.id)}
+                        onDelete={() => handleDelete(msg.id)}
+                      />
+                    )}
+                    <div className="flex flex-col gap-1">
+                      {hasAttachment && (
+                        <AttachmentView
+                          url={msg.attachment_url!}
+                          type={msg.attachment_type ?? null}
+                          name={msg.attachment_name ?? null}
+                          isMine={isMine}
+                        />
+                      )}
+                      {displayText && (
+                        <div
+                          onClick={() =>
+                            hasTranslation && toggleOriginal(msg.id)
+                          }
+                          className={`select-text rounded-2xl px-3.5 py-2 text-sm ${
+                            isMine
+                              ? "bg-blue-500 text-white"
+                              : "bg-gray-100 text-gray-900"
+                          } ${hasTranslation ? "cursor-pointer" : ""}`}
+                        >
+                          {displayText}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {!isDeleted && (showTime || hasTranslation || msg.edited_at) && (
                   <div
-                    className={`flex items-center gap-1.5 ${
-                      !isMine && !showSenderInfo ? "ml-[26px]" : ""
-                    }`}
+                    className={`flex items-center gap-1.5 ${offset}`}
                   >
                     {showTime && (
                       <span className="mt-0.5 text-[10px] text-gray-300">
@@ -535,6 +704,9 @@ function ChannelChat({
                       <span className="mt-0.5 text-[10px] text-blue-400">
                         {t("dm.translated")}
                       </span>
+                    )}
+                    {msg.edited_at && (
+                      <span className="mt-0.5 text-[10px] text-gray-300">수정됨</span>
                     )}
                   </div>
                 )}
@@ -554,7 +726,16 @@ function ChannelChat({
           </div>
         );
       }),
-    [messages, showOriginal, currentUserId, t, toggleOriginal]
+    [
+      messages,
+      showOriginal,
+      editingId,
+      currentUserId,
+      t,
+      toggleOriginal,
+      handleSaveEdit,
+      handleDelete,
+    ]
   );
 
   return (
@@ -619,12 +800,17 @@ function ChannelChat({
           }}
           className="flex items-center gap-2"
         >
+          <AttachmentButton onPicked={handleAttach} disabled={uploading || sending} />
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={`#${channelName} · ${t("channels.messagePlaceholder")}`}
+            placeholder={
+              uploading
+                ? "업로드 중..."
+                : `#${channelName} · ${t("channels.messagePlaceholder")}`
+            }
             className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
           />
           <button

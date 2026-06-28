@@ -34,6 +34,20 @@ const STATUS_RING: Record<string, string> = {
 const STRIPE = "repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,.55) 4px, rgba(255,255,255,.55) 8px)";
 const SUB_RING = "ring-slate-200";
 
+// 막대가 차트 범위 밖으로 이어질 때: 모서리를 직선으로 뚝 끊지 않고 그쪽 끝을 반투명으로
+// 스르륵 사라지게(mask 그라데이션) → "여기서 끝이 아니라 범위 밖으로 계속됨"을 부드럽게 암시.
+// 채움·이름·링까지 막대의 모든 페인팅이 함께 페이드되도록 막대 바깥 컨테이너에 건다.
+const fadeMask = (clipL: boolean, clipR: boolean): React.CSSProperties => {
+  if (!clipL && !clipR) return {};
+  const F = "36px"; // 페이드 폭(막대가 아무리 길어도 끝 36px만 흐려짐)
+  const g = clipL && clipR
+    ? `linear-gradient(to right, transparent, #000 ${F}, #000 calc(100% - ${F}), transparent)`
+    : clipR
+      ? `linear-gradient(to right, #000 calc(100% - ${F}), transparent)`
+      : `linear-gradient(to right, transparent, #000 ${F})`;
+  return { maskImage: g, WebkitMaskImage: g };
+};
+
 // 진도율(%)은 effProgress(= effectiveProgress, project-types)로 통일.
 // 타임라인 · 트리 · 상세 모달이 모두 같은 값을 보이게 한 곳에서 계산한다.
 
@@ -648,7 +662,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                 <Columns />
                 {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
                 {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }} />}
-                <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-9 -translate-y-1/2 items-center overflow-hidden rounded-lg ${barClipL ? "rounded-l-none" : ""} ${barClipR ? "rounded-r-none" : ""} ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
+                <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-9 -translate-y-1/2 items-center overflow-hidden rounded-lg ${barClipL ? "rounded-l-none" : ""} ${barClipR ? "rounded-r-none" : ""} ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={{ ...barStyle, ...fadeMask(barClipL, barClipR) }}>
                   {/* 진도 채움 — 채워진 구간 '안'에 흰색 %를 두어, 채운 만큼만 흰색으로 잘려 보인다 */}
                   <div className={`absolute inset-y-0 left-0 z-10 overflow-hidden rounded-lg ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }}>
                     {effStatus === "pending" && <div className="absolute inset-0" style={{ backgroundImage: STRIPE }} />}
@@ -695,7 +709,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
                         <Columns />
                         {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
                         {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }} />}
-                        <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md ${subBar.clipL ? "rounded-l-none" : ""} ${subBar.clipR ? "rounded-r-none" : ""} ${STATUS_TRACK[subColor]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[subColor]}`} cursor-grab active:cursor-grabbing`} style={{ left: subBar.left, width: subBar.width }}>
+                        <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md ${subBar.clipL ? "rounded-l-none" : ""} ${subBar.clipR ? "rounded-r-none" : ""} ${STATUS_TRACK[subColor]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[subColor]}`} cursor-grab active:cursor-grabbing`} style={{ left: subBar.left, width: subBar.width, ...fadeMask(subBar.clipL, subBar.clipR) }}>
                           {/* 진도 채움 — 채운 만큼만 흰 이름이 잘려 보인다 */}
                           <div className={`absolute inset-y-0 left-0 z-10 overflow-hidden rounded-md ${STATUS_FILL[subColor]} transition-[width] duration-300`} style={{ width: `${subPct}%` }}>
                             {subColor === "pending" && <div className="absolute inset-0" style={{ backgroundImage: STRIPE }} />}

@@ -480,18 +480,22 @@ export async function sendChannelMessage(
   const text = content.trim();
   if (!text && !attachment) return { error: "내용을 입력해주세요" };
 
-  const { error } = await adminClient.from("dept_channel_messages").insert({
-    channel_id: channelId,
-    sender_id: userId,
-    content: text,
-    sender_language: profile.language ?? "ko",
-    attachment_url: attachment?.url ?? null,
-    attachment_type: attachment?.type ?? null,
-    attachment_name: attachment?.name ?? null,
-  });
+  const { data, error } = await adminClient
+    .from("dept_channel_messages")
+    .insert({
+      channel_id: channelId,
+      sender_id: userId,
+      content: text,
+      sender_language: profile.language ?? "ko",
+      attachment_url: attachment?.url ?? null,
+      attachment_type: attachment?.type ?? null,
+      attachment_name: attachment?.name ?? null,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: "메시지 전송에 실패했습니다" };
-  return { success: true };
+  return { success: true, id: data.id as string };
 }
 
 export async function markChannelAsRead(channelId: string) {

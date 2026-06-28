@@ -471,6 +471,13 @@ export async function updateTaskStatus(taskId: string, status: string, projectId
   const companyId = await getCompanyId(adminClient, user.id);
   if (!companyId || !(await taskInCompany(adminClient, taskId, companyId))) return DENY;
 
+  // 업데이트 대상의 부모 id를 먼저 확보 (서브 완료 → 부모 상태 동기화에 사용)
+  const { data: target } = await adminClient
+    .from("tasks")
+    .select("parent_task_id")
+    .eq("id", taskId)
+    .single();
+
   const { error } = await adminClient
     .from("tasks")
     .update({ status })
@@ -478,8 +485,47 @@ export async function updateTaskStatus(taskId: string, status: string, projectId
 
   if (error) return { error: "상태 변경에 실패했습니다" };
 
+  // 서브태스크의 상태가 바뀌면 부모 status도 맞춘다.
+  // (프로젝트 화면은 서브 평균 진행률로 완료를 표시하지만, 내 태스크·대시보드는
+  //  raw status 컬럼만 보므로 부모를 done으로 올려주지 않으면 완료한 게 계속 남는다)
+  if (target?.parent_task_id) {
+    await syncParentStatus(adminClient, target.parent_task_id);
+  }
+
   revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/my-tasks");
+  revalidatePath("/dashboard");
   return { success: true };
+}
+
+// 부모 태스크의 status를 자식들의 상태로부터 재계산한다.
+// - 자식이 모두 done → 부모도 done
+// - 일부라도 미완료인데 부모가 done이면 → done 해제(in_progress)
+async function syncParentStatus(
+  adminClient: ReturnType<typeof createAdminClient>,
+  parentId: string,
+) {
+  const { data: subs } = await adminClient
+    .from("tasks")
+    .select("status")
+    .eq("parent_task_id", parentId);
+
+  if (!subs || subs.length === 0) return;
+
+  const allDone = subs.every((s) => s.status === "done");
+
+  const { data: parent } = await adminClient
+    .from("tasks")
+    .select("status")
+    .eq("id", parentId)
+    .single();
+  if (!parent) return;
+
+  if (allDone && parent.status !== "done") {
+    await adminClient.from("tasks").update({ status: "done" }).eq("id", parentId);
+  } else if (!allDone && parent.status === "done") {
+    await adminClient.from("tasks").update({ status: "in_progress" }).eq("id", parentId);
+  }
 }
 
 export async function updateTask(

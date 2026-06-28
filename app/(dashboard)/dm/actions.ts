@@ -230,19 +230,23 @@ export async function sendMessage(
     return { error: "같은 회사의 멤버에게만 메시지를 보낼 수 있습니다" };
   }
 
-  const { error } = await adminClient.from("direct_messages").insert({
-    company_id: profile.company_id,
-    sender_id: user.id,
-    receiver_id: receiverId,
-    content: text,
-    sender_language: profile.language ?? "ko",
-    attachment_url: attachment?.url ?? null,
-    attachment_type: attachment?.type ?? null,
-    attachment_name: attachment?.name ?? null,
-  });
+  const { data, error } = await adminClient
+    .from("direct_messages")
+    .insert({
+      company_id: profile.company_id,
+      sender_id: user.id,
+      receiver_id: receiverId,
+      content: text,
+      sender_language: profile.language ?? "ko",
+      attachment_url: attachment?.url ?? null,
+      attachment_type: attachment?.type ?? null,
+      attachment_name: attachment?.name ?? null,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: "메시지 전송에 실패했습니다" };
-  return { success: true };
+  return { success: true, id: data.id as string };
 }
 
 // 클라이언트에서 봇에게 메시지를 보낸 뒤 호출 → AI 응답 생성 후 DM으로 저장

@@ -1,8 +1,145 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export type AttachmentType = "image" | "video" | "file";
+
+// ===== 메시지 본문 렌더 (멘션 @[이름](uid) + 굵게 **텍스트**) =====
+const MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
+
+function renderInline(
+  text: string,
+  currentUserId: string | undefined,
+  keyPrefix: string
+): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let last = 0;
+  let i = 0;
+  MENTION_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = MENTION_RE.exec(text))) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const name = m[1];
+    const uid = m[2];
+    const isMe = !!currentUserId && uid === currentUserId;
+    nodes.push(
+      <span
+        key={`${keyPrefix}-m${i++}`}
+        className={
+          isMe
+            ? "rounded bg-blue-100 px-1 font-semibold text-blue-700"
+            : "font-semibold text-blue-600"
+        }
+      >
+        @{name}
+      </span>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
+export function MessageContent({
+  text,
+  currentUserId,
+}: {
+  text: string;
+  currentUserId?: string;
+}) {
+  const parts: ReactNode[] = [];
+  const BOLD_RE = /\*\*([\s\S]+?)\*\*/g;
+  let last = 0;
+  let i = 0;
+  let m: RegExpExecArray | null;
+  while ((m = BOLD_RE.exec(text))) {
+    if (m.index > last)
+      parts.push(...renderInline(text.slice(last, m.index), currentUserId, `t${i}`));
+    parts.push(
+      <strong key={`b${i}`} className="font-bold">
+        {renderInline(m[1], currentUserId, `b${i}i`)}
+      </strong>
+    );
+    last = m.index + m[0].length;
+    i++;
+  }
+  if (last < text.length)
+    parts.push(...renderInline(text.slice(last), currentUserId, `t${i}`));
+  return <>{parts}</>;
+}
+
+// ===== 이미지 라이트박스 (슬랙식 모달) =====
+function ImageLightbox({
+  url,
+  name,
+  onClose,
+}: {
+  url: string;
+  name: string | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* 상단 바: 파일명 + 원본 열기 + 닫기 */}
+      <div className="absolute left-0 right-0 top-0 flex items-center justify-between px-5 py-4">
+        <span className="max-w-[60%] truncate text-sm text-white/80">
+          {name ?? "image"}
+        </span>
+        <div className="flex items-center gap-2">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            download={name ?? undefined}
+            onClick={(e) => e.stopPropagation()}
+            className="flex h-9 items-center gap-1.5 rounded-lg bg-white/10 px-3 text-xs font-medium text-white transition-colors hover:bg-white/20"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            원본
+          </a>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20"
+            title="닫기 (Esc)"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt={name ?? "image"}
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[85vh] max-w-full rounded-lg object-contain shadow-2xl"
+      />
+    </div>,
+    document.body
+  );
+}
 
 // ===== 첨부 렌더링 (이미지/영상/파일) =====
 export function AttachmentView({
@@ -16,16 +153,22 @@ export function AttachmentView({
   name: string | null;
   isMine: boolean;
 }) {
+  const [zoomed, setZoomed] = useState(false);
+
   if (type === "image") {
     return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+      <>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={url}
           alt={name ?? "image"}
-          className="max-h-60 max-w-full rounded-xl object-cover"
+          onClick={() => setZoomed(true)}
+          className="max-h-60 max-w-full cursor-zoom-in rounded-xl object-cover transition-opacity hover:opacity-90"
         />
-      </a>
+        {zoomed && (
+          <ImageLightbox url={url} name={name} onClose={() => setZoomed(false)} />
+        )}
+      </>
     );
   }
   if (type === "video") {

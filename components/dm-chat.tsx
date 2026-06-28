@@ -263,6 +263,11 @@ export default function DmChat({
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [pending, setPending] = useState<{
+    url: string;
+    type: AttachmentType;
+    name: string;
+  } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resizingRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
@@ -406,12 +411,16 @@ export default function DmChat({
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    // 글이나 첨부 둘 중 하나는 있어야 전송
+    if ((!text && !pending) || sending || uploading) return;
+    const attachment = pending;
     setInput("");
+    setPending(null);
     setSending(true);
 
+    const tempId = `temp-${Date.now()}`;
     const optimistic: Message = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       sender_id: currentUserId,
       receiver_id: member.id,
       content: text,
@@ -419,62 +428,55 @@ export default function DmChat({
       translated_content: null,
       is_read: false,
       created_at: new Date().toISOString(),
+      attachment_url: attachment?.url ?? null,
+      attachment_type: attachment?.type ?? null,
+      attachment_name: attachment?.name ?? null,
     };
     setMessages((prev) => [...prev, optimistic]);
     setTimeout(scrollToBottom, 50);
 
-    const result = await sendMessage(member.id, text);
+    const result = await sendMessage(
+      member.id,
+      text,
+      attachment
+        ? { url: attachment.url, type: attachment.type, name: attachment.name }
+        : null
+    );
     setSending(false);
     if (result.error) {
-      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-    } else if (member.is_bot) {
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      return;
+    }
+    if (result.id) {
+      // 임시 메시지를 실제 id로 교체 → 곧바로 수정/삭제 가능
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, id: result.id! } : m))
+      );
+    }
+    // 봇에게 보낸 일반 텍스트면 응답 요청 (첨부만 보낸 경우는 제외)
+    if (member.is_bot && text) {
       setBotTyping(true);
       setTimeout(scrollToBottom, 50);
-      // 별도 서버 액션으로 봇 응답 요청 (Realtime으로 수신됨)
       requestBotReply(member.id, text).finally(() => {
         setBotTyping(false);
       });
     }
   };
 
-  // 첨부 파일 선택 → 업로드 후 메시지로 전송
+  // 첨부 파일 선택 → 업로드만 해두고 미리보기로 대기 (전송은 보내기 버튼으로)
   const handleAttach = async (file: File) => {
     if (uploading || sending) return;
     setUploading(true);
     const fd = new FormData();
     fd.append("file", file);
     const up = await uploadChatAttachment(fd);
-    if (up.error || !up.url) {
-      setUploading(false);
+    setUploading(false);
+    if (up.error || !up.url || !up.type) {
       alert(up.error ?? "업로드 실패");
       return;
     }
-
-    const optimistic: Message = {
-      id: `temp-${Date.now()}`,
-      sender_id: currentUserId,
-      receiver_id: member.id,
-      content: "",
-      sender_language: currentUserLang,
-      translated_content: null,
-      is_read: false,
-      created_at: new Date().toISOString(),
-      attachment_url: up.url,
-      attachment_type: up.type,
-      attachment_name: up.name,
-    };
-    setMessages((prev) => [...prev, optimistic]);
-    setTimeout(scrollToBottom, 50);
-
-    const result = await sendMessage(member.id, "", {
-      url: up.url,
-      type: up.type!,
-      name: up.name!,
-    });
-    setUploading(false);
-    if (result.error) {
-      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-    }
+    setPending({ url: up.url, type: up.type, name: up.name ?? "파일" });
+    inputRef.current?.focus();
   };
 
   // 내 메시지 수정 저장
@@ -773,6 +775,38 @@ export default function DmChat({
 
       {/* 입력 영역 */}
       <div className="border-t border-gray-100 px-3 py-2.5">
+        {/* 첨부 미리보기 (전송 전 대기) */}
+        {pending && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1.5">
+            {pending.type === "image" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={pending.url}
+                alt={pending.name}
+                className="h-10 w-10 rounded-md object-cover"
+              />
+            ) : (
+              <span className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-200 text-gray-500">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+              </span>
+            )}
+            <span className="min-w-0 flex-1 truncate text-xs text-gray-600">
+              {pending.name}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPending(null)}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+              title="첨부 취소"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -799,7 +833,7 @@ export default function DmChat({
           />
           <button
             type="submit"
-            disabled={!input.trim() || sending}
+            disabled={(!input.trim() && !pending) || sending || uploading}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

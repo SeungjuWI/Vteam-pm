@@ -276,18 +276,22 @@ export async function sendGroupDmMessage(
     .eq("id", user.id)
     .single();
 
-  const { error } = await adminClient.from("group_dm_messages").insert({
-    room_id: roomId,
-    sender_id: user.id,
-    content: text,
-    sender_language: profile?.language ?? "ko",
-    attachment_url: attachment?.url ?? null,
-    attachment_type: attachment?.type ?? null,
-    attachment_name: attachment?.name ?? null,
-  });
+  const { data, error } = await adminClient
+    .from("group_dm_messages")
+    .insert({
+      room_id: roomId,
+      sender_id: user.id,
+      content: text,
+      sender_language: profile?.language ?? "ko",
+      attachment_url: attachment?.url ?? null,
+      attachment_type: attachment?.type ?? null,
+      attachment_name: attachment?.name ?? null,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: "메시지 전송에 실패했습니다" };
-  return { success: true };
+  return { success: true, id: data.id as string };
 }
 
 // 읽음 처리

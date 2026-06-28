@@ -11,7 +11,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
-import { useNotification } from "@/hooks/use-notification";
+import { setChatActive } from "@/lib/active-chat";
 
 interface GroupMessage {
   id: string;
@@ -145,7 +145,6 @@ export default function GroupDmChat({
   style?: React.CSSProperties;
 }) {
   const t = useT();
-  const { notify } = useNotification();
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -265,7 +264,6 @@ export default function GroupDmChat({
           };
 
           setMessages((prev) => [...prev, newMsg]);
-          notify(newMsg.sender_name, newMsg.content);
           setTimeout(scrollToBottom, 50);
           markGroupDmAsRead(room.id);
         }
@@ -284,6 +282,13 @@ export default function GroupDmChat({
       inputRef.current?.focus();
     }
   }, [isMinimized, room.id]);
+
+  // "보는 중" 등록 → 전역 알림 훅이 이 대화엔 소리 중복을 내지 않음
+  useEffect(() => {
+    const key = `group-${room.id}`;
+    setChatActive(key, !isMinimized);
+    return () => setChatActive(key, false);
+  }, [room.id, isMinimized]);
 
   const handleSend = async () => {
     const text = input.trim();

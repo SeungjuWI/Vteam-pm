@@ -12,7 +12,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
-import { useNotification } from "@/hooks/use-notification";
+import { setChatActive } from "@/lib/active-chat";
 
 interface Message {
   id: string;
@@ -236,7 +236,6 @@ export default function DmChat({
   style?: React.CSSProperties;
 }) {
   const t = useT();
-  const { notify } = useNotification();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -324,7 +323,6 @@ export default function DmChat({
 
           setMessages((prev) => [...prev, msg]);
           if (member.is_bot) setBotTyping(false);
-          notify(member.name, msg.content);
           setTimeout(scrollToBottom, 50);
           markAsRead(member.id);
         }
@@ -343,6 +341,13 @@ export default function DmChat({
       inputRef.current?.focus();
     }
   }, [isMinimized, member.id]);
+
+  // "보는 중" 등록 → 전역 알림 훅이 이 대화엔 소리 중복을 내지 않음
+  useEffect(() => {
+    const key = `dm-${member.id}`;
+    setChatActive(key, !isMinimized);
+    return () => setChatActive(key, false);
+  }, [member.id, isMinimized]);
 
   const handleSend = async () => {
     const text = input.trim();

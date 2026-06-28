@@ -5,7 +5,7 @@ import Avatar from "@/components/avatar";
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
-import { useNotification } from "@/hooks/use-notification";
+import { setChatActive } from "@/lib/active-chat";
 import {
   getChannelMessages,
   sendChannelMessage,
@@ -298,7 +298,6 @@ function ChannelChat({
   currentUserLang: string;
 }) {
   const t = useT();
-  const { notify } = useNotification();
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [input, setInput] = useState("");
@@ -392,7 +391,6 @@ function ChannelChat({
           };
 
           setMessages((prev) => [...prev, newMsg]);
-          notify(`#${channelName} · ${newMsg.sender_name}`, newMsg.content);
           setTimeout(scrollToBottom, 50);
           markChannelAsRead(channelId);
         }
@@ -408,9 +406,15 @@ function ChannelChat({
     members,
     currentUserId,
     currentUserLang,
-    notify,
     scrollToBottom,
   ]);
+
+  // "보는 중" 등록 → 전역 알림 훅이 이 채널엔 소리 중복을 내지 않음
+  useEffect(() => {
+    const key = `channel-${channelId}`;
+    setChatActive(key, true);
+    return () => setChatActive(key, false);
+  }, [channelId]);
 
   const handleSend = async () => {
     const text = input.trim();

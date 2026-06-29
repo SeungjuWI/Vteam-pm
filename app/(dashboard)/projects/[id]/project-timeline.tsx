@@ -3,19 +3,20 @@
 import { useState, useEffect, useRef, useTransition, useMemo } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic";
 import { updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks, createTaskDraft } from "../actions";
 import { useT } from "@/lib/i18n";
+import TimelineRangePicker, { type DateRange } from "./range-picker";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
+import { effectiveProgress as effProgress, taskProgress } from "./project-types";
+// 클릭 즉시 떠야 하므로 일반 import (dynamic 지연 로딩이면 첫 클릭 때 청크 컴파일/다운로드로 멈칫함)
+import TaskDetailModal from "./task-detail-modal";
 
-const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
-
-// 상태별 막대 색 (차분하게). 진도율(%)만큼 그라데이션으로 채움.
+// 상태별 막대 색 (차분하게). 진도율(%)만큼 단색으로 채움.
 const STATUS_FILL: Record<string, string> = {
-  todo: "from-slate-300 to-slate-400",
-  in_progress: "from-blue-300 to-blue-600",
-  pending: "from-amber-300 to-amber-500",
-  done: "from-emerald-300 to-emerald-500",
+  todo: "bg-slate-400",
+  in_progress: "bg-blue-500",
+  pending: "bg-amber-500",
+  done: "bg-emerald-500",
 };
 const STATUS_TRACK: Record<string, string> = {
   todo: "bg-slate-100",
@@ -33,18 +34,32 @@ const STATUS_RING: Record<string, string> = {
 const STRIPE = "repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,.55) 4px, rgba(255,255,255,.55) 8px)";
 const SUB_RING = "ring-slate-200";
 
-// 진도율(%): 완료(done) 태스크는 progress 값과 무관하게 100%로 본다.
-// (체크박스로 완료 처리하면 status만 done이 되고 progress는 0으로 남기 때문)
-const effProgress = (s: { status: string; progress?: number | null }) =>
-  s.status === "done" ? 100 : Math.max(0, Math.min(100, s.progress ?? 0));
+// 막대가 차트 범위 밖으로 이어질 때: 모서리를 직선으로 뚝 끊지 않고 그쪽 끝을 반투명으로
+// 스르륵 사라지게(mask 그라데이션) → "여기서 끝이 아니라 범위 밖으로 계속됨"을 부드럽게 암시.
+// 채움·이름·링까지 막대의 모든 페인팅이 함께 페이드되도록 막대 바깥 컨테이너에 건다.
+const fadeMask = (clipL: boolean, clipR: boolean): React.CSSProperties => {
+  if (!clipL && !clipR) return {};
+  const F = "36px"; // 페이드 폭(막대가 아무리 길어도 끝 36px만 흐려짐)
+  const g = clipL && clipR
+    ? `linear-gradient(to right, transparent, #000 ${F}, #000 calc(100% - ${F}), transparent)`
+    : clipR
+      ? `linear-gradient(to right, #000 calc(100% - ${F}), transparent)`
+      : `linear-gradient(to right, transparent, #000 ${F})`;
+  return { maskImage: g, WebkitMaskImage: g };
+};
 
+// 진도율(%)은 effProgress(= effectiveProgress, project-types)로 통일.
+// 타임라인 · 트리 · 상세 모달이 모두 같은 값을 보이게 한 곳에서 계산한다.
 
-function Avatar({ a, size = "sm" }: { a: { name: string; avatarUrl: string | null }; size?: "sm" | "xs" }) {
-  const cls = size === "sm" ? "h-5 w-5 text-[9px]" : "h-4 w-4 text-[8px]";
-  return <span className={`flex ${cls} items-center justify-center rounded-full bg-white font-medium text-gray-600 ring-2 ring-white`}>
-    {a.avatarUrl ? <Image src={a.avatarUrl} alt="" width={20} height={20} className="h-full w-full rounded-full object-cover" /> : a.name[0]}
-  </span>;
-}
+// 막대 '색'은 진도(progress)까지 반영한다. status만 보면 진도가 30%인데도 status=todo라
+// 회색(slate)으로 차서, 같은 화면의 in_progress(파랑)와 섞여 위화감이 생긴다.
+// → 시작 버튼을 안 눌렀어도 progress가 0보다 크면 진행중(파랑)으로 본다. (멈춤=pending은 그대로 호박색)
+const colorStatus = (s: { status: string; progress?: number | null }) =>
+  s.status === "done" ? "done"
+    : s.status === "pending" ? "pending"
+    : (s.status === "in_progress" || (s.progress ?? 0) > 0) ? "in_progress"
+    : "todo";
+
 
 function Check({ done, onClick }: { done: boolean; onClick: () => void }) {
   return (
@@ -52,6 +67,28 @@ function Check({ done, onClick }: { done: boolean; onClick: () => void }) {
       className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-all ${done ? "border-emerald-500 bg-emerald-500 text-white" : "border-gray-300 text-transparent hover:border-blue-400"}`}>
       <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
     </button>
+  );
+}
+
+// 막대 우측 끝에 담당자 프로필을 띄운다(행 hover 시 페이드인). 막대가 화면 오른쪽에 닿거나
+// 범위 밖으로 빠져나가면(rightPct가 큼) 우측 '바깥'은 잘리므로, 보이는 막대 끝(최대 98%)
+// '안쪽'에 겹쳐 왼쪽으로 펼친다. 그 외엔 막대 오른쪽 바깥에 붙인다.
+function HoverAssignees({ assignees, rightPct }: { assignees: Task["assignees"]; rightPct: number }) {
+  if (!assignees || assignees.length === 0) return null;
+  const flip = rightPct > 86;
+  const anchor = Math.min(rightPct, 98);
+  return (
+    <div
+      className={`pointer-events-none absolute top-1/2 z-30 flex -translate-y-1/2 items-center -space-x-1.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 ${flip ? "flex-row-reverse space-x-reverse pr-2" : "pl-2"}`}
+      style={flip ? { right: `${100 - anchor}%` } : { left: `${rightPct}%` }}
+    >
+      {assignees.slice(0, 3).map((a, i) => (
+        <div key={i} title={a.name} className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-[10px] font-semibold text-gray-500 shadow-sm ring-2 ring-white">
+          {a.avatarUrl ? <Image src={a.avatarUrl} alt={a.name} width={24} height={24} className="h-full w-full object-cover" /> : a.name[0]}
+        </div>
+      ))}
+      {assignees.length > 3 && <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-[9px] font-semibold text-gray-600 ring-2 ring-white">+{assignees.length - 3}</div>}
+    </div>
   );
 }
 
@@ -65,7 +102,19 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const scaleKey = `vteam:timeline-scale:${projectId}`;
   useEffect(() => { try { const v = localStorage.getItem(scaleKey); if (v === "week" || v === "year") setScale(v); } catch {} }, [scaleKey]);
   const chooseScale = (v: "week" | "month" | "year") => { setScale(v); try { localStorage.setItem(scaleKey, v); } catch {} };
+
+  // 보이는 날짜 범위(차트 단위와 독립). 기본값=이번 분기(이번 달 ~ +2개월).
+  const [range, setRange] = useState<DateRange>(() => {
+    const t = new Date();
+    const f = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { start: f(new Date(t.getFullYear(), t.getMonth(), 1)), end: f(new Date(t.getFullYear(), t.getMonth() + 3, 0)) };
+  });
+  const rangeKey = `vteam:timeline-range:${projectId}`;
+  useEffect(() => { try { const v = localStorage.getItem(rangeKey); if (v) { const r = JSON.parse(v); if (r?.start && r?.end) setRange(r); } } catch {} }, [rangeKey]);
+  const chooseRange = (r: DateRange) => { setRange(r); try { localStorage.setItem(rangeKey, JSON.stringify(r)); } catch {} };
   const [selected, setSelected] = useState<Task | null>(null);
+  // 메인 완료 확인 모달: 미완료 서브가 남아 있을 때만 띄운다
+  const [confirmMain, setConfirmMain] = useState<{ row: MainTask; remaining: number } | null>(null);
   // 대시보드 마감현황 등에서 ?task=<id>로 진입하면 해당 태스크 모달 자동 오픈 (최초 1회만 — 닫은 뒤 refresh로 재오픈되는 것 방지)
   const searchParams = useSearchParams();
   const deepLinkOpened = useRef(false);
@@ -103,7 +152,25 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const [hoverDay, setHoverDay] = useState<number | null>(null); // 마우스 호버 중인 날짜(가이드선)
   const drag = useRef<null | { kind: "task" | "ms"; mode: "move" | "l" | "r"; id: string; rect: DOMRect; anchorDay: number; downX: number; origS: number; origE: number; latest?: { startDate?: string; dueDate?: string; date?: string } }>(null);
   const moved = useRef(false);
-  useEffect(() => { setDragOverride(null); setMsOverride(null); }, [mainTasks, milestones]);
+  // 드래그 후 낙관적 위치(override)는 '서버가 따라잡았을 때만' 해제한다.
+  // revalidatePath(서버 액션) + router.refresh()로 새로고침이 여러 번 들어오는데, 그중 갱신 전(예전)
+  // 날짜를 담은 중간 새로고침이 먼저 오면 무조건 비울 경우 막대가 원위치로 튀었다가 다시 이동하는 깜빡임이 생긴다.
+  // → 들어온 데이터의 날짜가 override와 일치할 때만 비워서, 진짜 새 데이터가 올 때까지 새 위치를 유지한다.
+  useEffect(() => {
+    setDragOverride((ov) => {
+      if (!ov) return ov;
+      for (const m of mainTasks) {
+        const cand = m.id === ov.id ? m : m.subtasks.find((s) => s.id === ov.id);
+        if (cand) return cand.startDate === ov.startDate && cand.dueDate === ov.dueDate ? null : ov;
+      }
+      return ov;
+    });
+    setMsOverride((ov) => {
+      if (!ov) return ov;
+      const ms = milestones.find((x) => x.id === ov.id);
+      return ms ? (ms.date === ov.date ? null : ov) : ov;
+    });
+  }, [mainTasks, milestones]);
 
   // 메인태스크 행 순서(드래그 정렬)
   const [order, setOrder] = useState(mainTasks);
@@ -175,7 +242,29 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   }, [open, storeKey]);
   function toggleDone(task: Task) {
     const next = task.status === "done" ? "todo" : "done";
+    // 낙관적 업데이트: 서버 왕복/refresh 전에 화면(order)을 즉시 바꿔 체크가 바로 반영되게 한다.
+    // 이후 router.refresh()로 들어온 새 props가 useEffect([mainTasks])에서 order를 서버 진실로 되돌려 동기화.
+    setOrder((prev) => prev.map((row) => {
+      if (row.id === task.id) return { ...row, status: next };
+      if (row.subtasks.some((s) => s.id === task.id))
+        return { ...row, subtasks: row.subtasks.map((s) => (s.id === task.id ? { ...s, status: next } : s)) };
+      return row;
+    }));
     startTx(async () => { await updateTaskStatus(task.id, next, projectId); router.refresh(); });
+  }
+
+  // 모든 서브태스크를 한 번에 next 상태로 (낙관적 반영 후 서버 동기화)
+  function applyAllSubs(row: MainTask, next: "done" | "todo") {
+    setOrder((prev) => prev.map((r) => (r.id === row.id ? { ...r, subtasks: r.subtasks.map((s) => ({ ...s, status: next })) } : r)));
+    startTx(async () => { await Promise.all(row.subtasks.map((s) => updateTaskStatus(s.id, next, projectId))); router.refresh(); });
+  }
+
+  // 메인 체크: 서브 없으면 그 자체 토글. 서브 있으면 미완료가 남아 있을 때만 확인 모달 후 일괄 완료.
+  function onMainCheck(row: MainTask) {
+    if (row.subtasks.length === 0) { toggleDone(row); return; }
+    const remaining = row.subtasks.filter((s) => s.status !== "done").length;
+    if (remaining > 0) setConfirmMain({ row, remaining });   // 커스텀 확인 모달
+    else applyAllSubs(row, "todo");                          // 이미 전부 완료 → 해제
   }
 
   // ── 시간축 (주/월/연 전환) ──
@@ -193,7 +282,6 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   const pad = (n: number) => String(n).padStart(2, "0");
   const daysInM = (y: number, m0: number) => new Date(y, m0 + 1, 0).getDate();
   const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  const nowYear = now.getFullYear();
   const dayNum = (str: string) => { const dt = new Date(str); return Math.floor(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()) / 86400000); };
   const fromDayNum = (n: number) => { const dt = new Date(n * 86400000); return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`; };
 
@@ -213,7 +301,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   };
   const unitLabel = (day: number) => {
     const { y, m, d } = utc(day);
-    if (scale === "week") return d === 1 ? `${m + 1}월` : `${d}`;  // 일: 날짜(월초엔 "7월")
+    if (scale === "week") return d === 1 ? `${m + 1}월` : `${d}일`; // 일: 날짜(월초엔 "7월")
     if (scale === "month") return `${m + 1}/${d}`;                 // 주: 그 주 월요일 날짜
     return m === 0 ? `${y}` : `${m + 1}월`;                        // 월: 1월엔 연도 표기
   };
@@ -221,7 +309,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   // 데이터 날짜 수집 → 축 범위(단위 경계로 스냅).
   // 드래그(dragOverride/msOverride)와 무관하게 mainTasks/milestones/scale 에만 의존하므로
   // useMemo로 묶어 드래그 중 매 프레임 재계산되지 않게 한다.
-  const { axisStart, axisEnd, totalDays, columns, N, todayDay } = useMemo(() => {
+  const { axisStart, axisEnd, totalDays, leftPad, columns, N, todayDay, dataStart, dataEnd } = useMemo(() => {
     const todayDay = dayNum(todayStr);
     const allDays = [todayDay];
     for (const mt of mainTasks) {
@@ -230,57 +318,84 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     }
     for (const ms of milestones) if (ms.date) allDays.push(dayNum(ms.date));
     const minAll = Math.min(...allDays), maxAll = Math.max(...allDays);
-    let axisStart: number, axisEnd: number;
-    if (scale === "week") {
-      // 일(日) 보기: 오늘 근처 약 한 달 창(최대 7일 전 ~ 31일치)으로 제한해서 빽빽함 방지.
-      // 더 먼 일정은 주/월 보기에서 확인.
-      axisStart = unitStart(Math.max(Math.min(minAll, todayDay), todayDay - 7));
-      axisEnd = axisStart + 31;
-    } else {
-      // 주(주 칸)=6주, 월(월 칸)=올해 말까지 기본 범위
-      const defaultEnd = scale === "month" ? todayDay + 42 : dayNum(`${nowYear}-12-31`);
-      axisStart = unitStart(minAll);
-      axisEnd = unitNext(Math.max(maxAll, defaultEnd));   // 제외(exclusive) 경계
-    }
-    const totalDays = Math.max(1, axisEnd - axisStart);
-    // 컬럼 목록(각 단위의 시작·끝 일수와 라벨). 일 보기는 1·6·11·16·21·26일에만 라벨/격자(tick).
+    const dataStart = fromDayNum(minAll), dataEnd = fromDayNum(maxAll); // '전체' 프리셋용 데이터 전체범위
+
+    // 축 범위 = 사용자가 고른 날짜 범위(range)를 현재 단위(scale) 경계로 스냅. 차트 단위와 독립.
+    const axisStart = unitStart(dayNum(range.start));
+    const axisEnd = Math.max(unitNext(dayNum(range.end)), axisStart + 1); // 제외(exclusive) 경계
+    // 좌/우 여백(gutter): 컬럼은 axisStart~axisEnd까지만 생성하고, 좌측 스페이서 + 남는 우측 폭으로
+    // 양끝에 빈 공간을 둔다 → 첫 라벨이 구분선과 겹치지 않고, 끝이 가장자리에 붙어 답답하지 않게.
+    const spanDays = axisEnd - axisStart;
+    const leftPad = Math.max(1, Math.ceil(spanDays * 0.025));
+    const rightPad = Math.max(2, Math.ceil(spanDays * 0.05));
+    const totalDays = Math.max(1, spanDays + leftPad + rightPad);
+    // 일(日) 보기 라벨 간격: 범위 시작점부터 '균등 step'으로 찍는다(애플 분석탭 방식).
+    // 날짜%5 식이 아니라 step 고정이라 월초(N월)와 직전 날짜가 빠짝 붙는 충돌이 없다.
+    // step은 보이는 일수에 맞춰 라벨이 ~20개 이하가 되도록 1·2·5·7·10·14·21·28 중 택1.
+    let stepWeek = 30;
+    if (scale === "week") for (const s of [1, 2, 5, 7, 10, 14, 21, 28]) { if (totalDays / s <= 20) { stepWeek = s; break; } }
+    // 컬럼 목록(각 단위의 시작·끝 일수와 라벨). tick=라벨/격자 표시 여부.
+    // 일 보기: 라벨은 step 간격으로 '완전 균등'. 각 달의 첫 격자점만 날짜 대신 "N월"(6월·7월…)로 표기.
+    //         → 간격은 항상 step 그대로 유지되고, 달마다 정확히 1개의 월 라벨이 붙는다(점프 없음).
     const columns: { start: number; end: number; label: string; tick: boolean }[] = [];
+    let idx = 0;
     for (let c = axisStart; c < axisEnd; c = unitNext(c)) {
-      const tick = scale !== "week" || utc(c).d % 5 === 1;
-      columns.push({ start: c, end: Math.min(unitNext(c), axisEnd), label: unitLabel(c), tick });
+      let tick: boolean;
+      let label = unitLabel(c);
+      if (scale !== "week") tick = true;
+      else {
+        tick = idx % stepWeek === 0;
+        const u = utc(c);
+        // 그 달에서 처음 등장하는 격자점(직전 격자점이 다른 달)이면 월 이름, 아니면 N일.
+        label = u.d <= stepWeek ? `${u.m + 1}월` : `${u.d}일`;
+      }
+      columns.push({ start: c, end: Math.min(unitNext(c), axisEnd), label, tick });
+      idx++;
     }
-    return { axisStart, axisEnd, totalDays, columns, N: columns.length, todayDay };
+    return { axisStart, axisEnd, totalDays, leftPad, columns, N: columns.length, todayDay, dataStart, dataEnd };
     // unitStart/unitNext/unitLabel/dayNum 은 scale 에만 의존하는 순수 헬퍼(매 렌더 재생성되지만 동작 동일) → deps 생략
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainTasks, milestones, scale, todayStr, nowYear]);
+  }, [mainTasks, milestones, scale, todayStr, range]);
 
-  // 날짜 → 축 위 좌표(%)
-  const pctDay = (day: number, end: boolean) => ((clamp(day + (end ? 1 : 0), axisStart, axisEnd) - axisStart) / totalDays) * 100;
+  // 날짜 → 축 위 좌표(%). 좌측 여백(leftPad)만큼 밀어서 컬럼 스페이서와 정렬.
+  const dayToPct = (day: number) => ((day - axisStart + leftPad) / totalDays) * 100;
+  const pctDay = (day: number, end: boolean) => dayToPct(clamp(day + (end ? 1 : 0), axisStart, axisEnd));
   const todayIdx = columns.findIndex((c) => todayDay >= c.start && todayDay < c.end);
-  const todayPct = ((todayDay + 0.5 - axisStart) / totalDays) * 100;
+  // 일 보기는 막대가 '칸 왼쪽 경계' 기준이라 라벨/선도 경계(+0)에 맞춰야 시작일과 정렬된다.
+  // 월/연 보기는 라벨이 칸 전체를 의미하므로 칸 중앙(+0.5)에 둔다.
+  const markOffset = scale === "week" ? 0 : 0.5;
+  const todayPct = dayToPct(todayDay + markOffset);
 
   function span(startDate: string | null, dueDate: string | null) {
-    let left: number, right: number;
+    let left: number, right: number, sNum: number, eNum: number;
     if (startDate) {
-      left = pctDay(dayNum(startDate), false);
-      right = pctDay(dayNum(dueDate ?? startDate), true);
+      sNum = dayNum(startDate);
+      eNum = dayNum(dueDate ?? startDate);
+      left = pctDay(sNum, false);
+      right = pctDay(eNum, true);
     } else {
       // 시작일이 없으면 마감일이 속한 '한 칸'(주/월/연)을 막대로 표시
       const due = dayNum(dueDate ?? todayStr);
-      left = pctDay(unitStart(due), false);
-      right = pctDay(unitNext(due) - 1, true);
+      sNum = unitStart(due);
+      eNum = unitNext(due) - 1;
+      left = pctDay(sNum, false);
+      right = pctDay(eNum, true);
     }
     const width = Math.max(right - left, scale === "year" ? 0.8 : 2);
-    return { left: `${left}%`, width: `${width}%` };
+    // 범위 밖으로 삐져나가면 그쪽 모서리를 직선으로 끊는다(라운드 X) → "범위 밖으로 이어짐" 표시
+    return { left: `${left}%`, width: `${width}%`, clipL: sNum < axisStart, clipR: eNum > axisEnd - 1 };
   }
-  function msPct(date: string) { return ((dayNum(date) + 0.5 - axisStart) / totalDays) * 100; }
+  function msPct(date: string) { return dayToPct(dayNum(date) + 0.5); }
 
   const Columns = () => (
     <div className="pointer-events-none absolute inset-0 flex">
+      <div style={{ width: `${(leftPad / totalDays) * 100}%` }} className="shrink-0" />
       {columns.map((c, i) => (
         scale === "week" ? (
-          // 일 보기: 줄무늬 없이 5일/월초(tick)에만 옅은 점선 세로 격자
-          <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={c.tick ? "border-l border-dashed border-gray-200" : ""} />
+          // 일 보기: 라벨 찍히는 격자점(tick)마다 옅은 점선 세로선. 막대가 칸 왼쪽 경계 기준이라 선도 경계(left-0)에 맞춤.
+          <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="relative">
+            {c.tick && <span className="absolute inset-y-0 left-0 border-l border-dashed border-gray-100" />}
+          </div>
         ) : (
         <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className={`relative border-r border-gray-100 last:border-r-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
           {/* 연 보기(월 칸)에선 칸을 4등분하는 옅은 주(週) 보조선 */}
@@ -298,7 +413,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   // 드래그(마일스톤 이동)용 날짜 역산
   const dateAt = (clientX: number, rect: DOMRect) => {
     const frac = clamp((clientX - rect.left) / rect.width, 0, 0.999999);
-    return fromDayNum(Math.floor(axisStart + frac * totalDays));
+    // 좌측 여백(leftPad) 보정 후 범위[axisStart, axisEnd-1]로 클램프 → 여백을 끌어도 범위 밖 날짜 안 나옴
+    return fromDayNum(clamp(Math.floor(axisStart + frac * totalDays - leftPad), axisStart, axisEnd - 1));
   };
   const minDay = axisStart;
   const maxDay = axisEnd - 1;
@@ -405,10 +521,10 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       if (!d || !moved.current || !d.latest) return;
       if (d.kind === "ms" && d.latest.date) {
         const date = d.latest.date;
-        startTx(async () => { const r = await updateMilestoneDate(d.id, projectId, date); if ((r as { error?: string })?.error) alert((r as { error?: string }).error); router.refresh(); });
+        startTx(async () => { const r = await updateMilestoneDate(d.id, projectId, date); if ((r as { error?: string })?.error) { alert((r as { error?: string }).error); setMsOverride(null); } router.refresh(); });
       } else if (d.latest.startDate && d.latest.dueDate) {
         const { startDate, dueDate } = d.latest;
-        startTx(async () => { const r = await updateTaskDates(d.id, projectId, startDate, dueDate); if ((r as { error?: string })?.error) alert((r as { error?: string }).error); router.refresh(); });
+        startTx(async () => { const r = await updateTaskDates(d.id, projectId, startDate, dueDate); if ((r as { error?: string })?.error) { alert((r as { error?: string }).error); setDragOverride(null); } router.refresh(); });
       }
     }
     window.addEventListener("mousemove", onMove);
@@ -427,7 +543,8 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     if (dragging) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const frac = clamp((e.clientX - rect.left) / rect.width, 0, 0.999999);
-    setHoverDay(Math.floor(axisStart + frac * totalDays)); // 같은 날이면 동일 값 → 리렌더 안 됨
+    // 좌측 여백 보정 + 범위로 클램프 → 우측 빈 여백을 호버해도 범위 밖(예: 9/2) 날짜가 안 뜸
+    setHoverDay(clamp(Math.floor(axisStart + frac * totalDays - leftPad), axisStart, axisEnd - 1)); // 같은 날이면 동일 값 → 리렌더 안 됨
   };
   const WD = ["일", "월", "화", "수", "목", "금", "토"];
   const fmtHover = (day: number) => { const dt = new Date(day * 86400000); return `${dt.getUTCMonth() + 1}/${dt.getUTCDate()} (${WD[dt.getUTCDay()]})`; };
@@ -441,19 +558,25 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white">
-      {/* 보기 단위 전환 (일/주/월) — 내부 scale 키(week/month/year)는 localStorage 호환 위해 유지 */}
-      <div className="flex items-center justify-end border-b border-gray-100 px-4 py-2">
+      {/* 우측에 날짜 범위 선택 + 보기 단위 전환(일/주/월) 나란히 — 내부 scale 키(week/month/year)는 localStorage 호환 위해 유지 */}
+      <div className="flex items-center justify-end px-4 pb-4 pt-3">
+        <button onClick={() => handleAddTask(null)} className="flex items-center gap-1.5 rounded-lg bg-blue-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-600">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addMain")}
+        </button>
+      </div>
+      <div className="flex items-center justify-end gap-2 border-b border-gray-100 px-4 py-2">
+        <TimelineRangePicker value={range} todayStr={todayStr} dataStart={dataStart} dataEnd={dataEnd} onChange={chooseRange} />
         <div className="flex gap-0.5 rounded-lg bg-gray-100 p-0.5">
           {([["week", "일"], ["month", "주"], ["year", "월"]] as const).map(([v, ko]) => (
             <button key={v} onClick={() => chooseScale(v)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${scale === v ? "bg-white text-gray-900" : "text-gray-400 hover:text-gray-600"}`}>{ko}</button>
+              className={`rounded-md px-3 py-1 text-xs font-bold transition-colors ${scale === v ? "bg-white text-gray-900" : "text-gray-500 hover:text-gray-700"}`}>{ko}</button>
           ))}
         </div>
       </div>
       {/* 헤더 */}
       <div className="flex items-stretch border-b border-gray-100 bg-gray-50/30">
-        <div className="flex w-60 shrink-0 items-end justify-between px-5 pb-3">
-          <span className="text-xs font-medium text-gray-400">{t("tasks.mainTasks")}</span>
+        <div className="flex w-72 shrink-0 items-end justify-between border-r border-gray-100 px-5 pb-3">
+          <span className="text-[13px] font-semibold text-gray-700">{t("tasks.mainTasks")}</span>
           {expandableIds.length > 0 && (
             <button onClick={toggleAll} title={allOpen ? "모두 접기" : "모두 펼치기"} className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-blue-500">
               <svg className={`h-3.5 w-3.5 transition-transform ${allOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
@@ -461,18 +584,22 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
             </button>
           )}
         </div>
-        <div className="relative flex flex-1 pt-7">
+        <div className="relative flex flex-1 pt-7 pb-3">
+          <div style={{ width: `${(leftPad / totalDays) * 100}%` }} className="shrink-0" />
           {columns.map((c, i) => (
-            <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="overflow-visible px-1 pb-3 text-center">{c.tick && <span className={`whitespace-nowrap text-xs font-medium ${i === todayIdx ? "text-rose-500" : "text-gray-500"}`}>{c.label}</span>}</div>
+            <div key={i} style={{ width: `${((c.end - c.start) / totalDays) * 100}%` }} className="relative">
+              {c.tick && <span className={`absolute bottom-0 -translate-x-1/2 whitespace-nowrap text-[13px] font-medium ${scale === "week" ? "left-0" : "left-1/2"} ${i === todayIdx ? "text-gray-900" : "text-gray-600"}`}>{c.label}</span>}
+            </div>
           ))}
           {todayIdx >= 0 && todayIdx < N && (
-            <div className="pointer-events-none absolute top-1.5 z-20 flex -translate-x-1/2 flex-col items-center" style={{ left: `${todayPct}%` }}>
-              <div className="flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5">
-                <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.27 5.82.846-4.21 4.104.994 5.795L10 14.99l-5.204 2.735.994-5.795-4.21-4.104 5.82-.846z" /></svg>
-                <span className="text-[9px] font-bold tracking-wide text-white">TODAY</span>
-                <span className="text-[9px] font-semibold text-rose-100">{now.getMonth() + 1}/{now.getDate()}</span>
-              </div>
-              <span className="h-1.5 w-px bg-rose-400" />
+            <div className="pointer-events-none absolute top-1.5 z-20 -translate-x-1/2" style={{ left: `${todayPct}%` }}>
+              <span className="whitespace-nowrap rounded-full bg-gray-700 px-2.5 py-1 text-xs font-semibold text-white">Today</span>
+            </div>
+          )}
+          {/* 호버 날짜 배지 — 선은 트랙 안에, 날짜 읽기는 헤더 상단에 */}
+          {!dragging && hoverDay !== null && (
+            <div className="pointer-events-none absolute top-1.5 z-30 -translate-x-1/2" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }}>
+              <span className="whitespace-nowrap rounded-full bg-slate-500 px-2 py-0.5 text-[11px] font-semibold text-white">{fmtHover(hoverDay)}</span>
             </div>
           )}
         </div>
@@ -490,77 +617,115 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         const effStatus = hasSubs
           ? (subs.every((s) => s.status === "done") ? "done"
             : subs.some((s) => s.status === "pending") ? "pending"
-            : subs.some((s) => s.status === "in_progress" || (s.progress ?? 0) > 0) ? "in_progress"
+            : subs.some((s) => s.status === "in_progress" || effProgress(s) > 0) ? "in_progress"
             : "todo")
-          : row.status;
+          : colorStatus(row);
         const isDone = effStatus === "done";
-        const pctV = hasSubs
-          ? Math.round(subs.reduce((a, s) => a + effProgress(s), 0) / subs.length)
-          : effProgress(row);
+        const pctV = taskProgress(row);
         const barStyle = rollupSpan(row);
+        const barLeftPct = parseFloat(barStyle.left);
+        const barRightPct = barLeftPct + parseFloat(barStyle.width);
+        // 메인 막대 담당자 = 메인 자체 ∪ 모든 서브 담당자(이름 기준 중복 제거).
+        // 담당자가 서브에만 붙는 경우가 많아, 메인 자체만 보면 비어 아바타가 안 뜨는 문제를 막는다.
+        const rowAssignees = (() => {
+          const seen = new Set<string>();
+          const out: Task["assignees"] = [];
+          for (const a of [...row.assignees, ...row.subtasks.flatMap((s) => s.assignees)]) {
+            if (!seen.has(a.name)) { seen.add(a.name); out.push(a); }
+          }
+          return out;
+        })();
+        // 메인 막대도 합집합 범위가 차트 범위를 벗어나면 그쪽 모서리를 직선으로 끊는다.
+        const rd = rollupDates(row);
+        const barClipL = !!rd.s && dayNum(rd.s) < axisStart;
+        const barClipR = !!rd.d && dayNum(rd.d) > axisEnd - 1;
         const warn = hasSubs
           ? subs.some((s) => isLate(s.status, s.progress ?? 0, s.startDate, s.dueDate))
           : isLate(row.status, pctV, row.startDate, row.dueDate);
         return (
-          <div key={row.id}>
+          // 메인태스크 = 카드 띠(흰 바탕 + 위아래 경계 + 그림자). 접힌 카드는 hover 시 그림자가 더 떠올라 강조되고, 펼친 카드는 메인+서브를 한 통에 담는다.
+          // 좌우는 풀블리드(가로 패딩/마진 X) → 드래그 가이드 오버레이·날짜축과 트랙 정렬이 어긋나지 않는다.
+          <div key={row.id} className={`border-y border-gray-200/70 bg-white transition-shadow ${isOpen ? "shadow-sm" : "shadow-sm hover:shadow-md"}`}>
             <div onDragEnter={() => onRowDragEnter(row.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center transition-colors hover:bg-gray-50/40 ${rowDragging === row.id ? "opacity-40" : ""}`}>
-              <div className="flex w-60 shrink-0 items-center gap-1.5 px-3 py-3">
+              <div className="flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 px-3 py-3">
                 <span draggable onDragStart={() => { rowDrag.current = row.id; setRowDragging(row.id); }} onDragEnd={onRowDragEnd} title="드래그로 순서 변경" className="shrink-0 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
                   <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
                 </span>
-                <Check done={isDone} onClick={() => { if (!hasSubs) toggleDone(row); }} />
+                <Check done={isDone} onClick={() => onMainCheck(row)} />
                 <button onClick={() => toggle(row.id)} className="shrink-0 text-gray-300 hover:text-gray-500" title={t("tasks.addSub")}>
                   <svg className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>
                 {warn && <span title="시작일이 지났는데 시작 전이거나 마감이 지났어요" className="shrink-0 text-red-500"><svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg></span>}
-                <button onClick={() => setSelected(row)} title={row.title} className={`truncate text-left text-sm font-medium hover:text-blue-600 ${isDone ? "text-gray-300 line-through" : warn ? "text-red-700" : "text-gray-900"}`}>{row.title}</button>
+                <button onClick={() => setSelected(row)} title={row.title} className={`truncate text-left text-[15px] font-semibold hover:text-blue-600 ${isDone ? "text-gray-300 line-through" : warn ? "text-red-700" : "text-gray-900"}`}>{row.title}</button>
               </div>
-              <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-12 flex-1 cursor-default">
+              <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-14 flex-1 cursor-default">
                 <Columns />
-                <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-lg ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={barStyle}>
-                  <div className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }} />
-                  {effStatus === "pending" && <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${pctV}%`, backgroundImage: STRIPE }} />}
-                  <span className={`relative z-10 ml-2.5 text-[11px] font-semibold ${pctV >= 55 ? "text-white" : "text-gray-700"}`}>{pctV}%</span>
-                  {row.assignees.length > 0 && <span className="absolute -right-1 top-1/2 z-10 flex -translate-y-1/2 -space-x-1.5">{row.assignees.slice(0, 3).map((a, i) => <Avatar key={i} a={a} />)}</span>}
+                {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
+                {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }} />}
+                <div title={(() => { const r = rollupDates(row); return `${pctV}% · ${fmtRange(r.s, r.d)}${hasSubs ? "" : " · 끌어서 기간 변경"}`; })()} onMouseDown={hasSubs ? () => { moved.current = false; } : (e) => startDrag(e, "task", "move", row)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(row); }} className={`absolute top-1/2 flex h-9 -translate-y-1/2 items-center overflow-hidden rounded-lg ${barClipL ? "rounded-l-none" : ""} ${barClipR ? "rounded-r-none" : ""} ${STATUS_TRACK[effStatus]} ring-inset group-hover:ring-2 ${warn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[effStatus]}`} ${hasSubs ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`} style={{ ...barStyle, ...fadeMask(barClipL, barClipR) }}>
+                  {/* 진도 채움 — 채워진 구간 '안'에 흰색 %를 두어, 채운 만큼만 흰색으로 잘려 보인다 */}
+                  <div className={`absolute inset-y-0 left-0 z-10 overflow-hidden rounded-lg ${STATUS_FILL[effStatus]} transition-[width] duration-300`} style={{ width: `${pctV}%` }}>
+                    {effStatus === "pending" && <div className="absolute inset-0" style={{ backgroundImage: STRIPE }} />}
+                    <span className="pointer-events-none absolute left-0 top-1/2 ml-2.5 -translate-y-1/2 whitespace-nowrap text-[13px] font-semibold text-white">{pctV}%<span className="ml-2">{row.title}</span></span>
+                  </div>
+                  {/* 빈 구간용 어두운 %·이름 — 채움(z-10) 아래에 깔려, 안 채워진 부분에서만 드러난다. 막대 폭에서 잘림 */}
+                  <span className="pointer-events-none absolute left-0 top-1/2 z-0 ml-2.5 -translate-y-1/2 whitespace-nowrap text-[13px] font-semibold text-gray-800">{pctV}%<span className="ml-2">{row.title}</span></span>
                   {!hasSubs && <>
                     <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "l", row); }} className="absolute inset-y-0 left-0 z-30 w-2 cursor-ew-resize" />
                     <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "r", row); }} className="absolute inset-y-0 right-0 z-30 w-2 cursor-ew-resize" />
                   </>}
                 </div>
+                <HoverAssignees assignees={rowAssignees} rightPct={barRightPct} />
               </div>
             </div>
 
             {isOpen && (
-              <div className="relative">
-                {row.subtasks.length > 0 && <span className="pointer-events-none absolute left-[16px] top-0 bottom-3 w-px bg-gray-200" />}
-                {row.subtasks.map((sub) => {
+              <div className="relative isolate">
+                {/* 펼친 카드 안에서 서브 영역만 옅은 음영 → 흰색(메인 행) ⊃ 음영(서브 묶음) 으로 카드 내부 위계를 잡는다. (z=-10이라 행 콘텐츠·격자 아래) */}
+                <span aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-gray-50/60" />
+                {row.subtasks.map((sub, si) => {
                   const sDone = sub.status === "done";
                   const subPct = effProgress(sub);
                   const subWarn = isLate(sub.status, subPct, sub.startDate, sub.dueDate);
+                  const subBar = span(dsv(sub), dev(sub));
+                  const subLeftPct = parseFloat(subBar.left);
+                  const subRightPct = subLeftPct + parseFloat(subBar.width);
+                  const subColor = colorStatus(sub);
+                  const isLastSub = si === row.subtasks.length - 1;
                   return (
                     <div key={sub.id} onDragEnter={() => onSubDragEnter(row.id, sub.id)} onDragOver={(e) => e.preventDefault()} className={`group flex items-center hover:bg-gray-50/40 ${subDragging === sub.id ? "opacity-40" : ""}`}>
-                      <div className="flex w-60 shrink-0 items-center gap-1.5 py-2 pr-4 pl-[26px]">
-                        <span draggable onDragStart={() => { subDrag.current = { parentId: row.id, id: sub.id }; setSubDragging(sub.id); }} onDragEnd={() => onSubDragEnd(row.id)} title="드래그로 순서 변경" className="shrink-0 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
+                      <div className="relative flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 py-3 pr-4 pl-[78px]">
+                        {/* 트리 연결선: 메인의 펼침 화살표(▸) 바로 아래에서 수직선이 내려와 각 서브 체크박스로 ㄴ자로 분기 → 메인/서브 위계를 또렷이 */}
+                        <span aria-hidden className={`pointer-events-none absolute left-[66px] w-0.5 -translate-x-px rounded-full bg-gray-300 ${isLastSub ? "top-0 h-1/2" : "inset-y-0"}`} />
+                        <span aria-hidden className="pointer-events-none absolute left-[66px] top-1/2 h-px w-3 -translate-y-px bg-gray-300" />
+                        <span draggable onDragStart={() => { subDrag.current = { parentId: row.id, id: sub.id }; setSubDragging(sub.id); }} onDragEnd={() => onSubDragEnd(row.id)} title="드래그로 순서 변경" className="absolute left-2 top-1/2 z-10 -translate-y-1/2 cursor-grab text-gray-300 opacity-0 transition-all hover:text-gray-500 group-hover:opacity-100 active:cursor-grabbing">
                           <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.4" /><circle cx="7" cy="10" r="1.4" /><circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="5" r="1.4" /><circle cx="13" cy="10" r="1.4" /><circle cx="13" cy="15" r="1.4" /></svg>
                         </span>
                         <Check done={sDone} onClick={() => toggleDone(sub)} />
                         {subWarn && <span title="시작일이 지났는데 시작 전이거나 마감이 지났어요" className="shrink-0 text-red-500"><svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg></span>}
-                        <button onClick={() => setSelected(sub)} title={sub.title} className={`truncate text-left text-[13px] hover:text-blue-600 ${sDone ? "text-gray-300 line-through" : subWarn ? "text-red-700" : "text-gray-600"}`}>{sub.title}</button>
+                        <button onClick={() => setSelected(sub)} title={sub.title} className={`truncate text-left text-sm font-medium hover:text-blue-600 ${sDone ? "text-gray-400 line-through" : subWarn ? "text-red-700" : "text-gray-700"}`}>{sub.title}</button>
                       </div>
-                      <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-9 flex-1 cursor-default">
+                      <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative block h-11 flex-1 cursor-default">
                         <Columns />
-                        <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center overflow-hidden rounded-md ${STATUS_TRACK[sub.status]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[sub.status]}`} cursor-grab active:cursor-grabbing`} style={span(dsv(sub), dev(sub))}>
-                          <div className={`absolute inset-y-0 left-0 rounded-md bg-gradient-to-r ${STATUS_FILL[sub.status]} transition-[width] duration-300`} style={{ width: `${subPct}%` }} />
-                          {sub.status === "pending" && <div className="absolute inset-y-0 left-0 rounded-md" style={{ width: `${subPct}%`, backgroundImage: STRIPE }} />}
-                          {sub.assignees.length > 0 && <span className="absolute -right-0.5 top-1/2 flex -translate-y-1/2 -space-x-1.5">{sub.assignees.slice(0, 3).map((a, i) => <Avatar key={i} a={a} size="xs" />)}</span>}
+                        {todayIdx >= 0 && todayIdx < N && <span className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-gray-300" style={{ left: `${todayPct}%` }} />}
+                        {!dragging && hoverDay !== null && <span className="pointer-events-none absolute inset-y-0 z-20 w-px -translate-x-1/2 bg-slate-400" style={{ left: `${dayToPct(hoverDay + markOffset)}%` }} />}
+                        <div title={`${subPct}% · ${fmtRange(dsv(sub), dev(sub))} · 끌어서 기간 변경`} onMouseDown={(e) => startDrag(e, "task", "move", sub)} onClick={() => { if (moved.current) { moved.current = false; return; } setSelected(sub); }} className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md ${subBar.clipL ? "rounded-l-none" : ""} ${subBar.clipR ? "rounded-r-none" : ""} ${STATUS_TRACK[subColor]} ring-inset group-hover:ring-2 ${subWarn ? "ring-2 ring-red-400" : `ring-1 ${STATUS_RING[subColor]}`} cursor-grab active:cursor-grabbing`} style={{ left: subBar.left, width: subBar.width, ...fadeMask(subBar.clipL, subBar.clipR) }}>
+                          {/* 진도 채움 — 채운 만큼만 흰 이름이 잘려 보인다 */}
+                          <div className={`absolute inset-y-0 left-0 z-10 overflow-hidden rounded-md ${STATUS_FILL[subColor]} transition-[width] duration-300`} style={{ width: `${subPct}%` }}>
+                            {subColor === "pending" && <div className="absolute inset-0" style={{ backgroundImage: STRIPE }} />}
+                            <span className="pointer-events-none absolute left-0 top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap text-[12px] font-semibold text-white">{sub.title}</span>
+                          </div>
+                          {/* 빈 구간용 어두운 이름 — 채움 아래에 깔려, 안 채워진 부분에서만 드러난다. 막대 폭에서 잘림 */}
+                          <span className="pointer-events-none absolute left-0 top-1/2 z-0 ml-2 -translate-y-1/2 whitespace-nowrap text-[12px] font-semibold text-gray-800">{sub.title}</span>
                           <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "l", sub); }} className="absolute inset-y-0 left-0 z-30 w-1.5 cursor-ew-resize" />
                           <span onMouseDown={(e) => { e.stopPropagation(); startDrag(e, "task", "r", sub); }} className="absolute inset-y-0 right-0 z-30 w-1.5 cursor-ew-resize" />
                         </div>
+                        <HoverAssignees assignees={sub.assignees} rightPct={subRightPct} />
                       </div>
                     </div>
                   );
                 })}
-                <button onClick={() => handleAddTask(row.id)} className="flex items-center gap-1.5 py-2 pl-[44px] text-xs text-gray-300 hover:text-blue-500">
+                <button onClick={() => handleAddTask(row.id)} className="flex items-center gap-1.5 py-2 pl-[78px] text-xs text-gray-300 hover:text-blue-500">
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addSub")}
                 </button>
               </div>
@@ -571,32 +736,28 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         const active = order.filter((r) => !isMainDone(r));
         const doneRows = order.filter((r) => isMainDone(r));
         return (
-          <>
+          // 카드들을 옅은 회색 배경 위에 세로 간격(space-y)으로 띄운다. 가로 패딩은 주지 않아 트랙↔날짜축 정렬을 보존.
+          <div className="space-y-2 bg-gray-50/50 py-2">
             {active.map(renderMainRow)}
             {doneRows.length > 0 && (
-              <div className="border-t border-gray-100">
+              <div className="border-t border-gray-100 pt-2">
                 <button onClick={() => setShowDone((v) => !v)} className="flex w-full items-center gap-1.5 px-5 py-2.5 text-xs font-medium text-gray-400 transition-colors hover:text-gray-600">
                   <svg className={`h-3.5 w-3.5 transition-transform ${showDone ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                   <svg className="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 011.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" /></svg>
                   {t("tasks.done")} {doneRows.length}
                 </button>
-                {showDone && doneRows.map(renderMainRow)}
+                {showDone && <div className="space-y-2">{doneRows.map(renderMainRow)}</div>}
               </div>
             )}
-          </>
+          </div>
         );
       })()}
 
-      {/* 메인 추가 */}
-      <button onClick={() => handleAddTask(null)} className="flex items-center gap-1.5 px-5 py-3 text-xs font-medium text-gray-400 hover:text-blue-500">
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>{t("tasks.addMain")}
-      </button>
-
       {/* 마일스톤 */}
       <div className="flex items-center border-t border-gray-100 bg-amber-50/30">
-        <div className="flex w-60 shrink-0 items-center gap-1.5 px-5 py-3">
+        <div className="flex w-72 shrink-0 items-center gap-1.5 border-r border-gray-100 px-5 py-3">
           <svg className="h-3 w-3 text-amber-500" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1l9 9-9 9-9-9z" /></svg>
-          <span className="text-xs font-medium text-amber-700">마일스톤</span>
+          <span className="text-[13px] font-semibold text-amber-700">마일스톤</span>
           <button onClick={() => setAddingMs((v) => !v)} className="ml-1 text-amber-500 hover:text-amber-700"><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button>
         </div>
         <div data-track onMouseMove={onTrackHover} onMouseLeave={() => setHoverDay(null)} className="relative h-11 flex-1">
@@ -627,26 +788,39 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
         </div>
       )}
 
-      {/* 드래그/호버 날짜 가이드선 (트랙 영역에만 정렬: 좌측 w-60 라벨열 제외) */}
-      {(dragging ? (dragOverride || msOverride) : hoverDay !== null) && (
+      {/* 드래그 중 날짜 가이드선만 전체 정렬 오버레이로 표시 (호버 선은 각 트랙 안에서 그림) */}
+      {dragging && (dragOverride || msOverride) && (
         <div className="pointer-events-none absolute inset-0 z-40 flex">
-          <div className="w-60 shrink-0" />
+          <div className="w-72 shrink-0" />
           <div className="relative flex-1">
-            {dragging ? (
-              <>
-                {dragOverride && guideLine(pctDay(dayNum(dragOverride.startDate), false), fmtD(dragOverride.startDate), "g-s", "start", "blue")}
-                {dragOverride && guideLine(pctDay(dayNum(dragOverride.dueDate), true), fmtD(dragOverride.dueDate), "g-e", "end", "blue")}
-                {msOverride && guideLine(msPct(msOverride.date), fmtD(msOverride.date), "g-m", "start", "blue")}
-              </>
-            ) : (
-              hoverDay !== null && guideLine(((hoverDay + 0.5 - axisStart) / totalDays) * 100, fmtHover(hoverDay), "g-h", "start", "slate")
-            )}
+            {dragOverride && guideLine(pctDay(dayNum(dragOverride.startDate), false), fmtD(dragOverride.startDate), "g-s", "start", "blue")}
+            {dragOverride && guideLine(pctDay(dayNum(dragOverride.dueDate), true), fmtD(dragOverride.dueDate), "g-e", "end", "blue")}
+            {msOverride && guideLine(msPct(msOverride.date), fmtD(msOverride.date), "g-m", "start", "blue")}
           </div>
         </div>
       )}
 
       {selected && (
-        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} isDraft={selected.id === draftId} onClose={() => { setSelected(null); setDraftId(null); }} />
+        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} isDraft={selected.id === draftId} subtasks={order.find((m) => m.id === selected.id)?.subtasks ?? []} onClose={() => { setSelected(null); setDraftId(null); }} />
+      )}
+
+      {/* 메인 완료 확인 모달 (미완료 서브가 남아 있을 때) */}
+      {confirmMain && (
+        <div onClick={() => setConfirmMain(null)} className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 p-4 backdrop-blur-sm">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-amber-50">
+              <svg className="h-6 w-6 text-amber-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+            </div>
+            <h3 className="text-base font-bold text-gray-900">{t("tasks.completeMainTitle")}</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-gray-600">
+              {t("tasks.completeMainConfirm").replace("{n}", String(confirmMain.remaining)).replace("{total}", String(confirmMain.row.subtasks.length))}
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button onClick={() => setConfirmMain(null)} className="flex-1 rounded-xl bg-gray-100 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200">{t("common.cancel")}</button>
+              <button onClick={() => { applyAllSubs(confirmMain.row, "done"); setConfirmMain(null); }} className="flex-1 rounded-xl bg-blue-500 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-600">{t("tasks.completeMainAction")}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

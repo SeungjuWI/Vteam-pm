@@ -5,6 +5,7 @@ import DmChat from "@/components/dm-chat";
 import GroupDmChat from "@/components/group-dm-chat";
 import SidebarTeamList from "@/components/sidebar-team-list";
 import { usePresence } from "@/hooks/use-presence";
+import { useGlobalChatNotifications } from "@/hooks/use-global-chat-notifications";
 
 interface ChatMember {
   id: string;
@@ -59,6 +60,9 @@ export default function DmChatManager({
   const [chats, setChats] = useState<AnyChat[]>([]);
 
   usePresence();
+  // 어느 페이지에 있든(채팅창을 안 열어둬도) 전역으로 메시지를 듣고
+  // 소리 · 브라우저 알림 · 탭 타이틀(N) 뱃지를 갱신
+  useGlobalChatNotifications(currentUserId);
 
   const openChat = useCallback((member: ChatMember) => {
     setChats((prev) => {

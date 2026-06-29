@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Avatar from "@/components/avatar";
 import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
-import { useNotification } from "@/hooks/use-notification";
+import { setChatActive } from "@/lib/active-chat";
 import {
   getChannelMessages,
   sendChannelMessage,
@@ -14,7 +15,25 @@ import {
   getChannelMembers,
   createChannel,
   getMyChannels,
+  getThreadReplies,
 } from "./actions";
+import {
+  editChannelMessage,
+  deleteChannelMessage,
+  uploadChatAttachment,
+} from "@/app/(dashboard)/chat-message-actions";
+import {
+  AttachmentView,
+  AttachmentButton,
+  MessageActions,
+  MessageContent,
+  EditBox,
+  type AttachmentType,
+} from "@/components/chat/message-extras";
+import {
+  RichComposer,
+  type RichComposerHandle,
+} from "@/components/chat/rich-composer";
 import DeptManageModal from "./dept-manage-modal";
 
 interface ChannelItem {
@@ -48,6 +67,14 @@ interface ChannelMessage {
   sender_avatar_url: string | null;
   translated_content?: string | null;
   created_at: string;
+  edited_at?: string | null;
+  deleted_at?: string | null;
+  attachment_url?: string | null;
+  attachment_type?: AttachmentType | null;
+  attachment_name?: string | null;
+  thread_root_id?: string | null;
+  reply_count?: number;
+  last_reply_at?: string | null;
 }
 
 interface ChannelMember {
@@ -72,16 +99,32 @@ export default function ChannelsView({
   companyMembers: CompanyMember[];
 }) {
   const t = useT();
+  const searchParams = useSearchParams();
   const [departments, setDepartments] =
     useState<DepartmentItem[]>(initialDepartments);
+  // ?channel=<id> (멘션 알림 클릭 등)로 들어오면 해당 채널을 먼저 선택
+  const allChannelIds = initialDepartments.flatMap((d) =>
+    d.channels.map((c) => c.id)
+  );
+  const channelParam = searchParams.get("channel");
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
-    initialDepartments[0]?.channels[0]?.id ?? null
+    (channelParam && allChannelIds.includes(channelParam) ? channelParam : null) ??
+      initialDepartments[0]?.channels[0]?.id ??
+      null
   );
   const [showManage, setShowManage] = useState(false);
   const [addingChannelDeptId, setAddingChannelDeptId] = useState<string | null>(
     null
   );
   const [newChannelName, setNewChannelName] = useState("");
+
+  // 채널 페이지에 이미 있는 상태에서 ?channel= 링크로 다시 들어오면 선택 갱신
+  useEffect(() => {
+    if (channelParam && allChannelIds.includes(channelParam)) {
+      setSelectedChannelId(channelParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelParam]);
 
   const refreshDepartments = useCallback(async () => {
     const data = await getMyChannels();
@@ -158,7 +201,7 @@ export default function ChannelsView({
 
         <div className="flex-1 overflow-y-auto px-2 py-3">
           {departments.length === 0 ? (
-            <div className="px-3 py-8 text-center text-xs text-gray-400">
+            <div className="px-3 py-8 text-center text-xs text-gray-600">
               {isAdmin ? t("channels.emptyAdmin") : t("channels.empty")}
             </div>
           ) : (
@@ -258,7 +301,7 @@ export default function ChannelsView({
             currentUserLang={currentUserLang}
           />
         ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+          <div className="flex flex-1 items-center justify-center text-sm text-gray-600">
             {t("channels.selectChannel")}
           </div>
         )}
@@ -284,6 +327,19 @@ function formatTime(dateStr: string) {
   ).padStart(2, "0")}`;
 }
 
+function dayKey(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function formatDateDivider(dateStr: string) {
+  const d = new Date(dateStr);
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${
+    days[d.getDay()]
+  })`;
+}
+
 function ChannelChat({
   channelId,
   channelName,
@@ -298,15 +354,47 @@ function ChannelChat({
   currentUserLang: string;
 }) {
   const t = useT();
-  const { notify } = useNotification();
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [members, setMembers] = useState<ChannelMember[]>([]);
-  const [input, setInput] = useState("");
+  const [composerHasText, setComposerHasText] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [pending, setPending] = useState<{
+    url: string;
+    type: AttachmentType;
+    name: string;
+  } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<RichComposerHandle>(null);
+
+  // ===== 스레드(답글) 상태 =====
+  const [threadRootId, setThreadRootId] = useState<string | null>(null);
+  const [threadReplies, setThreadReplies] = useState<ChannelMessage[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [threadHasText, setThreadHasText] = useState(false);
+  const [threadSending, setThreadSending] = useState(false);
+  const [threadUploading, setThreadUploading] = useState(false);
+  const [threadEditingId, setThreadEditingId] = useState<string | null>(null);
+  const [threadPending, setThreadPending] = useState<{
+    url: string;
+    type: AttachmentType;
+    name: string;
+  } | null>(null);
+  // 실시간 핸들러가 재구독 없이 현재 열린 스레드를 참조하도록 ref로 동기화
+  const threadRootIdRef = useRef<string | null>(null);
+  const threadScrollRef = useRef<HTMLDivElement>(null);
+  const threadComposerRef = useRef<RichComposerHandle>(null);
+
+  useEffect(() => {
+    threadRootIdRef.current = threadRootId;
+  }, [threadRootId]);
+
+  const threadRoot = threadRootId
+    ? messages.find((m) => m.id === threadRootId) ?? null
+    : null;
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -325,7 +413,7 @@ function ChannelChat({
       setMembers(data as ChannelMember[])
     );
     markChannelAsRead(channelId);
-    inputRef.current?.focus();
+    composerRef.current?.focus();
   }, [channelId, scrollToBottom]);
 
   // Realtime 구독
@@ -350,7 +438,55 @@ function ChannelChat({
             content: string;
             sender_language: string;
             created_at: string;
+            thread_root_id: string | null;
           };
+
+          // ── 스레드 답글 처리 ──────────────────────────────
+          if (msg.thread_root_id) {
+            const rootId = msg.thread_root_id;
+            // 내 답글은 낙관적으로 이미 반영됨 → 무시 (중복 카운트 방지)
+            if (msg.sender_id === currentUserId) return;
+
+            // 본문 리스트의 루트 메시지 답글 수 갱신
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === rootId
+                  ? {
+                      ...m,
+                      reply_count: (m.reply_count ?? 0) + 1,
+                      last_reply_at: msg.created_at,
+                    }
+                  : m
+              )
+            );
+
+            // 현재 열려있는 스레드면 답글 목록에 추가
+            if (threadRootIdRef.current === rootId) {
+              const sender = members.find((m) => m.id === msg.sender_id);
+              let translated: string | null = null;
+              if (
+                msg.sender_language &&
+                msg.sender_language !== currentUserLang
+              ) {
+                const result = await translateSingleChannelMessage(
+                  msg.id,
+                  msg.content,
+                  msg.sender_language
+                );
+                translated = result.translated ?? null;
+              }
+              setThreadReplies((prev) => [
+                ...prev,
+                {
+                  ...msg,
+                  sender_name: sender?.name ?? "알 수 없음",
+                  sender_avatar_url: sender?.avatar_url ?? null,
+                  translated_content: translated,
+                },
+              ]);
+            }
+            return;
+          }
 
           // 내가 보낸 메시지 → 낙관적 업데이트 교체
           if (msg.sender_id === currentUserId) {
@@ -392,9 +528,80 @@ function ChannelChat({
           };
 
           setMessages((prev) => [...prev, newMsg]);
-          notify(`#${channelName} · ${newMsg.sender_name}`, newMsg.content);
           setTimeout(scrollToBottom, 50);
           markChannelAsRead(channelId);
+        }
+      )
+      // 멤버가 메시지를 수정/삭제하면 반영
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "dept_channel_messages",
+          filter: `channel_id=eq.${channelId}`,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async (payload: any) => {
+          const msg = payload.new as ChannelMessage;
+
+          // ── 스레드 답글 수정/삭제 반영 ──────────────────────
+          if (msg.thread_root_id) {
+            if (threadRootIdRef.current !== msg.thread_root_id) return;
+            let translated: string | null = null;
+            if (
+              !msg.deleted_at &&
+              msg.content &&
+              msg.sender_id !== currentUserId &&
+              msg.sender_language &&
+              msg.sender_language !== currentUserLang
+            ) {
+              const result = await translateSingleChannelMessage(
+                msg.id,
+                msg.content,
+                msg.sender_language
+              );
+              translated = result.translated ?? null;
+            }
+            setThreadReplies((prev) =>
+              prev.map((r) =>
+                r.id === msg.id
+                  ? { ...r, ...msg, translated_content: translated }
+                  : r
+              )
+            );
+            return;
+          }
+
+          if (msg.sender_id === currentUserId) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m))
+            );
+            return;
+          }
+
+          let translated: string | null = null;
+          if (
+            !msg.deleted_at &&
+            msg.content &&
+            msg.sender_language &&
+            msg.sender_language !== currentUserLang
+          ) {
+            const result = await translateSingleChannelMessage(
+              msg.id,
+              msg.content,
+              msg.sender_language
+            );
+            translated = result.translated ?? null;
+          }
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === msg.id
+                ? { ...m, ...msg, translated_content: translated }
+                : m
+            )
+          );
         }
       )
       .subscribe();
@@ -408,19 +615,30 @@ function ChannelChat({
     members,
     currentUserId,
     currentUserLang,
-    notify,
     scrollToBottom,
   ]);
 
+  // "보는 중" 등록 → 전역 알림 훅이 이 채널엔 소리 중복을 내지 않음
+  useEffect(() => {
+    const key = `channel-${channelId}`;
+    setChatActive(key, true);
+    return () => setChatActive(key, false);
+  }, [channelId]);
+
   const handleSend = async () => {
-    const text = input.trim();
-    if (!text || sending) return;
-    setInput("");
+    const text = (composerRef.current?.getText() ?? "").trim();
+    // 글이나 첨부 둘 중 하나는 있어야 전송
+    if ((!text && !pending) || sending || uploading) return;
+    const attachment = pending;
+    composerRef.current?.clear();
+    setComposerHasText(false);
+    setPending(null);
     setSending(true);
 
     const me = members.find((m) => m.id === currentUserId);
+    const tempId = `temp-${Date.now()}`;
     const optimistic: ChannelMessage = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       channel_id: channelId,
       sender_id: currentUserId,
       content: text,
@@ -429,16 +647,228 @@ function ChannelChat({
       sender_avatar_url: me?.avatar_url ?? null,
       translated_content: null,
       created_at: new Date().toISOString(),
+      attachment_url: attachment?.url ?? null,
+      attachment_type: attachment?.type ?? null,
+      attachment_name: attachment?.name ?? null,
     };
     setMessages((prev) => [...prev, optimistic]);
     setTimeout(scrollToBottom, 50);
 
-    const result = await sendChannelMessage(channelId, text);
+    const result = await sendChannelMessage(
+      channelId,
+      text,
+      attachment
+        ? { url: attachment.url, type: attachment.type, name: attachment.name }
+        : null
+    );
     setSending(false);
     if (result.error) {
-      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+    } else if (result.id) {
+      // 임시 메시지를 실제 id로 교체 → 곧바로 수정/삭제 가능
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, id: result.id! } : m))
+      );
     }
   };
+
+  // 첨부 파일 선택 → 업로드만 해두고 미리보기로 대기 (전송은 보내기 버튼으로)
+  const handleAttach = async (file: File) => {
+    if (uploading || sending) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const up = await uploadChatAttachment(fd);
+    setUploading(false);
+    if (up.error || !up.url || !up.type) {
+      alert(up.error ?? "업로드 실패");
+      return;
+    }
+    setPending({ url: up.url, type: up.type, name: up.name ?? "파일" });
+    composerRef.current?.focus();
+  };
+
+  // 내 메시지 수정 저장
+  const handleSaveEdit = useCallback(async (msgId: string, value: string) => {
+    setEditingId(null);
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? { ...m, content: value, edited_at: new Date().toISOString() }
+          : m
+      )
+    );
+    await editChannelMessage(msgId, value);
+  }, []);
+
+  // 내 메시지 삭제
+  const handleDelete = useCallback(async (msgId: string) => {
+    if (!confirm("메시지를 삭제할까요?")) return;
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              deleted_at: new Date().toISOString(),
+              content: "",
+              translated_content: null,
+              attachment_url: null,
+            }
+          : m
+      )
+    );
+    await deleteChannelMessage(msgId);
+  }, []);
+
+  // ===== 스레드(답글) 핸들러 =====
+  const threadScrollToBottom = useCallback(() => {
+    if (threadScrollRef.current) {
+      threadScrollRef.current.scrollTop = threadScrollRef.current.scrollHeight;
+    }
+  }, []);
+
+  const openThread = useCallback(
+    async (rootId: string) => {
+      setThreadRootId(rootId);
+      setThreadReplies([]);
+      threadComposerRef.current?.clear();
+      setThreadHasText(false);
+      setThreadPending(null);
+      setThreadEditingId(null);
+      setThreadLoading(true);
+      const { replies } = await getThreadReplies(rootId);
+      setThreadReplies(replies as ChannelMessage[]);
+      setThreadLoading(false);
+      setTimeout(() => {
+        threadScrollToBottom();
+        threadComposerRef.current?.focus();
+      }, 50);
+    },
+    [threadScrollToBottom]
+  );
+
+  const closeThread = useCallback(() => {
+    setThreadRootId(null);
+    setThreadReplies([]);
+    setThreadPending(null);
+    setThreadEditingId(null);
+  }, []);
+
+  const handleThreadSend = async () => {
+    if (!threadRootId) return;
+    const text = (threadComposerRef.current?.getText() ?? "").trim();
+    if ((!text && !threadPending) || threadSending || threadUploading) return;
+    const attachment = threadPending;
+    const rootId = threadRootId;
+    threadComposerRef.current?.clear();
+    setThreadHasText(false);
+    setThreadPending(null);
+    setThreadSending(true);
+
+    const me = members.find((m) => m.id === currentUserId);
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: ChannelMessage = {
+      id: tempId,
+      channel_id: channelId,
+      sender_id: currentUserId,
+      content: text,
+      sender_language: currentUserLang,
+      sender_name: me?.name ?? "",
+      sender_avatar_url: me?.avatar_url ?? null,
+      translated_content: null,
+      created_at: new Date().toISOString(),
+      thread_root_id: rootId,
+      attachment_url: attachment?.url ?? null,
+      attachment_type: attachment?.type ?? null,
+      attachment_name: attachment?.name ?? null,
+    };
+    setThreadReplies((prev) => [...prev, optimistic]);
+    // 본문 루트의 답글 수 낙관적 증가
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === rootId
+          ? {
+              ...m,
+              reply_count: (m.reply_count ?? 0) + 1,
+              last_reply_at: optimistic.created_at,
+            }
+          : m
+      )
+    );
+    setTimeout(threadScrollToBottom, 50);
+
+    const result = await sendChannelMessage(
+      channelId,
+      text,
+      attachment
+        ? { url: attachment.url, type: attachment.type, name: attachment.name }
+        : null,
+      rootId
+    );
+    setThreadSending(false);
+    if (result.error) {
+      setThreadReplies((prev) => prev.filter((m) => m.id !== tempId));
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === rootId
+            ? { ...m, reply_count: Math.max(0, (m.reply_count ?? 1) - 1) }
+            : m
+        )
+      );
+    } else if (result.id) {
+      setThreadReplies((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, id: result.id! } : m))
+      );
+    }
+  };
+
+  const handleThreadAttach = async (file: File) => {
+    if (threadUploading || threadSending) return;
+    setThreadUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const up = await uploadChatAttachment(fd);
+    setThreadUploading(false);
+    if (up.error || !up.url || !up.type) {
+      alert(up.error ?? "업로드 실패");
+      return;
+    }
+    setThreadPending({ url: up.url, type: up.type, name: up.name ?? "파일" });
+    threadComposerRef.current?.focus();
+  };
+
+  const handleThreadSaveEdit = useCallback(
+    async (msgId: string, value: string) => {
+      setThreadEditingId(null);
+      setThreadReplies((prev) =>
+        prev.map((m) =>
+          m.id === msgId
+            ? { ...m, content: value, edited_at: new Date().toISOString() }
+            : m
+        )
+      );
+      await editChannelMessage(msgId, value);
+    },
+    []
+  );
+
+  const handleThreadDelete = useCallback(async (msgId: string) => {
+    if (!confirm("답글을 삭제할까요?")) return;
+    setThreadReplies((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              deleted_at: new Date().toISOString(),
+              content: "",
+              translated_content: null,
+              attachment_url: null,
+            }
+          : m
+      )
+    );
+    await deleteChannelMessage(msgId);
+  }, []);
 
   const toggleOriginal = useCallback((msgId: string) => {
     setShowOriginal((prev) => {
@@ -459,102 +889,303 @@ function ChannelChat({
     () =>
       messages.map((msg, idx) => {
         const isMine = msg.sender_id === currentUserId;
-        const hasTranslation = !!msg.translated_content;
+        const isDeleted = !!msg.deleted_at;
+        const hasAttachment = !!msg.attachment_url && !isDeleted;
+        const hasTranslation = !!msg.translated_content && !isDeleted;
         const displayText = hasTranslation
           ? msg.translated_content!
           : msg.content;
         const isShowingOriginal = showOriginal.has(msg.id);
-
-        const prevMsg = idx > 0 ? messages[idx - 1] : null;
-        const showSenderInfo =
-          !isMine && (!prevMsg || prevMsg.sender_id !== msg.sender_id);
+        const canManage = isMine && !isDeleted && !msg.id.startsWith("temp-");
 
         const time = formatTime(msg.created_at);
-        const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
-        const showTime =
-          !nextMsg ||
-          nextMsg.sender_id !== msg.sender_id ||
-          formatTime(nextMsg.created_at) !== time;
-        const senderLang = LANGUAGES.find(
-          (l) => l.code === msg.sender_language
-        );
+        const senderLang = LANGUAGES.find((l) => l.code === msg.sender_language);
+
+        const prevMsg = idx > 0 ? messages[idx - 1] : null;
+        // 날짜가 바뀌면 구분선 표시
+        const showDateDivider =
+          !prevMsg || dayKey(prevMsg.created_at) !== dayKey(msg.created_at);
+        // 슬랙식 그룹화: 보낸 사람이 바뀌거나 5분 이상 지나면 아바타+이름 헤더 표시
+        const gapMs = prevMsg
+          ? new Date(msg.created_at).getTime() -
+            new Date(prevMsg.created_at).getTime()
+          : Infinity;
+        const showHeader =
+          showDateDivider ||
+          !prevMsg ||
+          prevMsg.sender_id !== msg.sender_id ||
+          gapMs > 5 * 60 * 1000;
 
         return (
-          <div
-            key={msg.id}
-            className={showTime || hasTranslation ? "mb-3" : "mb-1"}
-          >
-            {showSenderInfo && (
-              <div className="mb-1 flex items-center gap-1.5">
-                <Avatar
-                  url={msg.sender_avatar_url}
-                  name={msg.sender_name}
-                  size={20}
-                />
-                <span className="text-[11px] font-medium text-gray-500">
-                  {msg.sender_name}
+          <div key={msg.id}>
+            {showDateDivider && (
+              <div className="my-3 flex items-center gap-3 px-2">
+                <div className="h-px flex-1 bg-gray-100" />
+                <span className="rounded-full border border-gray-200 bg-white px-3 py-0.5 text-[11px] font-medium text-gray-500">
+                  {formatDateDivider(msg.created_at)}
                 </span>
+                <div className="h-px flex-1 bg-gray-100" />
               </div>
             )}
-            <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`flex max-w-[70%] flex-col ${
-                  isMine ? "items-end" : "items-start"
-                }`}
-              >
-                <div
-                  onClick={() =>
-                    hasTranslation && toggleOriginal(msg.id)
-                  }
-                  className={`select-text rounded-2xl px-3.5 py-2 text-sm ${
-                    isMine
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 text-gray-900"
-                  } ${hasTranslation ? "cursor-pointer" : ""} ${
-                    !isMine && !showSenderInfo ? "ml-[26px]" : ""
-                  }`}
-                >
-                  {displayText}
-                </div>
-                {(showTime || hasTranslation) && (
-                  <div
-                    className={`flex items-center gap-1.5 ${
-                      !isMine && !showSenderInfo ? "ml-[26px]" : ""
-                    }`}
-                  >
-                    {showTime && (
-                      <span className="mt-0.5 text-[10px] text-gray-300">
-                        {time}
-                      </span>
-                    )}
-                    {hasTranslation && (
-                      <span className="mt-0.5 text-[10px] text-blue-400">
-                        {t("dm.translated")}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {isShowingOriginal && hasTranslation && (
-                  <div className="mt-1 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                    <div className="mb-1 text-[10px] text-gray-400">
-                      {t("dm.original")}{" "}
-                      {senderLang
-                        ? `${senderLang.flag} ${senderLang.label}`
-                        : ""}
-                    </div>
-                    <p className="text-xs text-gray-600">{msg.content}</p>
-                  </div>
+            <div
+              className={`group relative flex gap-2.5 rounded-md px-2 hover:bg-gray-50 ${
+                showHeader ? "mt-2 py-1" : "py-0.5"
+              }`}
+            >
+              {/* 좌측: 아바타(헤더) 또는 hover 시 시간 */}
+              <div className="w-9 shrink-0">
+                {showHeader ? (
+                  <Avatar
+                    url={msg.sender_avatar_url}
+                    name={msg.sender_name}
+                    size={36}
+                  />
+                ) : (
+                  <span className="mt-0.5 hidden text-right text-[10px] leading-5 text-gray-300 group-hover:block">
+                    {time}
+                  </span>
                 )}
               </div>
+
+              {/* 본문 */}
+              <div className="min-w-0 flex-1">
+                {showHeader && (
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-semibold text-gray-900">
+                      {msg.sender_name}
+                    </span>
+                    <span className="text-[11px] text-gray-400">{time}</span>
+                  </div>
+                )}
+
+                {editingId === msg.id ? (
+                  <div className="mt-1">
+                    <EditBox
+                      initialValue={msg.content}
+                      onSave={(v) => handleSaveEdit(msg.id, v)}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  </div>
+                ) : isDeleted ? (
+                  <p className="text-sm italic text-gray-400">
+                    삭제된 메시지입니다
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {hasAttachment && (
+                      <AttachmentView
+                        url={msg.attachment_url!}
+                        type={msg.attachment_type ?? null}
+                        name={msg.attachment_name ?? null}
+                        isMine={isMine}
+                      />
+                    )}
+                    {displayText && (
+                      <p
+                        onClick={() => hasTranslation && toggleOriginal(msg.id)}
+                        className={`select-text whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800 ${
+                          hasTranslation ? "cursor-pointer" : ""
+                        }`}
+                      >
+                        <MessageContent
+                          text={displayText}
+                          currentUserId={currentUserId}
+                        />
+                        {hasTranslation && (
+                          <span className="ml-1.5 align-middle text-[10px] text-blue-400">
+                            {t("dm.translated")}
+                          </span>
+                        )}
+                        {msg.edited_at && (
+                          <span className="ml-1.5 align-middle text-[10px] text-gray-300">
+                            (수정됨)
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    {isShowingOriginal && hasTranslation && (
+                      <div className="mt-0.5 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                        <div className="mb-1 text-[10px] text-gray-600">
+                          {t("dm.original")}{" "}
+                          {senderLang
+                            ? `${senderLang.flag} ${senderLang.label}`
+                            : ""}
+                        </div>
+                        <p className="text-xs text-gray-600">{msg.content}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 답글 수 칩 → 클릭 시 스레드 열기 */}
+                {!isDeleted && (msg.reply_count ?? 0) > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => openThread(msg.id)}
+                    className={`mt-1 flex w-fit items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
+                      threadRootId === msg.id
+                        ? "border-blue-200 bg-blue-50 text-blue-600"
+                        : "border-transparent text-blue-500 hover:border-gray-200 hover:bg-white"
+                    }`}
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                    </svg>
+                    {msg.reply_count}개의 답글
+                    {msg.last_reply_at && (
+                      <span className="font-normal text-gray-400">
+                        · 마지막 답글 {formatTime(msg.last_reply_at)}
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* 우측 hover 액션 (답글 + 본인 메시지 수정/삭제) */}
+              {!isDeleted && !msg.id.startsWith("temp-") && (
+                <div className="absolute right-2 top-0 flex -translate-y-1/2 items-center rounded-lg border border-gray-200 bg-white opacity-0 shadow-soft-sm transition-opacity group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => openThread(msg.id)}
+                    title="스레드로 답글"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                    </svg>
+                  </button>
+                  {canManage && (
+                    <MessageActions
+                      canEdit={!hasAttachment}
+                      onEdit={() => setEditingId(msg.id)}
+                      onDelete={() => handleDelete(msg.id)}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </div>
         );
       }),
-    [messages, showOriginal, currentUserId, t, toggleOriginal]
+    [
+      messages,
+      showOriginal,
+      editingId,
+      currentUserId,
+      t,
+      toggleOriginal,
+      handleSaveEdit,
+      handleDelete,
+      openThread,
+      threadRootId,
+    ]
   );
 
+  // 스레드 패널용 단일 메시지 렌더 (루트/답글 공용)
+  const renderThreadRow = (msg: ChannelMessage, isRoot: boolean) => {
+    const isMine = msg.sender_id === currentUserId;
+    const isDeleted = !!msg.deleted_at;
+    const hasAttachment = !!msg.attachment_url && !isDeleted;
+    const hasTranslation = !!msg.translated_content && !isDeleted;
+    const displayText = hasTranslation ? msg.translated_content! : msg.content;
+    const isShowingOriginal = showOriginal.has(msg.id);
+    const canManage = isMine && !isDeleted && !msg.id.startsWith("temp-");
+    const editingId2 = isRoot ? editingId : threadEditingId;
+    const onSave = isRoot ? handleSaveEdit : handleThreadSaveEdit;
+    const onCancel = isRoot
+      ? () => setEditingId(null)
+      : () => setThreadEditingId(null);
+    const onEdit = isRoot
+      ? () => setEditingId(msg.id)
+      : () => setThreadEditingId(msg.id);
+    const onDelete = isRoot
+      ? () => handleDelete(msg.id)
+      : () => handleThreadDelete(msg.id);
+
+    return (
+      <div
+        key={msg.id}
+        className="group relative flex gap-2.5 rounded-md px-2 py-1.5 hover:bg-gray-50"
+      >
+        <div className="w-9 shrink-0">
+          <Avatar url={msg.sender_avatar_url} name={msg.sender_name} size={36} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="text-sm font-semibold text-gray-900">
+              {msg.sender_name}
+            </span>
+            <span className="text-[11px] text-gray-400">
+              {formatTime(msg.created_at)}
+            </span>
+          </div>
+          {editingId2 === msg.id ? (
+            <div className="mt-1">
+              <EditBox
+                initialValue={msg.content}
+                onSave={(v) => onSave(msg.id, v)}
+                onCancel={onCancel}
+              />
+            </div>
+          ) : isDeleted ? (
+            <p className="text-sm italic text-gray-400">삭제된 메시지입니다</p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {hasAttachment && (
+                <AttachmentView
+                  url={msg.attachment_url!}
+                  type={msg.attachment_type ?? null}
+                  name={msg.attachment_name ?? null}
+                  isMine={isMine}
+                />
+              )}
+              {displayText && (
+                <p
+                  onClick={() => hasTranslation && toggleOriginal(msg.id)}
+                  className={`select-text whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800 ${
+                    hasTranslation ? "cursor-pointer" : ""
+                  }`}
+                >
+                  <MessageContent
+                    text={displayText}
+                    currentUserId={currentUserId}
+                  />
+                  {hasTranslation && (
+                    <span className="ml-1.5 align-middle text-[10px] text-blue-400">
+                      {t("dm.translated")}
+                    </span>
+                  )}
+                  {msg.edited_at && (
+                    <span className="ml-1.5 align-middle text-[10px] text-gray-300">
+                      (수정됨)
+                    </span>
+                  )}
+                </p>
+              )}
+              {isShowingOriginal && hasTranslation && (
+                <div className="mt-0.5 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                  <p className="text-xs text-gray-600">{msg.content}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {canManage && (
+          <div className="absolute right-2 top-0 -translate-y-1/2 rounded-lg border border-gray-200 bg-white opacity-0 shadow-soft-sm transition-opacity group-hover:opacity-100">
+            <MessageActions
+              canEdit={!hasAttachment}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <>
+    <div className="flex h-full min-h-0 w-full">
+      <div className="flex min-w-0 flex-1 flex-col">
       {/* 헤더 */}
       <div className="flex h-12 items-center justify-between border-b border-gray-100 px-5">
         <div className="flex items-center gap-2">
@@ -562,13 +1193,13 @@ function ChannelChat({
             <span className="text-gray-400"># </span>
             {channelName}
           </span>
-          <span className="text-xs text-gray-400">{deptName}</span>
+          <span className="text-xs text-gray-600">{deptName}</span>
           <span className="flex h-4 items-center rounded-full bg-gray-100 px-1.5 text-[10px] font-medium text-gray-500">
             {members.length}
           </span>
         </div>
         {hasMultiLang && (
-          <span className="flex items-center gap-1 text-[11px] text-gray-400">
+          <span className="flex items-center gap-1 text-[11px] text-gray-600">
             <svg
               className="h-3.5 w-3.5"
               fill="none"
@@ -588,9 +1219,9 @@ function ChannelChat({
       </div>
 
       {/* 메시지 영역 */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4">
         {loading ? (
-          <div className="flex h-full items-center justify-center text-xs text-gray-400">
+          <div className="flex h-full items-center justify-center text-xs text-gray-600">
             {t("common.loading")}
           </div>
         ) : messages.length === 0 ? (
@@ -599,7 +1230,7 @@ function ChannelChat({
             <p className="text-sm font-medium text-gray-500">
               #{channelName}
             </p>
-            <p className="text-xs text-gray-400">{t("channels.startChat")}</p>
+            <p className="text-xs text-gray-600">{t("channels.startChat")}</p>
           </div>
         ) : (
           messageList
@@ -608,25 +1239,64 @@ function ChannelChat({
 
       {/* 입력 영역 */}
       <div className="border-t border-gray-100 px-4 py-3">
+        {/* 첨부 미리보기 (전송 전 대기) */}
+        {pending && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2">
+            {pending.type === "image" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={pending.url}
+                alt={pending.name}
+                className="h-12 w-12 rounded-md object-cover"
+              />
+            ) : (
+              <span className="flex h-12 w-12 items-center justify-center rounded-md bg-gray-200 text-gray-500">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+              </span>
+            )}
+            <span className="min-w-0 flex-1 truncate text-xs text-gray-600">
+              {pending.name}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPending(null)}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+              title="첨부 취소"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             handleSend();
           }}
-          className="flex items-center gap-2"
+          className="flex items-end gap-2"
         >
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={`#${channelName} · ${t("channels.messagePlaceholder")}`}
-            className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
+          <div className="pb-0.5">
+            <AttachmentButton onPicked={handleAttach} disabled={uploading || sending} />
+          </div>
+          <RichComposer
+            ref={composerRef}
+            members={members}
+            disabled={uploading || sending}
+            onSubmit={handleSend}
+            onTextChange={setComposerHasText}
+            placeholder={
+              uploading
+                ? "업로드 중..."
+                : `#${channelName} · ${t("channels.messagePlaceholder")}`
+            }
           />
           <button
             type="submit"
-            disabled={!input.trim() || sending}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-500 text-white transition-colors hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400"
+            disabled={(!composerHasText && !pending) || sending || uploading}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white transition-all duration-200 ease-spring shadow-soft-sm hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400 mb-0.5"
           >
             <svg
               className="h-4 w-4"
@@ -644,6 +1314,123 @@ function ChannelChat({
           </button>
         </form>
       </div>
-    </>
+      </div>
+
+      {/* 스레드 패널 */}
+      {threadRootId && (
+        <div className="flex h-full w-[400px] shrink-0 flex-col border-l border-gray-200 bg-white">
+          {/* 스레드 헤더 */}
+          <div className="flex h-12 items-center justify-between border-b border-gray-100 px-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-gray-900">스레드</span>
+              <span className="text-xs text-gray-400">
+                <span className="text-gray-300"># </span>
+                {channelName}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={closeThread}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              title="스레드 닫기"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* 스레드 본문 (루트 + 답글) */}
+          <div ref={threadScrollRef} className="flex-1 overflow-y-auto px-2 py-3">
+            {threadRoot && renderThreadRow(threadRoot, true)}
+            <div className="my-2 flex items-center gap-3 px-2">
+              <span className="text-[11px] font-medium text-gray-400">
+                {threadReplies.length > 0
+                  ? `${threadReplies.length}개의 답글`
+                  : "아직 답글이 없어요"}
+              </span>
+              <div className="h-px flex-1 bg-gray-100" />
+            </div>
+            {threadLoading ? (
+              <div className="py-6 text-center text-xs text-gray-500">
+                {t("common.loading")}
+              </div>
+            ) : (
+              threadReplies.map((r) => renderThreadRow(r, false))
+            )}
+          </div>
+
+          {/* 답글 입력 */}
+          <div className="border-t border-gray-100 px-3 py-3">
+            {threadPending && (
+              <div className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1.5">
+                {threadPending.type === "image" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={threadPending.url}
+                    alt={threadPending.name}
+                    className="h-10 w-10 rounded-md object-cover"
+                  />
+                ) : (
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-200 text-gray-500">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                  </span>
+                )}
+                <span className="min-w-0 flex-1 truncate text-xs text-gray-600">
+                  {threadPending.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setThreadPending(null)}
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                  title="첨부 취소"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleThreadSend();
+              }}
+              className="flex items-end gap-2"
+            >
+              <div className="pb-0.5">
+                <AttachmentButton
+                  onPicked={handleThreadAttach}
+                  disabled={threadUploading || threadSending}
+                />
+              </div>
+              <RichComposer
+                ref={threadComposerRef}
+                members={members}
+                disabled={threadUploading || threadSending}
+                onSubmit={handleThreadSend}
+                onTextChange={setThreadHasText}
+                placeholder={threadUploading ? "업로드 중..." : "답글 남기기..."}
+              />
+              <button
+                type="submit"
+                disabled={
+                  (!threadHasText && !threadPending) ||
+                  threadSending ||
+                  threadUploading
+                }
+                className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

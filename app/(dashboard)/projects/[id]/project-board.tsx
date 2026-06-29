@@ -3,13 +3,12 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { updateTaskStatus, createTaskDraft } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { Member, Task, MainTask, TaskStatus } from "./project-types";
 import { priorityConfig } from "./project-types";
-
-const TaskDetailModal = dynamic(() => import("./task-detail-modal"));
+// 클릭 즉시 떠야 하므로 일반 import (dynamic 지연 로딩이면 첫 클릭 때 청크 컴파일/다운로드로 멈칫함)
+import TaskDetailModal from "./task-detail-modal";
 
 export default function ProjectBoard({ projectId, mainTasks, members, allMembers, currentUserId }: {
   projectId: string; mainTasks: MainTask[]; members: Member[]; allMembers: Member[]; currentUserId: string;
@@ -56,8 +55,8 @@ export default function ProjectBoard({ projectId, mainTasks, members, allMembers
           <div key={col.key} className="flex flex-col gap-3">
             <div className="flex items-center gap-2 px-1">
               <span className={`h-2 w-2 rounded-full ${col.dot}`} />
-              <h3 className="text-sm font-medium text-gray-700">{col.label}</h3>
-              <span className="text-xs text-gray-400">{cards.length}</span>
+              <h3 className="text-sm font-semibold text-gray-700">{col.label}</h3>
+              <span className="text-xs text-gray-600">{cards.length}</span>
             </div>
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(col.key); }}
@@ -90,9 +89,9 @@ export default function ProjectBoard({ projectId, mainTasks, members, allMembers
                             ))}
                           </div>
                         )}
-                        {task.subtasks.length > 0 && <span className="text-[10px] text-gray-400">☑ {doneSubs}/{task.subtasks.length}</span>}
+                        {task.subtasks.length > 0 && <span className="text-[10px] text-gray-600">☑ {doneSubs}/{task.subtasks.length}</span>}
                       </div>
-                      {task.dueDate && <span className="text-[11px] text-gray-400">{new Date(task.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>}
+                      {task.dueDate && <span className="text-[11px] text-gray-600">{new Date(task.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>}
                     </div>
                   </div>
                 );

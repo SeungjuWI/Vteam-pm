@@ -193,7 +193,7 @@ export default function Board({ currentUserId, companyId }: { currentUserId: str
             <button
               onClick={handleSubmit}
               disabled={isPending || !input.trim()}
-              className="rounded-lg bg-blue-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+              className="rounded-lg bg-blue-500 px-4 py-1.5 text-sm font-bold text-white transition-all duration-200 ease-spring shadow-soft-sm hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
             >
               {t("board.submit")}
             </button>
@@ -204,7 +204,7 @@ export default function Board({ currentUserId, companyId }: { currentUserId: str
       {/* Posts */}
       {posts.length === 0 ? (
         <div className="flex h-24 items-center justify-center">
-          <p className="text-sm text-gray-400">{t("board.empty")}</p>
+          <p className="text-sm text-gray-600">{t("board.empty")}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -222,7 +222,7 @@ export default function Board({ currentUserId, companyId }: { currentUserId: str
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-medium text-gray-900">{post.profiles.name}</span>
                       {post.profiles.position && (
-                        <span className="text-xs text-gray-400">{post.profiles.position}</span>
+                        <span className="text-xs text-gray-600">{post.profiles.position}</span>
                       )}
                     </div>
                   </div>

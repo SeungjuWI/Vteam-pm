@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Pretendard + Nunito (loaded via next/font) */
+  /* Pretendard (loaded via next/font/local) */
   --font-sans: var(--font-pretendard), "-apple-system", "sans-serif";
 
   /* Toss Gray Scale */
@@ -38,15 +38,94 @@
 
   /* Border */
   --border-width-0_5: 0.5px;
+
+  /* Soft shadows (salarymap parity) — subtle elevation, no harsh edges */
+  --shadow-soft-xs: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-soft-sm: 0 1px 3px rgba(17, 24, 39, 0.06), 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-soft-md: 0 4px 12px rgba(17, 24, 39, 0.08), 0 2px 4px rgba(17, 24, 39, 0.04);
+  --shadow-soft-lg: 0 10px 25px rgba(17, 24, 39, 0.10), 0 4px 10px rgba(17, 24, 39, 0.05);
+  --shadow-soft-xl: 0 20px 50px rgba(17, 24, 39, 0.15);
+  /* Brand glow uses the Toss key blue (kept, not Toss-default orange) */
+  --shadow-brand: 0 6px 16px rgba(49, 130, 246, 0.25);
+
+  /* Spring easing (salarymap parity) */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Semantic type scale — size + line-height + tracking + weight baked in.
+     Use these for headers/labels instead of arbitrary text-[Npx]. */
+  --text-kpi: 36px;
+  --text-kpi--line-height: 1.2;
+  --text-kpi--letter-spacing: -0.02em;
+  --text-kpi--font-weight: 800;
+
+  --text-hero: 28px;
+  --text-hero--line-height: 1.22;
+  --text-hero--letter-spacing: -0.022em;
+  --text-hero--font-weight: 800;
+
+  --text-section: 20px;
+  --text-section--line-height: 1.3;
+  --text-section--letter-spacing: -0.015em;
+  --text-section--font-weight: 800;
+
+  --text-card-title: 15px;
+  --text-card-title--line-height: 1.4;
+  --text-card-title--letter-spacing: -0.01em;
+  --text-card-title--font-weight: 700;
+
+  --text-body: 14px;
+  --text-body--line-height: 1.55;
+  --text-body--letter-spacing: -0.005em;
+  --text-body--font-weight: 500;
+
+  --text-meta: 12.5px;
+  --text-meta--line-height: 1.55;
+  --text-meta--font-weight: 500;
+
+  --text-caption: 11px;
+  --text-caption--line-height: 1.5;
+  --text-caption--letter-spacing: 0.02em;
+  --text-caption--font-weight: 700;
+}
+
+/* 우측 슬라이드 패널(노션식 페이지 peek) */
+@keyframes drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes drawer-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 body {
   color: #191F28;
   background: #F7F8FA;
+  letter-spacing: -0.005em;
+  line-height: 1.55;
+  font-feature-settings: "tnum" on, "lnum" on, "ss01" on;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Headings read with weight + tight tracking like salarymap. */
+h1, h2, h3, h4 {
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+/* Tabular numbers wherever they appear — steadies KPI rows, dates, salary. */
+.tabular-nums,
+[class*="tabular"] {
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 * {

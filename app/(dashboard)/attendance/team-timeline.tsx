@@ -105,7 +105,7 @@ export default function TeamTimeline({ records, absentMembers = [] }: { records:
 
       {!open ? null : records.length === 0 && absentMembers.length === 0 ? (
         <div className="flex h-32 items-center justify-center">
-          <p className="text-sm text-gray-400">{t("dashboard.noTeamToday")}</p>
+          <p className="text-sm text-gray-600">{t("dashboard.noTeamToday")}</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -115,7 +115,7 @@ export default function TeamTimeline({ records, absentMembers = [] }: { records:
               {hours.map((h) => (
                 <div
                   key={h}
-                  className="flex-1 border-l border-gray-100 py-2 text-center text-xs text-gray-400"
+                  className="flex-1 border-l border-gray-100 py-2 text-center text-xs text-gray-600"
                 >
                   {h}
                 </div>
@@ -206,7 +206,7 @@ export default function TeamTimeline({ records, absentMembers = [] }: { records:
                   <div className="opacity-60"><Avatar url={m.avatarUrl} name={m.name} size={32} /></div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-gray-500">{m.name}</p>
-                    <p className="text-xs text-gray-400">{t("dashboard.untagged")}</p>
+                    <p className="text-xs text-gray-600">{t("dashboard.untagged")}</p>
                   </div>
                 </div>
                 <div className="relative flex-1 py-4 pr-4">

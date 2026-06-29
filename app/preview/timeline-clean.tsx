@@ -69,9 +69,9 @@ export default function TimelineClean() {
     <div className="overflow-hidden rounded-2xl bg-white">
       {/* 월 축 */}
       <div className="flex items-center border-b border-gray-100">
-        <div className="flex w-56 shrink-0 items-center px-4 py-3"><span className="text-xs font-medium text-gray-400">태스크</span></div>
+        <div className="flex w-56 shrink-0 items-center px-4 py-3"><span className="text-xs font-medium text-gray-600">태스크</span></div>
         <div className="relative flex flex-1">{MONTHS.map((m) => <div key={m} className="flex-1 border-l border-gray-100 px-2 py-3 text-center text-xs font-medium text-gray-500">{m}</div>)}</div>
-        <div className="w-20 shrink-0 px-2 text-center text-xs font-medium text-gray-400">하위</div>
+        <div className="w-20 shrink-0 px-2 text-center text-xs font-medium text-gray-600">하위</div>
       </div>
 
       {/* 메인 행만 */}
@@ -100,7 +100,7 @@ export default function TimelineClean() {
 
       {/* 메인 추가 */}
       <div className="flex items-center border-b border-gray-50 px-4 py-2.5">
-        <span className="flex items-center gap-1 text-xs font-medium text-gray-400">
+        <span className="flex items-center gap-1 text-xs font-medium text-gray-600">
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
           태스크 추가
         </span>
@@ -128,26 +128,26 @@ export default function TimelineClean() {
           <>
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
               <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusChip[selected.status]}`}>{statusLabel[selected.status]}</span>
-              <button onClick={() => setSelected(null)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+              <button onClick={() => setSelected(null)} className="rounded-lg p-1 text-gray-400 transition-colors active:scale-[0.95] hover:bg-gray-100 hover:text-gray-600">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-5">
-              <input defaultValue={selected.title} className="w-full text-lg font-semibold text-gray-900 focus:outline-none" />
+              <input defaultValue={selected.title} className="w-full text-lg font-bold text-gray-900 focus:outline-none" />
               <div className="mt-5 flex flex-col gap-3 text-sm">
-                <div className="flex items-center gap-3"><span className="w-16 shrink-0 text-xs font-medium text-gray-400">담당자</span><span className="text-gray-700">{selected.assignee}</span></div>
-                <div className="flex items-center gap-3"><span className="w-16 shrink-0 text-xs font-medium text-gray-400">기간</span><span className="text-gray-700">{MONTHS[selected.bar.start]} ~ {MONTHS[selected.bar.end]}</span></div>
-                <div className="flex items-center gap-3"><span className="w-16 shrink-0 text-xs font-medium text-gray-400">우선순위</span><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${prioChip[selected.priority].cls}`}>{prioChip[selected.priority].label}</span></div>
+                <div className="flex items-center gap-3"><span className="w-16 shrink-0 text-xs font-medium text-gray-600">담당자</span><span className="text-gray-700">{selected.assignee}</span></div>
+                <div className="flex items-center gap-3"><span className="w-16 shrink-0 text-xs font-medium text-gray-600">기간</span><span className="text-gray-700">{MONTHS[selected.bar.start]} ~ {MONTHS[selected.bar.end]}</span></div>
+                <div className="flex items-center gap-3"><span className="w-16 shrink-0 text-xs font-medium text-gray-600">우선순위</span><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${prioChip[selected.priority].cls}`}>{prioChip[selected.priority].label}</span></div>
               </div>
 
               <div className="mt-6">
-                <p className="mb-2 text-xs font-medium text-gray-400">설명</p>
+                <p className="mb-2 text-xs font-medium text-gray-600">설명</p>
                 <textarea rows={3} placeholder="설명을 입력하세요…" className="w-full resize-none rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none" />
               </div>
 
               {/* 하위 태스크 = 체크리스트 */}
               <div className="mt-6">
-                <p className="mb-2 text-xs font-medium text-gray-400">하위 태스크 ({selected.subs.filter((s) => doneSubs.has(s.id)).length}/{selected.subs.length})</p>
+                <p className="mb-2 text-xs font-medium text-gray-600">하위 태스크 ({selected.subs.filter((s) => doneSubs.has(s.id)).length}/{selected.subs.length})</p>
                 <div className="flex flex-col">
                   {selected.subs.map((sub) => {
                     const d = doneSubs.has(sub.id);
@@ -157,7 +157,7 @@ export default function TimelineClean() {
                           <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                         </button>
                         <span className={`flex-1 text-sm ${d ? "text-gray-400 line-through" : "text-gray-700"}`}>{sub.title}</span>
-                        <span className="text-[11px] text-gray-400">{sub.due}</span>
+                        <span className="text-[11px] text-gray-600">{sub.due}</span>
                       </div>
                     );
                   })}
@@ -168,7 +168,7 @@ export default function TimelineClean() {
                 </div>
               </div>
             </div>
-            <div className="border-t border-gray-100 px-5 py-3"><button className="w-full rounded-lg bg-blue-500 py-2.5 text-sm font-medium text-white">저장</button></div>
+            <div className="border-t border-gray-100 px-5 py-3"><button className="w-full rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring active:scale-[0.98] hover:shadow-brand">저장</button></div>
           </>
         )}
       </div>

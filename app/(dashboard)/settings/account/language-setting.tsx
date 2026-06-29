@@ -35,10 +35,10 @@ export default function LanguageSetting({ currentLanguage }: { currentLanguage: 
             onChange={handleChange}
           />
         </div>
-        {saving && <span className="text-xs text-gray-400">{t("common.saving")}</span>}
+        {saving && <span className="text-xs text-gray-600">{t("common.saving")}</span>}
         {saved && <span className="text-xs text-emerald-500">{t("common.saved")}</span>}
       </div>
-      <p className="mt-2 text-xs text-gray-400">
+      <p className="mt-2 text-xs text-gray-600">
         {t("account.languageDesc")}
       </p>
     </div>

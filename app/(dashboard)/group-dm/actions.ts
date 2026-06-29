@@ -178,7 +178,9 @@ export async function getGroupDmMessages(roomId: string) {
   // 메시지 로드
   const { data } = await adminClient
     .from("group_dm_messages")
-    .select("id, room_id, sender_id, content, sender_language, created_at")
+    .select(
+      "id, room_id, sender_id, content, sender_language, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name"
+    )
     .eq("room_id", roomId)
     .order("created_at", { ascending: true })
     .limit(100);
@@ -193,9 +195,14 @@ export async function getGroupDmMessages(roomId: string) {
     .in("id", senderIds);
   const senderMap = new Map((senders ?? []).map((s) => [s.id, s]));
 
-  // 번역이 필요한 메시지
+  // 번역이 필요한 메시지 (삭제/첨부전용 제외)
   const needsTranslation = data.filter(
-    (m) => m.sender_id !== user.id && m.sender_language && m.sender_language !== myLang
+    (m) =>
+      m.sender_id !== user.id &&
+      m.content &&
+      !m.deleted_at &&
+      m.sender_language &&
+      m.sender_language !== myLang
   );
 
   let cacheMap = new Map<string, string>();
@@ -249,10 +256,17 @@ export async function getGroupDmMessages(roomId: string) {
 }
 
 // 단체 DM 메시지 전송
-export async function sendGroupDmMessage(roomId: string, content: string) {
+export async function sendGroupDmMessage(
+  roomId: string,
+  content: string,
+  attachment?: { url: string; type: "image" | "video" | "file"; name: string } | null
+) {
   const supabase = await createClient();
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
+
+  const text = content.trim();
+  if (!text && !attachment) return { error: "내용을 입력해주세요" };
 
   const adminClient = createAdminClient();
   if (!(await inGroupRoom(adminClient, roomId, user.id))) return { error: "이 방의 멤버가 아닙니다" };
@@ -262,15 +276,22 @@ export async function sendGroupDmMessage(roomId: string, content: string) {
     .eq("id", user.id)
     .single();
 
-  const { error } = await adminClient.from("group_dm_messages").insert({
-    room_id: roomId,
-    sender_id: user.id,
-    content: content.trim(),
-    sender_language: profile?.language ?? "ko",
-  });
+  const { data, error } = await adminClient
+    .from("group_dm_messages")
+    .insert({
+      room_id: roomId,
+      sender_id: user.id,
+      content: text,
+      sender_language: profile?.language ?? "ko",
+      attachment_url: attachment?.url ?? null,
+      attachment_type: attachment?.type ?? null,
+      attachment_name: attachment?.name ?? null,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: "메시지 전송에 실패했습니다" };
-  return { success: true };
+  return { success: true, id: data.id as string };
 }
 
 // 읽음 처리

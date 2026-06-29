@@ -124,7 +124,9 @@ export async function getMessages(otherUserId: string) {
   // 메시지 로드
   const { data } = await adminClient
     .from("direct_messages")
-    .select("id, sender_id, receiver_id, content, sender_language, is_read, created_at")
+    .select(
+      "id, sender_id, receiver_id, content, sender_language, is_read, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name"
+    )
     .or(
       `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
     )
@@ -133,9 +135,14 @@ export async function getMessages(otherUserId: string) {
 
   if (!data) return [];
 
-  // 번역이 필요한 메시지 찾기 (상대방이 보낸 것 중 언어가 다른 것)
+  // 번역이 필요한 메시지 찾기 (상대방이 보낸 것 중 언어가 다른 것, 삭제/첨부전용 제외)
   const needsTranslation = data.filter(
-    (m) => m.sender_id !== user.id && m.sender_language && m.sender_language !== myLang
+    (m) =>
+      m.sender_id !== user.id &&
+      m.content &&
+      !m.deleted_at &&
+      m.sender_language &&
+      m.sender_language !== myLang
   );
 
   if (needsTranslation.length === 0) {
@@ -186,10 +193,23 @@ export async function getMessages(otherUserId: string) {
   }));
 }
 
-export async function sendMessage(receiverId: string, content: string) {
+export interface Attachment {
+  url: string;
+  type: "image" | "video" | "file";
+  name: string;
+}
+
+export async function sendMessage(
+  receiverId: string,
+  content: string,
+  attachment?: Attachment | null
+) {
   const supabase = await createClient();
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
+
+  const text = content.trim();
+  if (!text && !attachment) return { error: "내용을 입력해주세요" };
 
   const adminClient = createAdminClient();
   const { data: profile } = await adminClient
@@ -210,16 +230,23 @@ export async function sendMessage(receiverId: string, content: string) {
     return { error: "같은 회사의 멤버에게만 메시지를 보낼 수 있습니다" };
   }
 
-  const { error } = await adminClient.from("direct_messages").insert({
-    company_id: profile.company_id,
-    sender_id: user.id,
-    receiver_id: receiverId,
-    content: content.trim(),
-    sender_language: profile.language ?? "ko",
-  });
+  const { data, error } = await adminClient
+    .from("direct_messages")
+    .insert({
+      company_id: profile.company_id,
+      sender_id: user.id,
+      receiver_id: receiverId,
+      content: text,
+      sender_language: profile.language ?? "ko",
+      attachment_url: attachment?.url ?? null,
+      attachment_type: attachment?.type ?? null,
+      attachment_name: attachment?.name ?? null,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: "메시지 전송에 실패했습니다" };
-  return { success: true };
+  return { success: true, id: data.id as string };
 }
 
 // 클라이언트에서 봇에게 메시지를 보낸 뒤 호출 → AI 응답 생성 후 DM으로 저장

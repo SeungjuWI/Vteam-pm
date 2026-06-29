@@ -74,17 +74,17 @@ export default async function LeavesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold text-gray-900">{t("leaves.title")}</h1>
+      <h1 className="text-lg font-bold text-gray-900">{t("leaves.title")}</h1>
 
       {/* 연차 요약 */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl bg-white p-5">
           <p className="text-xs text-gray-500">{t("leaves.totalAnnual")}</p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">{total}<span className="text-sm font-normal text-gray-400">{t("common.days")}</span></p>
+          <p className="mt-1 text-lg font-semibold text-gray-900">{total}<span className="text-sm font-normal text-gray-600">{t("common.days")}</span></p>
         </div>
         <div className="rounded-xl bg-white p-5">
           <p className="text-xs text-gray-500">{t("leaves.used")}</p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">{used}<span className="text-sm font-normal text-gray-400">{t("common.days")}</span></p>
+          <p className="mt-1 text-lg font-semibold text-gray-900">{used}<span className="text-sm font-normal text-gray-600">{t("common.days")}</span></p>
         </div>
         <div className="rounded-xl bg-white p-5">
           <p className="text-xs text-gray-500">{t("leaves.remaining")}</p>
@@ -116,7 +116,7 @@ export default async function LeavesPage() {
                     {leave.start_date} {leave.start_time} ~ {leave.end_date} {leave.end_time}
                     {" · "}{leave.duration_hours}{t("common.hours")}
                   </p>
-                  {leave.reason && <p className="mt-0.5 text-xs text-gray-400">{leave.reason}</p>}
+                  {leave.reason && <p className="mt-0.5 text-xs text-gray-600">{leave.reason}</p>}
                   </div>
                 </div>
                 <LeaveActions leaveId={leave.id} />
@@ -136,7 +136,7 @@ export default async function LeavesPage() {
         </div>
         {(!myLeaves || myLeaves.length === 0) ? (
           <div className="flex h-32 items-center justify-center">
-            <p className="text-sm text-gray-400">{t("leaves.noHistory")}</p>
+            <p className="text-sm text-gray-600">{t("leaves.noHistory")}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
@@ -157,7 +157,7 @@ export default async function LeavesPage() {
                     <p className="mt-1 text-xs text-gray-500">
                       {leave.start_date} {leave.start_time} ~ {leave.end_date} {leave.end_time}
                     </p>
-                    {leave.reason && <p className="mt-0.5 text-xs text-gray-400">{leave.reason}</p>}
+                    {leave.reason && <p className="mt-0.5 text-xs text-gray-600">{leave.reason}</p>}
                   </div>
                   <p className="text-sm text-gray-700">{leave.duration_hours}{t("common.hours")}</p>
                 </div>

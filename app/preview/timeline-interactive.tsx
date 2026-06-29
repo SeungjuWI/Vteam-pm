@@ -103,7 +103,7 @@ export default function TimelineInteractive() {
     <div className="overflow-hidden rounded-2xl bg-white">
       {/* 월 축 */}
       <div className="flex items-center border-b border-gray-100">
-        <div className="flex w-56 shrink-0 items-center px-4 py-3"><span className="text-xs font-medium text-gray-400">태스크</span></div>
+        <div className="flex w-56 shrink-0 items-center px-4 py-3"><span className="text-xs font-medium text-gray-600">태스크</span></div>
         <div className="relative flex flex-1">{MONTHS.map((m) => <div key={m} className="flex-1 border-l border-gray-100 px-2 py-3 text-center text-xs font-medium text-gray-500">{m}</div>)}</div>
       </div>
 

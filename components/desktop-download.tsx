@@ -107,7 +107,7 @@ export default function DesktopDownload({ variant = "full" }: { variant?: "full"
       {/* 다른 플랫폼 */}
       {otherPlatforms.length > 0 && (
         <div className="mt-3 flex items-center gap-3">
-          <span className="text-xs text-gray-400">{t("desktop.otherVersions")}</span>
+          <span className="text-xs text-gray-600">{t("desktop.otherVersions")}</span>
           {otherPlatforms.map((key) => (
             <a
               key={key}

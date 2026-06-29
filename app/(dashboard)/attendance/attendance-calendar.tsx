@@ -280,13 +280,13 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
         </div>
 
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+          <button onClick={() => navigate(-1)} className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <span className="min-w-[140px] text-center text-sm font-medium text-gray-900">{headerLabel}</span>
-          <button onClick={() => navigate(1)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+          <button onClick={() => navigate(1)} className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
@@ -298,7 +298,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500">{t("calendar.weeklyTotal")}</p>
-            <p className="mt-1 text-xl font-semibold text-gray-900">{formatHM(weekStats.totalMs)}</p>
+            <p className="mt-1 text-xl font-bold text-gray-900">{formatHM(weekStats.totalMs)}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-500">{t("calendar.legalBasis")} ({LEGAL_WEEKLY_HOURS}h)</p>
@@ -329,7 +329,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
               style={{ width: `${Math.min((weekStats.totalMs / weekStats.maxMs) * 100, 100)}%` }}
             />
           </div>
-          <div className="mt-1 flex justify-between text-[10px] text-gray-400">
+          <div className="mt-1 flex justify-between text-[10px] text-gray-600">
             <span>0h</span>
             <span className="relative">
               <span className="absolute -translate-x-1/2">{LEGAL_WEEKLY_HOURS}h</span>
@@ -387,7 +387,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
                       <span className="inline-block rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-600">
                         {leaveLabel(day.leaveType)}
                       </span>
-                      <p className="mt-0.5 text-[10px] text-gray-400">8h</p>
+                      <p className="mt-0.5 text-[10px] text-gray-600">8h</p>
                     </div>
                   ) : day.isMissing ? (
                     <div className="mt-1.5">
@@ -402,7 +402,7 @@ export default function AttendanceCalendar({ records, leaves, requiredHours }: P
                         <span className="h-1 w-1 rounded-full bg-blue-500" />
                         {t("clock.working")}
                       </span>
-                      <p className="mt-0.5 text-[10px] text-gray-400">{formatHMShort(day.totalMs)}</p>
+                      <p className="mt-0.5 text-[10px] text-gray-600">{formatHMShort(day.totalMs)}</p>
                     </div>
                   ) : day.totalMs > 0 ? (
                     <div className="mt-1.5">

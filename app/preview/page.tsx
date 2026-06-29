@@ -11,8 +11,8 @@ export default function PreviewPage() {
         </div>
 
         <section>
-          <h2 className="mb-1 text-sm font-medium text-gray-400">프로젝트 — 큰 필라(단순안)</h2>
-          <p className="mb-4 text-xs text-gray-400">진척률 매트릭스 대신 고정된 큰 프로젝트만. 클릭하면 상세(팀 + 마일스톤).</p>
+          <h2 className="mb-1 text-sm font-medium text-gray-600">프로젝트 — 큰 필라(단순안)</h2>
+          <p className="mb-4 text-xs text-gray-600">진척률 매트릭스 대신 고정된 큰 프로젝트만. 클릭하면 상세(팀 + 마일스톤).</p>
           <PillarsMock />
         </section>
       </div>

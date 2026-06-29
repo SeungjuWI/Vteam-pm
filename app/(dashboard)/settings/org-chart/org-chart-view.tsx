@@ -48,7 +48,7 @@ function MemberNode({ data }: NodeProps) {
       </div>
       <p className="text-sm font-medium text-gray-900">{d.name}</p>
       {d.position && <p className="text-xs text-gray-500">{d.position}</p>}
-      <p className="mt-0.5 text-[10px] text-gray-400">{ROLE_LABELS[d.role] ?? d.role}</p>
+      <p className="mt-0.5 text-[10px] text-gray-600">{ROLE_LABELS[d.role] ?? d.role}</p>
       <Handle type="source" position={Position.Bottom} className="!bg-gray-300 !h-2 !w-2" />
     </div>
   );

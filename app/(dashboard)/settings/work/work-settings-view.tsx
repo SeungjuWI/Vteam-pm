@@ -50,7 +50,7 @@ export default function WorkSettingsView({
   if (!current && !isManager) {
     return (
       <div className="flex h-48 items-center justify-center rounded-xl bg-white">
-        <p className="text-sm text-gray-400">{t("work.noSettings")}</p>
+        <p className="text-sm text-gray-600">{t("work.noSettings")}</p>
       </div>
     );
   }

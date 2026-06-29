@@ -207,19 +207,19 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold text-gray-900">{t("dashboard.title")}</h1>
+      <h1 className="text-lg font-bold text-gray-900">{t("dashboard.title")}</h1>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl bg-white p-5">
           <p className="text-sm text-gray-500">{t("dashboard.todayAttendance")}</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">
-            {teamToday.length}<span className="text-sm font-normal text-gray-400">/{totalMembers}{t("dashboard.persons")}</span>
+            {teamToday.length}<span className="text-sm font-normal text-gray-600">/{totalMembers}{t("dashboard.persons")}</span>
           </p>
         </div>
         <div className="rounded-xl bg-white p-5">
           <p className="text-sm text-gray-500">{t("dashboard.urgentTasks")}</p>
           <p className={`mt-1 text-2xl font-semibold ${urgentCount > 0 ? "text-red-600" : "text-gray-900"}`}>
-            {urgentCount}<span className="text-sm font-normal text-gray-400">{t("dashboard.cases")}</span>
+            {urgentCount}<span className="text-sm font-normal text-gray-600">{t("dashboard.cases")}</span>
           </p>
         </div>
         <div className="rounded-xl bg-white p-5">
@@ -235,7 +235,7 @@ export default async function DashboardPage() {
                   </span>
                 ))}
               </div>
-              {urgentOwners.length > 5 && <span className="text-sm text-gray-400">+{urgentOwners.length - 5}</span>}
+              {urgentOwners.length > 5 && <span className="text-sm text-gray-600">+{urgentOwners.length - 5}</span>}
             </div>
           )}
         </div>
@@ -246,7 +246,7 @@ export default async function DashboardPage() {
       <div className="rounded-2xl border border-gray-100 bg-white p-5">
         <div className="mb-4 flex items-baseline gap-2">
           <h2 className="text-sm font-semibold text-gray-900">🐢 {t("dashboard.leaderboard")}</h2>
-          <span className="text-xs text-gray-400">{t("dashboard.leaderboardHint")}</span>
+          <span className="text-xs text-gray-600">{t("dashboard.leaderboardHint")}</span>
         </div>
         {leaderboard.length === 0 ? (
           <p className="py-6 text-center text-sm text-gray-300">{t("dashboard.noOverdueYet")}</p>
@@ -254,12 +254,12 @@ export default async function DashboardPage() {
           <div className="flex flex-col gap-1">
             {leaderboard.slice(0, 5).map((e, i) => (
               <div key={e.name} className="flex items-center gap-3 rounded-lg px-1 py-1.5">
-                <span className="w-6 shrink-0 text-center text-base">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : <span className="text-xs font-medium text-gray-400">{i + 1}</span>}</span>
+                <span className="w-6 shrink-0 text-center text-base">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : <span className="text-xs font-medium text-gray-600">{i + 1}</span>}</span>
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[10px] font-medium text-gray-500" title={e.name}>
                   {e.avatarUrl ? <Image src={e.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : e.name[0]}
                 </span>
                 <span className={`flex-1 truncate text-sm ${i === 0 ? "font-semibold text-gray-900" : "text-gray-700"}`}>{e.name}</span>
-                <span className="shrink-0 text-xs text-gray-400">{e.count}{t("dashboard.cases")}</span>
+                <span className="shrink-0 text-xs text-gray-600">{e.count}{t("dashboard.cases")}</span>
                 <span className="w-24 shrink-0 text-right text-xs font-semibold text-red-500 tabular-nums">{t("dashboard.avgPrefix")}{Math.round(e.avg)}{t("dashboard.daysOverdueTotal")}</span>
               </div>
             ))}

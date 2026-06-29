@@ -80,7 +80,7 @@ export default function ProjectList({ projects, members }: Props) {
   return (
     <>
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">{t("projects.title")}</h1>
+        <h1 className="text-lg font-bold text-gray-900">{t("projects.title")}</h1>
         <div className="flex items-center gap-3">
           <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
             {[
@@ -102,7 +102,7 @@ export default function ProjectList({ projects, members }: Props) {
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 shadow-soft-sm active:scale-[0.98] hover:shadow-brand"
           >
             {t("projects.new")}
           </button>
@@ -112,7 +112,7 @@ export default function ProjectList({ projects, members }: Props) {
       {filtered.length === 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="flex aspect-[4/3] items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white">
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-600">
               {projects.length === 0 ? t("projects.empty") : t("projects.emptyFiltered")}
             </p>
           </div>
@@ -189,7 +189,7 @@ export default function ProjectList({ projects, members }: Props) {
                 {/* 하단 콘텐츠 - 그라데이션 위에 바로 배치 */}
                 <Link href={`/projects/${project.id}`} className="absolute inset-0 flex flex-col justify-end">
                   <div className="p-4">
-                    <h3 className="text-lg font-semibold text-white line-clamp-1">{project.name}</h3>
+                    <h3 className="text-lg font-bold text-white line-clamp-1">{project.name}</h3>
                     {project.description && (
                       <p className="mt-1 text-sm text-white/70 line-clamp-2">{project.description}</p>
                     )}

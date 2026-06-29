@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import CompanyChip from "@/components/company-chip";
 import WorkTimer from "@/components/work-timer";
 import NotificationButton from "@/components/notification-button";
+import EnableNotifications from "@/components/enable-notifications";
 import ProfileMenu from "@/components/profile-menu";
 import DmChatManager from "@/components/dm-chat-manager";
 import { I18nProvider, LocaleProvider, makeT, type TFunction } from "@/lib/i18n";
@@ -168,7 +169,7 @@ export default function DashboardShell({
   return (
     <I18nProvider value={t}>
     <LocaleProvider value={uiLang}>
-      <div className="flex min-h-screen">
+      <div className="flex h-screen overflow-hidden">
         {/* Sidebar */}
         <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
           <div className="flex h-14 items-center px-3">
@@ -180,7 +181,7 @@ export default function DashboardShell({
 
               {isAdmin && (
                 <>
-                  <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
+                  <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-600">
                     {t("nav.adminSection")}
                   </div>
                   {adminNavItems.map(renderNavItem)}
@@ -189,7 +190,7 @@ export default function DashboardShell({
 
               {isSuperAdmin && (
                 <>
-                  <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-400">
+                  <div className="mb-1 mt-4 px-3 text-[11px] font-medium tracking-wide text-gray-600">
                     운영자
                   </div>
                   <Link
@@ -215,6 +216,7 @@ export default function DashboardShell({
           {/* Header */}
           <header className="flex h-14 items-center justify-end gap-3 border-b border-gray-200 bg-white px-6">
             <WorkTimer initialStatus={initialWorkStatus} />
+            <EnableNotifications />
             <NotificationButton />
             <ProfileMenu profile={{ ...profileData, email: userEmail }} />
           </header>

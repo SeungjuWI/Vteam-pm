@@ -31,7 +31,7 @@ export default function ClockButton({ isClockedIn, clockInTime, ipBlocked, curre
         </span>
       </div>
       {isClockedIn && clockInTime && (
-        <p className="mt-1 text-xs text-gray-400" suppressHydrationWarning>
+        <p className="mt-1 text-xs text-gray-600" suppressHydrationWarning>
           {new Date(clockInTime).toLocaleTimeString(locale === "en" ? "en-US" : "ko-KR", { hour: "2-digit", minute: "2-digit" })} {t("clock.clockedIn")}
           {" · "}
           {getElapsed()} {t("clock.elapsed")}

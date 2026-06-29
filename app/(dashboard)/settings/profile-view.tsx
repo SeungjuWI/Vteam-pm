@@ -128,7 +128,7 @@ export default function ProfileView({ data }: { data: ProfileData }) {
                 {t("common.delete")}
               </button>
             )}
-            <span className="text-[11px] text-gray-400">{t("profile.photoSpec")}</span>
+            <span className="text-[11px] text-gray-600">{t("profile.photoSpec")}</span>
           </div>
           <input ref={fileRef} type="file" name="avatar" accept="image/*,.heic,.heif" onChange={handleFileChange} className="hidden" />
         </div>
@@ -158,11 +158,11 @@ export default function ProfileView({ data }: { data: ProfileData }) {
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-sm text-gray-500">{t("profile.email")}</label>
-            <p className="px-3 py-2 text-sm text-gray-400">{data.email}</p>
+            <p className="px-3 py-2 text-sm text-gray-600">{data.email}</p>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-sm text-gray-500">{t("profile.role")}</label>
-            <p className="px-3 py-2 text-sm text-gray-400">{ROLE_LABELS[data.role] ?? data.role}</p>
+            <p className="px-3 py-2 text-sm text-gray-600">{ROLE_LABELS[data.role] ?? data.role}</p>
           </div>
         </div>
 
@@ -170,7 +170,7 @@ export default function ProfileView({ data }: { data: ProfileData }) {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>

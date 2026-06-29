@@ -83,15 +83,15 @@ export default function ProjectPillars({ projects, members, isAdmin }: { project
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">{t("projects.title")}</h1>
-        <button onClick={() => setShowModal(true)} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600">
+        <h1 className="text-lg font-bold text-gray-900">{t("projects.title")}</h1>
+        <button onClick={() => setShowModal(true)} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 shadow-soft-sm active:scale-[0.98] hover:shadow-brand">
           {t("projects.new")}
         </button>
       </div>
 
       {items.length === 0 ? (
         <div className="flex items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-white py-20">
-          <p className="text-sm text-gray-400">{t("projects.empty")}</p>
+          <p className="text-sm text-gray-600">{t("projects.empty")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -129,7 +129,7 @@ export default function ProjectPillars({ projects, members, isAdmin }: { project
               )}
 
               <div className="relative z-10">
-                <h3 className="text-2xl font-semibold tracking-tight text-white drop-shadow-sm">{p.name}</h3>
+                <h3 className="text-2xl font-bold tracking-tight text-white drop-shadow-sm">{p.name}</h3>
                 <div className="mt-2 flex items-center gap-2">
                   {p.members.length > 0 ? (
                     <>

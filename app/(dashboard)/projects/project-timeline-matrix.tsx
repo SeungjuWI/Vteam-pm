@@ -65,7 +65,7 @@ export default function ProjectTimelineMatrix({ projects, columns, totals, membe
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">{t("projects.title")}</h1>
+        <h1 className="text-lg font-bold text-gray-900">{t("projects.title")}</h1>
         <div className="flex items-center gap-3">
           <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
             {[
@@ -87,7 +87,7 @@ export default function ProjectTimelineMatrix({ projects, columns, totals, membe
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 shadow-soft-sm active:scale-[0.98] hover:shadow-brand"
           >
             {t("projects.new")}
           </button>
@@ -96,14 +96,14 @@ export default function ProjectTimelineMatrix({ projects, columns, totals, membe
 
       {filtered.length === 0 ? (
         <div className="flex items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-16">
-          <p className="text-sm text-gray-400">{projects.length === 0 ? t("matrix.empty") : t("projects.emptyFiltered")}</p>
+          <p className="text-sm text-gray-600">{projects.length === 0 ? t("matrix.empty") : t("projects.emptyFiltered")}</p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl bg-white">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="sticky left-0 z-10 bg-white px-4 py-3 text-left text-xs font-medium text-gray-400">
+                <th className="sticky left-0 z-10 bg-white px-4 py-3 text-left text-xs font-medium text-gray-600">
                   {t("projects.title")} <span className="font-normal text-gray-300">· {t("matrix.openHint")}</span>
                 </th>
                 {columns.map((c) => (
@@ -182,7 +182,7 @@ function ProjectRow({ project, columns, colLabel, basePath, selected, onSelect }
               <div className="flex items-center gap-1">
                 <span className="truncate text-[15px] font-semibold text-gray-900 group-hover/link:text-blue-600">{project.name}</span>
               </div>
-              <span className="mt-0.5 block text-[11px] text-gray-400 tabular-nums">
+              <span className="mt-0.5 block text-[11px] text-gray-600 tabular-nums">
                 {project.overall}% · <span className="text-blue-500 opacity-0 transition-opacity group-hover/link:opacity-100">열기</span>
               </span>
             </div>
@@ -207,7 +207,7 @@ function ProjectRow({ project, columns, colLabel, basePath, selected, onSelect }
                 }`}
               >
                 <span className={`text-sm font-semibold tabular-nums ${tone.text}`}>{cell.progress}%</span>
-                <span className="text-[10px] text-gray-400 tabular-nums">{cell.done}/{cell.total}</span>
+                <span className="text-[10px] text-gray-600 tabular-nums">{cell.done}/{cell.total}</span>
                 <span className="h-1 w-full overflow-hidden rounded-full bg-gray-100">
                   <span className={`block h-full rounded-full ${tone.bar}`} style={{ width: `${cell.progress}%` }} />
                 </span>
@@ -221,7 +221,7 @@ function ProjectRow({ project, columns, colLabel, basePath, selected, onSelect }
       {isOpen && openCell && (
         <tr>
           <td colSpan={columns.length + 1} className="bg-blue-50/30 px-4 py-3">
-            <p className="mb-2 text-[11px] font-medium text-gray-400">
+            <p className="mb-2 text-[11px] font-medium text-gray-600">
               {project.name} · {colLabel(selected!.col)} · {t("matrix.cellTitle")} {openCell.total}
             </p>
             <div className="flex flex-col gap-1">

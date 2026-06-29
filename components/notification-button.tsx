@@ -185,11 +185,11 @@ export default function NotificationButton() {
           <div className="h-px bg-gray-100" />
           {!loaded ? (
             <div className="flex items-center justify-center px-4 py-10">
-              <p className="text-sm text-gray-400">{t("common.loading")}</p>
+              <p className="text-sm text-gray-600">{t("common.loading")}</p>
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex items-center justify-center px-4 py-10">
-              <p className="text-sm text-gray-400">{t("notification.empty")}</p>
+              <p className="text-sm text-gray-600">{t("notification.empty")}</p>
             </div>
           ) : (
             <div className="max-h-80 overflow-y-auto">
@@ -209,7 +209,7 @@ export default function NotificationButton() {
                     {n.message && (
                       <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{translateMessage(n.message)}</p>
                     )}
-                    <p className="mt-1 text-[11px] text-gray-400">{timeAgo(n.created_at)}</p>
+                    <p className="mt-1 text-[11px] text-gray-600">{timeAgo(n.created_at)}</p>
                   </div>
                 </button>
               ))}

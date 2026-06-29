@@ -85,7 +85,7 @@ export default function ProfileMenu({ profile }: { profile: ProfileData }) {
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-gray-900">{profile.name}</p>
                 <p className="truncate text-xs text-gray-500">{roleLabel}</p>
-                {profile.position && <p className="truncate text-xs text-gray-400">{profile.position}</p>}
+                {profile.position && <p className="truncate text-xs text-gray-600">{profile.position}</p>}
               </div>
             </div>
           </div>

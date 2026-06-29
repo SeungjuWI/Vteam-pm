@@ -40,7 +40,7 @@ export default function InviteForm() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-lg bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+          className="rounded-lg bg-blue-500 px-5 py-2.5 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
         >
           {loading ? t("members.inviting") : t("members.inviteSubmit")}
         </button>

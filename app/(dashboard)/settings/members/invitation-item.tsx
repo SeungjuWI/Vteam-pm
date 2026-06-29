@@ -17,7 +17,7 @@ export default function InvitationItem({ invitation }: { invitation: Invitation 
         </div>
         <div>
           <p className="text-sm text-gray-900">{invitation.email}</p>
-          <p className="text-xs text-gray-400">초대 발송됨</p>
+          <p className="text-xs text-gray-600">초대 발송됨</p>
         </div>
       </div>
       <button

@@ -88,29 +88,29 @@ function SlidePanel({ task, onClose }: { task: Selected | null; onClose: () => v
           <>
             <div className="flex items-center justify-between px-6 py-4">
               <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusChip[task.status]}`}>{statusLabel[task.status]}</span>
-              <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+              <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 transition-colors active:scale-[0.95] hover:bg-gray-100 hover:text-gray-600">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-6 pb-6">
-              <input defaultValue={task.title} className="w-full text-xl font-semibold tracking-tight text-gray-900 focus:outline-none" />
+              <input defaultValue={task.title} className="w-full text-xl font-bold tracking-tight text-gray-900 focus:outline-none" />
               <div className="mt-6 flex flex-col gap-4">
                 <Field label="담당자">{task.assignee === "-" ? <span className="text-sm text-gray-300">미지정</span> : <span className="inline-flex items-center gap-2 rounded-full bg-gray-50 py-1 pr-3 pl-1"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-[10px] font-medium text-gray-600">{task.assignee[0]}</span><span className="text-sm font-medium text-gray-700">{task.assignee}</span></span>}</Field>
                 <Field label="기간"><span className="text-sm text-gray-700">{MONTHS[task.bar.start]} – {MONTHS[task.bar.end]}</span></Field>
                 <Field label="우선순위"><span className={`rounded-full px-2.5 py-1 text-xs font-medium ${prioChip[task.priority].cls}`}>{prioChip[task.priority].label}</span></Field>
               </div>
               <div className="mt-7">
-                <p className="mb-2 text-xs font-medium text-gray-400">설명</p>
+                <p className="mb-2 text-xs font-medium text-gray-600">설명</p>
                 <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={5} placeholder="설명을 입력하세요…"
                   className="w-full resize-none rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
               </div>
               <div className="mt-7">
-                <p className="mb-2 text-xs font-medium text-gray-400">댓글</p>
+                <p className="mb-2 text-xs font-medium text-gray-600">댓글</p>
                 <p className="rounded-xl bg-gray-50 py-5 text-center text-xs text-gray-300">아직 댓글이 없습니다</p>
               </div>
             </div>
             <div className="px-6 py-4">
-              <button className="w-full rounded-xl bg-blue-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-600">저장</button>
+              <button className="w-full rounded-xl bg-blue-500 py-3 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring active:scale-[0.98] hover:bg-blue-600 hover:shadow-brand">저장</button>
             </div>
           </>
         )}
@@ -119,7 +119,7 @@ function SlidePanel({ task, onClose }: { task: Selected | null; onClose: () => v
   );
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="flex items-center gap-3"><span className="w-14 shrink-0 text-xs font-medium text-gray-400">{label}</span>{children}</div>;
+  return <div className="flex items-center gap-3"><span className="w-14 shrink-0 text-xs font-medium text-gray-600">{label}</span>{children}</div>;
 }
 
 export default function TimelineMock() {
@@ -144,7 +144,7 @@ export default function TimelineMock() {
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
       {/* 헤더: 오늘 ★마커(월 위) + 월 축 */}
       <div className="flex items-stretch border-b border-gray-100 bg-gray-50/30">
-        <div className="flex w-60 shrink-0 items-end px-5 pb-3"><span className="text-xs font-medium text-gray-400">태스크</span></div>
+        <div className="flex w-60 shrink-0 items-end px-5 pb-3"><span className="text-xs font-medium text-gray-600">태스크</span></div>
         <div className="relative flex flex-1 pt-7">
           {MONTHS.map((m, i) => (
             <div key={m} className="flex-1 px-2 pb-3 text-center">

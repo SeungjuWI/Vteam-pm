@@ -209,7 +209,7 @@ export default function WorkTimer({
             {isWorking && clockInTime ? (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">{t("timer.clockInLabel")}</span>
+                  <span className="text-xs text-gray-600">{t("timer.clockInLabel")}</span>
                   <span className="text-sm text-gray-900">
                     {new Date(clockInTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                   </span>
@@ -220,7 +220,7 @@ export default function WorkTimer({
               </>
             ) : (
               <>
-                <p className="text-xs text-gray-400">{t("timer.workLabel")}</p>
+                <p className="text-xs text-gray-600">{t("timer.workLabel")}</p>
                 <p className="mt-1 text-sm text-gray-900">
                   {status === "done" ? t("timer.doneToday") : t("timer.notYet")}
                 </p>
@@ -300,7 +300,7 @@ export default function WorkTimer({
               <button
                 onClick={handleClockOutConfirm}
                 disabled={loading}
-                className="flex-1 rounded-xl bg-blue-500 py-2.5 text-sm text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+                className="flex-1 rounded-xl bg-blue-500 py-2.5 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:opacity-50"
               >
                 {t("timer.doClockOut")}
               </button>
@@ -333,7 +333,7 @@ export default function WorkTimer({
             </div>
             <button
               onClick={() => setModalStep(null)}
-              className="mt-5 w-full rounded-xl bg-blue-500 py-2.5 text-sm text-white transition-colors hover:bg-blue-600"
+              className="mt-5 w-full rounded-xl bg-blue-500 py-2.5 text-sm font-bold text-white shadow-soft-sm transition-all duration-200 ease-spring hover:bg-blue-600 hover:shadow-brand active:scale-[0.98]"
             >
               {t("timer.goodJob")}
             </button>

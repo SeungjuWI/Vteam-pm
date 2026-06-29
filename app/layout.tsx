@@ -1,14 +1,6 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
-
-const nunito = Nunito({
-  subsets: ["latin"],
-  weight: ["700"],
-  display: "swap",
-  variable: "--font-nunito",
-});
 
 const pretendard = localFont({
   src: "../public/fonts/PretendardVariable.woff2",
@@ -27,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`${pretendard.variable} ${nunito.variable}`}>
+    <html lang="ko" className={pretendard.variable}>
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
       </head>

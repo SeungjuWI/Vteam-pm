@@ -52,7 +52,7 @@ export default function EditProjectModal({ project, onClose }: { project: Projec
       <div className="relative w-full max-w-lg rounded-2xl bg-white p-6">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">{t("editProject.title")}</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95]">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -86,7 +86,7 @@ export default function EditProjectModal({ project, onClose }: { project: Projec
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="mt-1 flex gap-2">
             <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">{t("common.cancel")}</button>
-            <button type="submit" disabled={loading} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50">{loading ? t("common.saving") : t("common.save")}</button>
+            <button type="submit" disabled={loading} className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 disabled:opacity-50 shadow-soft-sm active:scale-[0.98] hover:shadow-brand">{loading ? t("common.saving") : t("common.save")}</button>
           </div>
         </form>
       </div>

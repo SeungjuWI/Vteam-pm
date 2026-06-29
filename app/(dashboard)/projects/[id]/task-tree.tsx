@@ -56,7 +56,7 @@ function QuickAdd({ projectId, parentId, placeholder, onDone }: {
       value={value}
       disabled={pending}
       onChange={(e) => setValue(e.target.value)}
-      onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") onDone(); }}
+      onKeyDown={(e) => { if (e.key === "Enter") { if (e.nativeEvent.isComposing) return; submit(); } if (e.key === "Escape") onDone(); }}
       onBlur={submit}
       placeholder={placeholder}
       className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none disabled:opacity-50"

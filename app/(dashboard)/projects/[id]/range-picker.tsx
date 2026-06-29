@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 export type DateRange = { start: string; end: string };
 
@@ -34,14 +35,39 @@ export default function TimelineRangePicker({ value, todayStr, dataStart, dataEn
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"preset" | "custom">("preset");
   const wrap = useRef<HTMLDivElement>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  // 팝오버를 body로 portal해 뜨우므로(부모 overflow-hidden에 안 잘림) 버튼 위치를 fixed 좌표로 잡는다.
+  // 아래 공간이 모자라면 버튼 위로 flip. (right=뷰포트 우측 기준, 버튼 오른쪽 정렬 유지)
+  const [pos, setPos] = useState<{ right: number; top?: number; bottom?: number }>({ right: 0, top: 0 });
+  const PANEL_H = 380; // 패널 대략 높이(아래/위 판단용)
+  const place = () => {
+    const r = btn.current?.getBoundingClientRect();
+    if (!r) return;
+    const right = window.innerWidth - r.right;
+    const below = window.innerHeight - r.bottom;
+    if (below < PANEL_H && r.top > below) setPos({ right, bottom: window.innerHeight - r.top + 8 });
+    else setPos({ right, top: r.bottom + 8 });
+  };
 
-  // 바깥 클릭 시 닫기
+  // 열릴 때 위치 계산 + 스크롤/리사이즈 시 따라가기. 바깥 클릭(버튼·패널 밖) 시 닫기.
   useEffect(() => {
     if (!open) return;
-    function onDown(e: MouseEvent) { if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false); }
+    place();
+    function onDown(e: MouseEvent) {
+      const tgt = e.target as Node;
+      if (wrap.current?.contains(tgt) || panel.current?.contains(tgt)) return;
+      setOpen(false);
+    }
     window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [open]);
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const presets = buildPresets(todayStr, dataStart, dataEnd);
   const activePreset = presets.find((p) => p.range.start === value.start && p.range.end === value.end)?.label;
@@ -70,14 +96,15 @@ export default function TimelineRangePicker({ value, todayStr, dataStart, dataEn
 
   return (
     <div ref={wrap} className="relative">
-      <button onClick={() => setOpen((v) => !v)}
+      <button ref={btn} onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 rounded-full bg-blue-500 px-3.5 py-1.5 text-xs font-bold text-white transition-all duration-200 ease-spring hover:bg-blue-600 shadow-soft-sm active:scale-[0.98] hover:shadow-brand">
         <span>{fmtKo(value.start)} ~ {fmtKo(value.end)}</span>
         <svg className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[340px] rounded-2xl border border-gray-200 bg-white p-3">
+      {open && createPortal(
+        <div ref={panel} style={{ position: "fixed", right: pos.right, top: pos.top, bottom: pos.bottom }}
+          className="z-[60] w-[340px] rounded-2xl border border-gray-200 bg-white p-3 shadow-soft-lg">
           {/* 탭 */}
           <div className="mb-3 flex gap-0.5 rounded-xl bg-gray-100 p-0.5">
             {([["preset", "사전설정"], ["custom", "기간"]] as const).map(([k, ko]) => (
@@ -142,7 +169,8 @@ export default function TimelineRangePicker({ value, todayStr, dataStart, dataEn
               </div>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

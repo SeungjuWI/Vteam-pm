@@ -266,7 +266,7 @@ export default function DeptManageModal({
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleCreate(); }}
               placeholder={t("channels.deptNamePlaceholder")}
               className="mb-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:outline-none"
             />
@@ -308,7 +308,7 @@ export default function DeptManageModal({
                     onChange={(e) => setNameDraft(e.target.value)}
                     onBlur={() => handleRenameDept(selectedDept.id)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") handleRenameDept(selectedDept.id);
+                      if (e.key === "Enter") { if (e.nativeEvent.isComposing) return; handleRenameDept(selectedDept.id); }
                       if (e.key === "Escape") setEditingName(false);
                     }}
                     className="min-w-0 flex-1 rounded-md border border-blue-300 bg-white px-2 py-0.5 text-sm font-semibold text-gray-900 focus:outline-none"

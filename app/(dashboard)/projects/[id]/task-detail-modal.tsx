@@ -127,7 +127,7 @@ function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
                         autoFocus
                         onChange={(e) => setEditText(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(c.id); }
+                          if (e.key === "Enter" && !e.shiftKey) { if (e.nativeEvent.isComposing) return; e.preventDefault(); saveEdit(c.id); }
                           else if (e.key === "Escape") { e.preventDefault(); setEditingId(null); }
                         }}
                         rows={2}
@@ -244,6 +244,7 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
         return;
       }
       if (e.key === "Enter") {
+        if (e.nativeEvent.isComposing) return;
         e.preventDefault();
         const selected = mentionOptions[mentionIndex];
         if (selected) insertMention(selected.name);
@@ -257,6 +258,7 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
     }
 
     if (e.key === "Enter" && !e.shiftKey) {
+      if (e.nativeEvent.isComposing) return;
       e.preventDefault();
       handleSend();
     }
@@ -380,7 +382,11 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   const [showDropdown, setShowDropdown] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const dirty = useRef(false);
-  // 보기 모드 기본 — 새로 만든 드래프트만 바로 편집 모드로 진입
+  // 즉시 자동저장 여부: 기존 태스크는 필드 바꿀 때마다 바로 저장(노션식).
+  // 단, 새로 추가 중인 드래프트는 모든 입력을 로컬에만 두고 '저장' 누를 때 한 번에 기록한다.
+  // (안 그러면 시작일·마감일·상태 등을 바꿀 때마다 서버 왕복+간트 전체 리렌더로 렉이 걸림)
+  const live = !isDraft;
+  const draftStatusDirty = useRef(false); // 드래프트에서 상태를 바꿨으면 저장 시 status도 따로 기록
   const [mode, setMode] = useState<"view" | "edit">(isDraft ? "edit" : "view");
   const [menuOpen, setMenuOpen] = useState(false);  // ⋯ 더보기 메뉴
   const [closing, setClosing] = useState(false);    // 닫힘 슬라이드 애니메이션
@@ -437,6 +443,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
   // 진도율 조정 확정: 진도가 생겼는데 '시작 전'이면 '진행 중'으로 자동 승격 후 저장
   async function commitProgress() {
     if (progress > 0 && status === "todo") await changeStatus("in_progress");
+    if (!live) { dirty.current = true; return; }  // 드래프트는 로컬만 — 저장 시 한 번에
     await persist();
     router.refresh();
   }
@@ -444,14 +451,20 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     const prev = status;
     setStatus(s);
     // 서브 없는 태스크를 완료로 바꾸면 진행도도 100%로 맞춘다(막대·모달 일치).
-    if (!hasSubs && s === "done" && progress !== 100) { setProgress(100); persist({ progress: 100 }); }
+    if (!hasSubs && s === "done" && progress !== 100) { setProgress(100); if (live) persist({ progress: 100 }); }
+    // 드래프트: 서버에 안 쓰고 로컬만. 저장 시 한 번에 반영.
+    if (!live) { draftStatusDirty.current = true; dirty.current = true; return; }
     const r = await updateTaskStatus(task.id, s, projectId);
     if (errOf(r)) { alert(errOf(r)); setStatus(prev); }  // 실패 시 알림 + 되돌림
   }
   // 편집 모드에서 저장 → 보기 모드로 복귀 (미저장 변경만 반영)
   async function saveAndView() {
     if (isDraft && !title.trim()) { requestClose(); return; }  // 빈 드래프트는 정리(삭제)
-    if (dirty.current) { const ok = await persist(); if (!ok) return; }  // 저장 실패면 편집 화면 유지
+    if (dirty.current) {
+      const ok = await persist(); if (!ok) return;  // 저장 실패면 편집 화면 유지
+      // 드래프트에서 바꾼 상태는 updateTask에 안 실리므로 여기서 한 번 더 기록
+      if (draftStatusDirty.current) { await updateTaskStatus(task.id, status, projectId); draftStatusDirty.current = false; }
+    }
     setMode("view");   // 저장 성공 → 읽기 전용 보기로 복귀
     router.refresh();
   }
@@ -466,6 +479,8 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
         await deleteTask(task.id, projectId);
       } else if (wasDirty) {
         await updateTask(task.id, projectId, title.trim() || task.title, description, priority, dueDate, selectedIds, outputJoined, startDate, progress);
+        // 드래프트에서 바꾼 상태도 함께 기록
+        if (draftStatusDirty.current) { await updateTaskStatus(task.id, status, projectId); draftStatusDirty.current = false; }
       }
       router.refresh();
     })();
@@ -561,9 +576,24 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                     </span>
                     <span className="text-lg font-bold leading-none text-blue-500 tabular-nums">{displayProgress}<span className="ml-0.5 text-xs font-semibold text-gray-400">%</span></span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200/70">
-                    <div className="h-full rounded-full bg-blue-500 transition-all duration-500 ease-spring" style={{ width: `${displayProgress}%` }} />
-                  </div>
+                  {/* 서브 없고 완료 전이면 보기 모드에서도 바로 드래그해 진행도 조절 (수정 버튼 불필요) */}
+                  {!hasSubs && status !== "done" ? (
+                    <div className="group/prog relative py-1" title="드래그해서 진행도 조절">
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200/70">
+                        <div className="h-full rounded-full bg-blue-500 transition-all duration-150" style={{ width: `${displayProgress}%` }} />
+                      </div>
+                      {/* 손잡이 점 (위치 표시) */}
+                      <span className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-500 bg-white shadow-soft-xs transition-transform group-hover/prog:scale-110" style={{ left: `${displayProgress}%` }} />
+                      <input type="range" min={0} max={100} step={5} value={progress}
+                        onChange={(e) => { setProgress(Number(e.target.value)); dirty.current = true; }}
+                        onMouseUp={commitProgress} onTouchEnd={commitProgress}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                    </div>
+                  ) : (
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200/70">
+                      <div className="h-full rounded-full bg-blue-500 transition-all duration-500 ease-spring" style={{ width: `${displayProgress}%` }} />
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 flex flex-col divide-y divide-gray-50">
@@ -619,7 +649,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
           <>
           {/* 제목 */}
           <div className="px-6 pt-5">
-            <input value={title} autoFocus={isDraft} onChange={(e) => { setTitle(e.target.value); dirty.current = true; }} onBlur={() => persist()} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} placeholder={t("tasks.taskTitle")}
+            <input value={title} autoFocus={isDraft} onChange={(e) => { setTitle(e.target.value); dirty.current = true; }} onBlur={() => { if (live) persist(); }} onKeyDown={(e) => { if (e.key === "Enter") { if (e.nativeEvent.isComposing) return; e.preventDefault(); e.currentTarget.blur(); } }} placeholder={t("tasks.taskTitle")}
               className="-mx-3 w-[calc(100%+1.5rem)] rounded-xl px-3 py-1.5 text-[22px] font-bold tracking-[-0.015em] text-gray-900 transition-colors placeholder:text-gray-300 hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-50" />
           </div>
 
@@ -647,11 +677,11 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="mb-1 block text-[11px] text-gray-400">{t("tasks.startDate")}</label>
-                <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); persist({ startDate: e.target.value }); }} className={inputBase} />
+                <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); dirty.current = true; if (live) persist({ startDate: e.target.value }); }} className={inputBase} />
               </div>
               <div>
                 <label className="mb-1 block text-[11px] text-gray-400">{t("tasks.dueDate")}</label>
-                <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); persist({ dueDate: e.target.value }); }} className={inputBase} />
+                <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); dirty.current = true; if (live) persist({ dueDate: e.target.value }); }} className={inputBase} />
               </div>
             </div>
           </div>
@@ -673,7 +703,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
             <p className={fieldLabel}><IcFlag className="h-4 w-4 text-gray-400" />{t("tasks.priority")}</p>
             <div className="flex gap-1.5">
               {priorityOrder.map((p) => (
-                <button key={p} type="button" onClick={() => { setPriority(p); persist({ priority: p }); }} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all active:scale-[0.97] ${priority === p ? `${priorityMeta[p].pill} shadow-soft-xs` : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600"}`}>
+                <button key={p} type="button" onClick={() => { setPriority(p); dirty.current = true; if (live) persist({ priority: p }); }} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all active:scale-[0.97] ${priority === p ? `${priorityMeta[p].pill} shadow-soft-xs` : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600"}`}>
                   <span className={`h-1.5 w-1.5 rounded-full ${priority === p ? priorityMeta[p].dot : "bg-gray-300"}`} />{priorityMeta[p].label}
                 </button>
               ))}
@@ -693,7 +723,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                       <span key={mid} className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 py-1 pr-2 pl-1">
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[9px] font-semibold text-blue-600">{m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={20} height={20} className="h-5 w-5 rounded-full object-cover" /> : m.name[0]}</span>
                         <span className="text-xs font-medium text-blue-700">{m.name}</span>
-                        <button type="button" onClick={() => { const ids = selectedIds.filter((id) => id !== mid); setSelectedIds(ids); persist({ selectedIds: ids }); }} className="text-blue-400 hover:text-blue-600"><IcX className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => { const ids = selectedIds.filter((id) => id !== mid); setSelectedIds(ids); dirty.current = true; if (live) persist({ selectedIds: ids }); }} className="text-blue-400 hover:text-blue-600"><IcX className="h-3.5 w-3.5" /></button>
                       </span>
                     );
                   })}
@@ -708,7 +738,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                       <p className="px-3.5 py-2 text-sm text-gray-500">{t("common.noResults")}</p>
                     ) : (
                       filtered.map((m) => (
-                        <button key={m.id} type="button" onClick={() => { const ids = [...selectedIds, m.id]; setSelectedIds(ids); setSearch(""); setShowDropdown(false); persist({ selectedIds: ids }); }} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors hover:bg-gray-50">
+                        <button key={m.id} type="button" onClick={() => { const ids = [...selectedIds, m.id]; setSelectedIds(ids); setSearch(""); setShowDropdown(false); dirty.current = true; if (live) persist({ selectedIds: ids }); }} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors hover:bg-gray-50">
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600">{m.avatarUrl ? <Image src={m.avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : m.name[0]}</div>
                           <div><p className="text-sm text-gray-900">{m.name}</p><p className="text-[11px] text-gray-600">{m.position || m.email}</p></div>
                         </button>
@@ -723,7 +753,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
           {/* 설명 */}
           <div className="px-6 pb-5 pt-5">
             <p className={fieldLabel}><IcText className="h-4 w-4 text-gray-400" />{t("tasks.content")}</p>
-            <textarea value={description} onChange={(e) => { setDescription(e.target.value); dirty.current = true; }} onBlur={() => persist()} rows={4} placeholder={t("tasks.contentPlaceholder")} className={`${inputBase} resize-none`} />
+            <textarea value={description} onChange={(e) => { setDescription(e.target.value); dirty.current = true; }} onBlur={() => { if (live) persist(); }} rows={4} placeholder={t("tasks.contentPlaceholder")} className={`${inputBase} resize-none`} />
             {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
           </div>
           </>

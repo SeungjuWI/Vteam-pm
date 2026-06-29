@@ -235,7 +235,7 @@ export default function OkrSection({
                         value={newKrText}
                         onChange={(e) => setNewKrText(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") handleAddKr(o.id);
+                          if (e.key === "Enter") { if (e.nativeEvent.isComposing) return; handleAddKr(o.id); }
                           if (e.key === "Escape") { setAddingKrFor(null); setNewKrText(""); }
                         }}
                         placeholder={t("okr.keyResultPlaceholder")}

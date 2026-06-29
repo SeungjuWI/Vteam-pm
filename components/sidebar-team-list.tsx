@@ -320,7 +320,10 @@ export default function SidebarTeamList({
           getGroupDmRooms().then((rooms) => setGroupRooms(rooms as GroupDmRoomData[]));
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        // [임시 진단] Realtime 채널 상태 확인용 — 원인 파악 후 제거 예정
+        console.log("[realtime] team-presence status:", status, err ?? "");
+      });
 
     return () => {
       supabase.removeChannel(channel);

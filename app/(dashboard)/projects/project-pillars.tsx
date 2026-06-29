@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import CreateProjectModal from "./create-project-modal";
 import { deleteProject, reorderProjects } from "./actions";
 import { useT } from "@/lib/i18n";
+import { toast } from "@/components/ui/toast";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Member { id: string; name: string; email: string; avatarUrl: string | null; }
 interface PillarMember { name: string; avatarUrl: string | null; }
@@ -46,13 +48,13 @@ export default function ProjectPillars({ projects, members, isAdmin }: { project
   const dragged = useRef(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  function handleDelete(e: React.MouseEvent, p: Project) {
+  async function handleDelete(e: React.MouseEvent, p: Project) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(t("projects.deleteConfirm"))) return;
+    if (!(await confirmDialog({ message: t("projects.deleteConfirm"), danger: true }))) return;
     startTx(async () => {
       const res = await deleteProject(p.id);
-      if (res?.error) alert(res.error);
+      if (res?.error) toast.error(res.error);
       else router.refresh();
     });
   }

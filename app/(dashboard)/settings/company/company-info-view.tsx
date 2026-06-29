@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { saveCompanyInfo } from "./actions";
 import { compressImage } from "@/lib/compress-image";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useT } from "@/lib/i18n";
 
 interface CompanyData {
@@ -34,6 +35,7 @@ export default function CompanyInfoView({
   const [logoRemoved, setLogoRemoved] = useState(false);
   const compressedLogoRef = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [foundedAt, setFoundedAt] = useState(data.foundedAt);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -159,7 +161,15 @@ export default function CompanyInfoView({
 
         <div className="flex flex-col gap-4">
           <Field label={t("company.name")} name="name" defaultValue={data.name} required />
-          <Field label={t("company.foundedAt")} name="foundedAt" type="date" defaultValue={data.foundedAt} />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm text-gray-500">{t("company.foundedAt")}</label>
+            <input type="hidden" name="foundedAt" value={foundedAt} />
+            <DatePicker
+              value={foundedAt}
+              onChange={(v) => setFoundedAt(v)}
+              className="w-full"
+            />
+          </div>
           <Field label={t("company.businessNumber")} name="businessNumber" defaultValue={data.businessNumber} placeholder="01-1234-45678" />
           <Field label={t("company.corpNumber")} name="corpNumber" defaultValue={data.corpNumber} placeholder="11111111111" />
           <Field label={t("company.phone")} name="phone" defaultValue={data.phone} placeholder="02-1234-5678" />

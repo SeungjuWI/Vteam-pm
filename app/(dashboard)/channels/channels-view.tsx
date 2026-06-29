@@ -47,6 +47,8 @@ import {
   type RichComposerHandle,
 } from "@/components/chat/rich-composer";
 import DeptManageModal from "./dept-manage-modal";
+import { toast } from "@/components/ui/toast";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 interface ChannelItem {
   id: string;
@@ -182,12 +184,15 @@ export default function ChannelsView({
 
   const handleDeleteChannel = async (channelId: string, name: string) => {
     if (
-      !confirm(`#${name} 채널을 삭제할까요?\n채널의 모든 메시지가 함께 사라지며 되돌릴 수 없어요.`)
+      !(await confirmDialog({
+        message: `#${name} 채널을 삭제할까요?\n채널의 모든 메시지가 함께 사라지며 되돌릴 수 없어요.`,
+        danger: true,
+      }))
     )
       return;
     const result = await deleteChannel(channelId);
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
       return;
     }
     if (selectedChannelId === channelId) setSelectedChannelId(null);
@@ -759,7 +764,7 @@ function ChannelChat({
     const ok: Attachment[] = [];
     for (const up of results) {
       if (up.error || !up.url || !up.type) {
-        alert(up.error ?? "업로드 실패");
+        toast.error(up.error ?? "업로드 실패");
         continue;
       }
       ok.push({ url: up.url, type: up.type, name: up.name ?? "파일" });
@@ -783,7 +788,7 @@ function ChannelChat({
 
   // 내 메시지 삭제
   const handleDelete = useCallback(async (msgId: string) => {
-    if (!confirm("메시지를 삭제할까요?")) return;
+    if (!(await confirmDialog({ message: "메시지를 삭제할까요?", danger: true }))) return;
     setMessages((prev) =>
       prev.map((m) =>
         m.id === msgId
@@ -936,7 +941,7 @@ function ChannelChat({
     const ok: Attachment[] = [];
     for (const up of results) {
       if (up.error || !up.url || !up.type) {
-        alert(up.error ?? "업로드 실패");
+        toast.error(up.error ?? "업로드 실패");
         continue;
       }
       ok.push({ url: up.url, type: up.type, name: up.name ?? "파일" });
@@ -976,7 +981,7 @@ function ChannelChat({
   );
 
   const handleThreadDelete = useCallback(async (msgId: string) => {
-    if (!confirm("답글을 삭제할까요?")) return;
+    if (!(await confirmDialog({ message: "답글을 삭제할까요?", danger: true }))) return;
     setThreadReplies((prev) =>
       prev.map((m) =>
         m.id === msgId

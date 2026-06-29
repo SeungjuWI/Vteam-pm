@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useT } from "@/lib/i18n";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
 import Avatar from "@/components/avatar";
 import { getPosts, createPost, deletePost, toggleReaction, translateSinglePost } from "../board/actions";
@@ -104,8 +105,8 @@ export default function Board({ currentUserId, companyId }: { currentUserId: str
     }
   }
 
-  function handleDelete(postId: string) {
-    if (!confirm(t("board.deleteConfirm"))) return;
+  async function handleDelete(postId: string) {
+    if (!(await confirmDialog({ message: t("board.deleteConfirm"), danger: true }))) return;
     startTransition(async () => {
       await deletePost(postId);
       setPosts((prev) => prev.filter((p) => p.id !== postId));

@@ -5,6 +5,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { updateTask, updateTaskStatus, deleteTask, getTaskComments, createTaskComment, updateTaskComment, deleteTaskComment } from "../actions";
 import { useT, type TFunction } from "@/lib/i18n";
+import { toast } from "@/components/ui/toast";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import type { Member, Task } from "./project-types";
 import { taskProgress, effectiveStatus } from "./project-types";
 
@@ -215,7 +218,7 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
     const mentionedIds = projectMembers.filter((m) => mentionedNames.includes(m.name)).map((m) => m.id);
 
     const result = await createTaskComment(taskId, projectId, input, mentionedIds, isAll);
-    if (errOf(result)) { alert(errOf(result)); }
+    if (errOf(result)) { toast.error(errOf(result)!); }
     else {
       setInput("");
       window.dispatchEvent(new Event(`comment-refresh-${taskId}`));
@@ -455,7 +458,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     // 드래프트: 서버에 안 쓰고 로컬만. 저장 시 한 번에 반영.
     if (!live) { draftStatusDirty.current = true; dirty.current = true; return; }
     const r = await updateTaskStatus(task.id, s, projectId);
-    if (errOf(r)) { alert(errOf(r)); setStatus(prev); }  // 실패 시 알림 + 되돌림
+    if (errOf(r)) { toast.error(errOf(r)!); setStatus(prev); }  // 실패 시 알림 + 되돌림
   }
   // 편집 모드에서 저장 → 보기 모드로 복귀 (미저장 변경만 반영)
   async function saveAndView() {
@@ -502,10 +505,10 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   async function handleDelete() {
-    if (!confirm(t("tasks.deleteConfirm"))) return;
+    if (!(await confirmDialog({ message: t("tasks.deleteConfirm"), danger: true }))) return;
     setDeleting(true);
     const result = await deleteTask(task.id, projectId);
-    if (errOf(result)) { alert(errOf(result)); setDeleting(false); }
+    if (errOf(result)) { toast.error(errOf(result)!); setDeleting(false); }
     else { onClose(); router.refresh(); }  // 삭제 후 목록 즉시 반영
   }
 
@@ -696,11 +699,11 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="mb-1 block text-[11px] text-gray-400">{t("tasks.startDate")}</label>
-                <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); dirty.current = true; if (live) persist({ startDate: e.target.value }); }} className={inputBase} />
+                <DatePicker value={startDate} onChange={(v) => { setStartDate(v); dirty.current = true; if (live) persist({ startDate: v }); }} max={dueDate || undefined} className="w-full" />
               </div>
               <div>
                 <label className="mb-1 block text-[11px] text-gray-400">{t("tasks.dueDate")}</label>
-                <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); dirty.current = true; if (live) persist({ dueDate: e.target.value }); }} className={inputBase} />
+                <DatePicker value={dueDate} onChange={(v) => { setDueDate(v); dirty.current = true; if (live) persist({ dueDate: v }); }} min={startDate || undefined} className="w-full" />
               </div>
             </div>
           </div>

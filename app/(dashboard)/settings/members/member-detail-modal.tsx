@@ -12,6 +12,8 @@ import {
   deleteAttendance,
 } from "../../attendance/actions";
 import { useT } from "@/lib/i18n";
+import { Select } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-picker";
 
 type MemberDetail = {
   id: string;
@@ -426,20 +428,18 @@ export default function MemberDetailModal({
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
                           <label className="w-12 text-[11px] text-gray-500">{t("attendance.clockIn")}</label>
-                          <input
-                            type="datetime-local"
+                          <DateTimePicker
                             value={newClockIn}
-                            onChange={(e) => setNewClockIn(e.target.value)}
-                            className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+                            onChange={(v) => setNewClockIn(v)}
+                            className="flex-1"
                           />
                         </div>
                         <div className="flex items-center gap-2">
                           <label className="w-12 text-[11px] text-gray-500">{t("attendance.clockOut")}</label>
-                          <input
-                            type="datetime-local"
+                          <DateTimePicker
                             value={newClockOut}
-                            onChange={(e) => setNewClockOut(e.target.value)}
-                            className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+                            onChange={(v) => setNewClockOut(v)}
+                            className="flex-1"
                           />
                         </div>
                         <div className="flex items-center gap-2">
@@ -488,20 +488,18 @@ export default function MemberDetailModal({
                               <div className="flex flex-col gap-2">
                                 <div className="flex items-center gap-2">
                                   <label className="w-12 text-[11px] text-gray-500">{t("attendance.clockIn")}</label>
-                                  <input
-                                    type="datetime-local"
+                                  <DateTimePicker
                                     value={editClockIn}
-                                    onChange={(e) => setEditClockIn(e.target.value)}
-                                    className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+                                    onChange={(v) => setEditClockIn(v)}
+                                    className="flex-1"
                                   />
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <label className="w-12 text-[11px] text-gray-500">{t("attendance.clockOut")}</label>
-                                  <input
-                                    type="datetime-local"
+                                  <DateTimePicker
                                     value={editClockOut}
-                                    onChange={(e) => setEditClockOut(e.target.value)}
-                                    className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+                                    onChange={(v) => setEditClockOut(v)}
+                                    className="flex-1"
                                   />
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -666,19 +664,16 @@ export default function MemberDetailModal({
                 <div className="my-5">
                   <h3 className="mb-1 text-sm font-medium text-gray-900">{t("ipPolicy.memberSectionTitle")}</h3>
                   <p className="mb-3 text-xs text-gray-600">{t("ipPolicy.memberSectionDesc")}</p>
-                  <select
+                  <Select
                     value={data.ipPolicyId ?? ""}
-                    onChange={(e) => handleAssignIpPolicy(e.target.value || null)}
+                    onChange={(v) => handleAssignIpPolicy(v || null)}
                     disabled={savingIpPolicy}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-50"
-                  >
-                    <option value="">{t("ipPolicy.noRestriction")}</option>
-                    {ipPolicies.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                    options={[
+                      { value: "", label: t("ipPolicy.noRestriction") },
+                      ...ipPolicies.map((p) => ({ value: p.id, label: p.name })),
+                    ]}
+                    className="w-full"
+                  />
                   {ipPolicies.length === 0 && (
                     <p className="mt-1.5 text-[11px] text-gray-600">{t("ipPolicy.noPolicyHint")}</p>
                   )}

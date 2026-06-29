@@ -29,6 +29,8 @@ import {
   type AttachmentType,
   type Attachment,
 } from "@/components/chat/message-extras";
+import { toast } from "@/components/ui/toast";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 interface GroupMessage {
   id: string;
@@ -421,7 +423,7 @@ export default function GroupDmChat({
     const ok: Attachment[] = [];
     for (const up of results) {
       if (up.error || !up.url || !up.type) {
-        alert(up.error ?? "업로드 실패");
+        toast.error(up.error ?? "업로드 실패");
         continue;
       }
       ok.push({ url: up.url, type: up.type, name: up.name ?? "파일" });
@@ -451,7 +453,7 @@ export default function GroupDmChat({
 
   // 내 메시지 삭제
   const handleDelete = useCallback(async (msgId: string) => {
-    if (!confirm("메시지를 삭제할까요?")) return;
+    if (!(await confirmDialog({ message: "메시지를 삭제할까요?", danger: true }))) return;
     setMessages((prev) =>
       prev.map((m) =>
         m.id === msgId

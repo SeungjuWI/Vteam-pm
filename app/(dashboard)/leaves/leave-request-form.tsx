@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { requestLeave } from "./actions";
 import { useT } from "@/lib/i18n";
+import { Select } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 
 const LEAVE_CATEGORIES_DATA = [
   {
@@ -56,6 +58,9 @@ export default function LeaveRequestForm() {
   const [type, setType] = useState("annual");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("18:00");
+  const today = new Date().toISOString().split("T")[0];
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
   const formRef = useRef<HTMLFormElement>(null);
 
   const selectedType = ALL_TYPES.find((tp) => tp.value === type);
@@ -87,12 +92,12 @@ export default function LeaveRequestForm() {
       setType("annual");
       setStartTime("09:00");
       setEndTime("18:00");
+      setStartDate(today);
+      setEndDate(today);
       setTimeout(() => setSuccess(false), 3000);
     }
     setLoading(false);
   }
-
-  const today = new Date().toISOString().split("T")[0];
 
   return (
     <div className="rounded-xl bg-white p-6">
@@ -132,49 +137,33 @@ export default function LeaveRequestForm() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.startDate")}</label>
-            <input
-              type="date"
-              name="startDate"
-              defaultValue={today}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-              required
-            />
+            <input type="hidden" name="startDate" value={startDate} />
+            <DatePicker value={startDate} onChange={(v) => setStartDate(v)} className="w-full" />
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.startTime")}</label>
-            <select
-              name="startTime"
+            <input type="hidden" name="startTime" value={startTime} />
+            <Select
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-            >
-              {TIME_OPTIONS.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.endDate")}</label>
-            <input
-              type="date"
-              name="endDate"
-              defaultValue={today}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-              required
+              onChange={(v) => setStartTime(v)}
+              options={TIME_OPTIONS.map((t) => ({ value: t, label: t }))}
+              className="w-full"
             />
           </div>
           <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.endDate")}</label>
+            <input type="hidden" name="endDate" value={endDate} />
+            <DatePicker value={endDate} onChange={(v) => setEndDate(v)} className="w-full" />
+          </div>
+          <div>
             <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("leaves.endTime")}</label>
-            <select
-              name="endTime"
+            <input type="hidden" name="endTime" value={endTime} />
+            <Select
               value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-            >
-              {TIME_OPTIONS.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+              onChange={(v) => setEndTime(v)}
+              options={TIME_OPTIONS.map((t) => ({ value: t, label: t }))}
+              className="w-full"
+            />
           </div>
         </div>
 

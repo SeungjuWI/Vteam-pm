@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { addProjectMember } from "../actions";
 import { useT } from "@/lib/i18n";
+import { toast } from "@/components/ui/toast";
 import type { Member } from "./project-types";
 
 export default function AddMemberModal({ projectId, currentMemberIds, allMembers, onAdded, onClose }: { projectId: string; currentMemberIds: string[]; allMembers: Member[]; onAdded: (m: Member) => void; onClose: () => void }) {
@@ -21,7 +22,7 @@ export default function AddMemberModal({ projectId, currentMemberIds, allMembers
   async function handleAdd(memberId: string) {
     setLoading(memberId);
     const result = await addProjectMember(projectId, memberId);
-    if (result?.error) alert(result.error);
+    if (result?.error) toast.error(result.error);
     else {
       setAddedIds((prev) => new Set(prev).add(memberId));
       const m = allMembers.find((x) => x.id === memberId);

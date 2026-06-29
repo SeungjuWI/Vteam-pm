@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { removeProjectMember } from "../actions";
 import { useT } from "@/lib/i18n";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import type { Member, MainTask, Project, Milestone } from "./project-types";
 import type { Objective } from "./okr-types";
 import ProjectTimeline from "./project-timeline";
@@ -35,7 +36,7 @@ function RemoveMemberButton({ projectId, memberId, onRemoved }: { projectId: str
   const [loading, setLoading] = useState(false);
 
   async function handleRemove() {
-    if (!confirm(t("tasks.removeMemberConfirm"))) return;
+    if (!(await confirmDialog(t("tasks.removeMemberConfirm")))) return;
     setLoading(true);
     await removeProjectMember(projectId, memberId);
     onRemoved();

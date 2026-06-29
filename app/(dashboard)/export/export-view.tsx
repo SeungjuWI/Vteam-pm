@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { exportAttendance, exportMembers, exportLeaves } from "./actions";
 
 function downloadCSV(csv: string, filename: string) {
@@ -66,18 +67,14 @@ export default function ExportView() {
       <div className="rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="text-sm font-medium text-gray-900">기간 설정</h2>
         <div className="mt-3 flex items-center gap-3">
-          <input
-            type="date"
+          <DatePicker
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-400"
+            onChange={(v) => setStartDate(v)}
           />
           <span className="text-sm text-gray-400">~</span>
-          <input
-            type="date"
+          <DatePicker
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-400"
+            onChange={(v) => setEndDate(v)}
           />
         </div>
       </div>

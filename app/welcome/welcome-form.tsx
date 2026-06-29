@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { saveWelcomeProfile } from "./actions";
 import { compressImage } from "@/lib/compress-image";
 import LanguageSelect from "@/components/language-select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { makeT } from "@/lib/i18n";
 
 interface Props {
@@ -15,6 +16,7 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [joinDate, setJoinDate] = useState("");
   const compressedRef = useRef<Blob | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -188,10 +190,11 @@ export default function WelcomeForm({ companyName, companyLogoUrl }: Props) {
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
               {t("welcome.joinDate")}
             </label>
-            <input
-              type="date"
-              name="joinDate"
-              className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+            <input type="hidden" name="joinDate" value={joinDate} />
+            <DatePicker
+              value={joinDate}
+              onChange={(v) => setJoinDate(v)}
+              className="w-full"
             />
           </div>
 

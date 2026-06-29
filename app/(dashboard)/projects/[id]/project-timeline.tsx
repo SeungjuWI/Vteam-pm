@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { updateTaskStatus, addMilestone, deleteMilestone, updateTaskDates, updateMilestoneDate, reorderTasks, reorderSubtasks, createTaskDraft } from "../actions";
 import { useT } from "@/lib/i18n";
+import { toast } from "@/components/ui/toast";
+import { DatePicker } from "@/components/ui/date-picker";
 import TimelineRangePicker, { type DateRange } from "./range-picker";
 import type { Member, Task, MainTask, Milestone } from "./project-types";
 import { effectiveProgress as effProgress, taskProgress } from "./project-types";
@@ -135,7 +137,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   // '추가' = 빈 태스크를 즉시 만들고 동일한 상세 편집기를 연다 (생성/편집 UI 통일)
   async function handleAddTask(parentId: string | null) {
     const r = await createTaskDraft(projectId, parentId);
-    if ("error" in r) { alert(r.error); return; }
+    if ("error" in r) { toast.error(r.error ?? ""); return; }
     if (parentId) setOpen((p) => new Set(p).add(parentId));
     setDraftId(r.task.id);
     setDraftParentId(parentId);
@@ -523,10 +525,10 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       if (!d || !moved.current || !d.latest) return;
       if (d.kind === "ms" && d.latest.date) {
         const date = d.latest.date;
-        startTx(async () => { const r = await updateMilestoneDate(d.id, projectId, date); if ((r as { error?: string })?.error) { alert((r as { error?: string }).error); setMsOverride(null); } router.refresh(); });
+        startTx(async () => { const r = await updateMilestoneDate(d.id, projectId, date); if ((r as { error?: string })?.error) { toast.error((r as { error?: string }).error!); setMsOverride(null); } router.refresh(); });
       } else if (d.latest.startDate && d.latest.dueDate) {
         const { startDate, dueDate } = d.latest;
-        startTx(async () => { const r = await updateTaskDates(d.id, projectId, startDate, dueDate); if ((r as { error?: string })?.error) { alert((r as { error?: string }).error); setDragOverride(null); } router.refresh(); });
+        startTx(async () => { const r = await updateTaskDates(d.id, projectId, startDate, dueDate); if ((r as { error?: string })?.error) { toast.error((r as { error?: string }).error!); setDragOverride(null); } router.refresh(); });
       }
     }
     window.addEventListener("mousemove", onMove);
@@ -785,7 +787,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       {addingMs && (
         <div className="flex items-center gap-2 border-t border-gray-100 bg-amber-50/20 px-5 py-2.5">
           <input value={msTitle} onChange={(e) => setMsTitle(e.target.value)} placeholder="마일스톤 이름" className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none" />
-          <input type="date" value={msDate} onChange={(e) => setMsDate(e.target.value)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none" />
+          <DatePicker value={msDate} onChange={(v) => setMsDate(v)} />
           <button onClick={submitMilestone} className="rounded-lg bg-amber-400 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500">추가</button>
         </div>
       )}

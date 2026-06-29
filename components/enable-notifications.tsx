@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "@/components/ui/toast";
 
 type Perm = "default" | "granted" | "denied" | "unsupported";
 
@@ -25,7 +26,7 @@ export default function EnableNotifications() {
 
   const handleClick = async () => {
     if (perm === "denied") {
-      alert(
+      toast.info(
         "브라우저에서 알림이 차단되어 있어요.\n주소창 왼쪽 자물쇠 아이콘 → 알림 → 허용으로 바꿔주세요."
       );
       return;

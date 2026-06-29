@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Avatar from "@/components/avatar";
 import { useT } from "@/lib/i18n";
+import { toast } from "@/components/ui/toast";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import {
   getCompanyDepartments,
   createDepartment,
@@ -103,7 +105,7 @@ export default function DeptManageModal({
   };
 
   const handleDelete = async (deptId: string) => {
-    if (!confirm(t("channels.deleteConfirm"))) return;
+    if (!(await confirmDialog({ message: t("channels.deleteConfirm"), danger: true }))) return;
     await deleteDepartment(deptId);
     setSelectedId(null);
     await refresh();
@@ -117,7 +119,7 @@ export default function DeptManageModal({
     updateDepartment(deptId, { color })
       .then((result) => {
         if (result && "error" in result && result.error) {
-          alert(result.error);
+          toast.error(result.error);
           load();
         } else {
           onChanged();
@@ -144,7 +146,7 @@ export default function DeptManageModal({
     updateDepartment(deptId, { name })
       .then((result) => {
         if (result && "error" in result && result.error) {
-          alert(result.error);
+          toast.error(result.error);
           load();
         } else {
           onChanged();
@@ -193,14 +195,14 @@ export default function DeptManageModal({
     action
       .then(async (result) => {
         if (result && "error" in result && result.error) {
-          alert(result.error);
+          toast.error(result.error);
           await load();
         } else {
           onChanged();
         }
       })
       .catch(async () => {
-        alert(t("common.errorOccurred"));
+        toast.error(t("common.errorOccurred"));
         await load();
       })
       .finally(() => {

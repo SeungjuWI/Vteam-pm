@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
+import { Select } from "@/components/ui/select";
 
 interface Task {
   id: string;
@@ -130,35 +131,34 @@ export default function MyTasksView({ activeTasks, doneTasks, projects, stats, t
         </div>
 
         <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-50">
-          <select
+          <Select
             value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700"
-          >
-            <option value="all">{t("myTasks.allProjects")}</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-          <select
+            onChange={(v) => setProjectFilter(v)}
+            options={[
+              { value: "all", label: t("myTasks.allProjects") },
+              ...projects.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+          />
+          <Select
             value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700"
-          >
-            <option value="all">{t("myTasks.allPriority")}</option>
-            <option value="high">{t("dashboard.priorityHigh")}</option>
-            <option value="medium">{t("dashboard.priorityMedium")}</option>
-            <option value="low">{t("dashboard.priorityLow")}</option>
-          </select>
-          <select
+            onChange={(v) => setPriorityFilter(v)}
+            options={[
+              { value: "all", label: t("myTasks.allPriority") },
+              { value: "high", label: t("dashboard.priorityHigh") },
+              { value: "medium", label: t("dashboard.priorityMedium") },
+              { value: "low", label: t("dashboard.priorityLow") },
+            ]}
+          />
+          <Select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortBy)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 ml-auto"
-          >
-            <option value="dueDate">{t("myTasks.sortDueDate")}</option>
-            <option value="priority">{t("myTasks.sortPriority")}</option>
-            <option value="project">{t("myTasks.sortProject")}</option>
-          </select>
+            onChange={(v) => setSortBy(v as SortBy)}
+            options={[
+              { value: "dueDate", label: t("myTasks.sortDueDate") },
+              { value: "priority", label: t("myTasks.sortPriority") },
+              { value: "project", label: t("myTasks.sortProject") },
+            ]}
+            className="ml-auto"
+          />
         </div>
 
         {/* Task List */}

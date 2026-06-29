@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { Toaster } from "@/components/ui/toast";
+import { ConfirmRoot } from "@/components/ui/confirm-dialog";
 
 const pretendard = localFont({
   src: "../public/fonts/PretendardVariable.woff2",
@@ -23,7 +25,11 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        {children}
+        <Toaster />
+        <ConfirmRoot />
+      </body>
     </html>
   );
 }

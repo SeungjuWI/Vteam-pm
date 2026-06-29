@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { updateTaskStatus, createTaskDraft } from "../actions";
 import { useT } from "@/lib/i18n";
+import { toast } from "@/components/ui/toast";
 import type { Member, Task, MainTask, TaskStatus } from "./project-types";
 import { priorityConfig } from "./project-types";
 // 클릭 즉시 떠야 하므로 일반 import (dynamic 지연 로딩이면 첫 클릭 때 청크 컴파일/다운로드로 멈칫함)
@@ -21,7 +22,7 @@ export default function ProjectBoard({ projectId, mainTasks, members, allMembers
   // '추가' = 빈 태스크를 즉시 만들고 동일한 상세 편집기를 연다 (생성/편집 UI 통일)
   async function handleAddTask(status: TaskStatus) {
     const r = await createTaskDraft(projectId, null, status);
-    if ("error" in r) { alert(r.error); return; }
+    if ("error" in r) { toast.error(r.error ?? ""); return; }
     setDraftId(r.task.id);
     setSelected(r.task);
   }

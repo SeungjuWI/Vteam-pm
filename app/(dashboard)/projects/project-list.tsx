@@ -5,6 +5,8 @@ import Link from "next/link";
 import CreateProjectModal from "./create-project-modal";
 import { deleteProject, updateProjectStatus } from "./actions";
 import { useT } from "@/lib/i18n";
+import { toast } from "@/components/ui/toast";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Member {
   id: string;
@@ -65,15 +67,15 @@ export default function ProjectList({ projects, members }: Props) {
   const filtered = filter === "all" ? projects : projects.filter((p) => p.status === filter);
 
   async function handleDelete(projectId: string) {
-    if (!confirm(t("projects.deleteConfirm"))) return;
+    if (!(await confirmDialog({ message: t("projects.deleteConfirm"), danger: true }))) return;
     const result = await deleteProject(projectId);
-    if (result?.error) alert(result.error);
+    if (result?.error) toast.error(result.error);
     setMenuOpen(null);
   }
 
   async function handleStatusChange(projectId: string, status: string) {
     const result = await updateProjectStatus(projectId, status);
-    if (result?.error) alert(result.error);
+    if (result?.error) toast.error(result.error);
     setMenuOpen(null);
   }
 

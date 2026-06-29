@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { saveWorkSettings } from "./actions";
 import { useT } from "@/lib/i18n";
+import { Select } from "@/components/ui/select";
 
 type Props = {
   current: {
@@ -32,6 +33,7 @@ function timeOptions() {
 }
 
 const TIME_OPTS = timeOptions();
+const TIME_SELECT_OPTIONS = TIME_OPTS.map((time) => ({ value: time, label: time }));
 
 export default function WorkSettingsForm({ current, onSaved }: Props) {
   const t = useT();
@@ -118,23 +120,21 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.clockIn")}</label>
-              <select
+              <Select
                 value={fixedStart}
-                onChange={(e) => setFixedStart(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-              >
-                {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
-              </select>
+                onChange={(v) => setFixedStart(v)}
+                options={TIME_SELECT_OPTIONS}
+                className="w-full"
+              />
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.clockOut")}</label>
-              <select
+              <Select
                 value={fixedEnd}
-                onChange={(e) => setFixedEnd(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-              >
-                {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
-              </select>
+                onChange={(v) => setFixedEnd(v)}
+                options={TIME_SELECT_OPTIONS}
+                className="w-full"
+              />
             </div>
           </div>
         )}
@@ -144,23 +144,21 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.flexStart")}</label>
-                <select
+                <Select
                   value={flexStart}
-                  onChange={(e) => setFlexStart(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-                >
-                  {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
-                </select>
+                  onChange={(v) => setFlexStart(v)}
+                  options={TIME_SELECT_OPTIONS}
+                  className="w-full"
+                />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.flexEnd")}</label>
-                <select
+                <Select
                   value={flexEnd}
-                  onChange={(e) => setFlexEnd(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-                >
-                  {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
-                </select>
+                  onChange={(v) => setFlexEnd(v)}
+                  options={TIME_SELECT_OPTIONS}
+                  className="w-full"
+                />
               </div>
             </div>
             <p className="text-xs text-gray-600">
@@ -192,23 +190,21 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
                 <div className="mt-3 grid grid-cols-2 gap-4">
                   <div>
                     <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.coreTimeStart")}</label>
-                    <select
+                    <Select
                       value={coreStart}
-                      onChange={(e) => setCoreStart(e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-                    >
-                      {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
-                    </select>
+                      onChange={(v) => setCoreStart(v)}
+                      options={TIME_SELECT_OPTIONS}
+                      className="w-full"
+                    />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.coreTimeEnd")}</label>
-                    <select
+                    <Select
                       value={coreEnd}
-                      onChange={(e) => setCoreEnd(e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-                    >
-                      {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
-                    </select>
+                      onChange={(v) => setCoreEnd(v)}
+                      options={TIME_SELECT_OPTIONS}
+                      className="w-full"
+                    />
                   </div>
                 </div>
               )}
@@ -240,13 +236,12 @@ export default function WorkSettingsForm({ current, onSaved }: Props) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.lunchStart")}</label>
-            <select
+            <Select
               value={lunchStart}
-              onChange={(e) => setLunchStart(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-            >
-              {TIME_OPTS.map((time) => <option key={time} value={time}>{time}</option>)}
-            </select>
+              onChange={(v) => setLunchStart(v)}
+              options={TIME_SELECT_OPTIONS}
+              className="w-full"
+            />
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-gray-600">{t("work.lunchDuration")}</label>

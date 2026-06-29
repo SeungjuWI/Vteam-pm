@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { clockIn, clockOut, cancelClockOut, getAttendanceStatus } from "@/app/(dashboard)/attendance/actions";
 import { useT } from "@/lib/i18n";
+import { toast } from "@/components/ui/toast";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 type WorkStatus = "idle" | "working" | "done";
 
@@ -131,7 +133,7 @@ export default function WorkTimer({
     setLoading(true);
     const result = await clockIn();
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
       await fetchStatus();
     }
@@ -151,11 +153,11 @@ export default function WorkTimer({
   }
 
   async function handleCancelClockOut() {
-    if (!confirm(t("timer.cancelClockOutConfirm"))) return;
+    if (!(await confirmDialog({ message: t("timer.cancelClockOutConfirm"), danger: true }))) return;
     setLoading(true);
     const result = await cancelClockOut();
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
       await fetchStatus();
     }
@@ -167,7 +169,7 @@ export default function WorkTimer({
     setLoading(true);
     const result = await clockOut();
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
       setModalStep(null);
     } else {
       await fetchStatus();

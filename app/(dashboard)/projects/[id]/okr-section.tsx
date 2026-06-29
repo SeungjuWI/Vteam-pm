@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useT, useLocale } from "@/lib/i18n";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import type { Member } from "./project-types";
 import { type Objective, objectiveProgress, formatPeriod } from "./okr-types";
 import {
@@ -98,7 +99,7 @@ export default function OkrSection({
   }
 
   async function handleDeleteObjective(objectiveId: string) {
-    if (!confirm(t("okr.deleteConfirm"))) return;
+    if (!(await confirmDialog({ message: t("okr.deleteConfirm"), danger: true }))) return;
     setObjectives((prev) => prev.filter((o) => o.id !== objectiveId));
     await deleteObjective(projectId, objectiveId);
     router.refresh();

@@ -175,7 +175,7 @@ export default function DashboardShell({
           <div className="flex h-14 items-center px-3">
             <CompanyChip profile={profileData} company={companyData} />
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="scrollbar-thin flex-1 overflow-y-auto">
             <nav className="px-3 py-2">
               {mainNavItems.map(renderNavItem)}
 
@@ -221,7 +221,7 @@ export default function DashboardShell({
             <ProfileMenu profile={{ ...profileData, email: userEmail }} />
           </header>
           {/* Content */}
-          <main className="flex-1 overflow-auto bg-gray-50 p-6">{children}</main>
+          <main className="scrollbar-thin flex-1 overflow-auto bg-gray-50 p-6">{children}</main>
         </div>
       </div>
     </LocaleProvider>

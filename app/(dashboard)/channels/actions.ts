@@ -147,6 +147,7 @@ export async function getCompanyDepartments() {
         .from("profiles")
         .select("id, name, avatar_url, position")
         .in("id", memberUserIds)
+        .eq("status", "active") // 퇴사자는 부서 멤버 목록/카운트에서 제외
     : { data: [] };
   const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
 
@@ -480,10 +481,12 @@ export async function getChannelMembers(channelId: string) {
   const userIds = (members ?? []).map((m) => m.user_id);
   if (userIds.length === 0) return [];
 
+  // 퇴사(inactive) 멤버는 부서 멤버십이 남아 있어도 채팅 멤버 목록에서 제외
   const { data: profiles } = await adminClient
     .from("profiles")
     .select("id, name, avatar_url, presence, language, position, role, email")
-    .in("id", userIds);
+    .in("id", userIds)
+    .eq("status", "active");
 
   return profiles ?? [];
 }

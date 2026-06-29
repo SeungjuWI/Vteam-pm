@@ -275,6 +275,19 @@ export async function deactivateMember(memberId: string) {
     .update({ status: "inactive" })
     .eq("id", memberId);
 
+  // 퇴사자는 활성 소속/배정에서 모두 빠져야 한다.
+  // (출퇴근·작성 댓글 등 '기록'은 보존하고, '현재 소속/담당'만 정리)
+  // - department_members: 부서/부서채팅 멤버 목록·멘션·시스템 메시지 대상
+  // - project_members:    프로젝트 참여자
+  // - task_assignees:     태스크 담당자(타임라인 아바타 등)
+  // - group_dm_members:   단체 DM 참여자
+  await Promise.all([
+    adminClient.from("department_members").delete().eq("user_id", memberId),
+    adminClient.from("project_members").delete().eq("member_id", memberId),
+    adminClient.from("task_assignees").delete().eq("member_id", memberId),
+    adminClient.from("group_dm_members").delete().eq("user_id", memberId),
+  ]);
+
   revalidatePath("/settings/members");
   return { success: true };
 }

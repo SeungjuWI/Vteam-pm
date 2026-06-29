@@ -534,6 +534,9 @@ const en: Record<TranslationKey, string> = {
   "notification.assignedYou": "assigned you to",
   "notification.assignedTask": "assigned you a task.",
   "notification.projectSuffix": "project",
+  "notification.enable": "Enable notifications",
+  "notification.enableTitle": "Enable browser notifications for new messages",
+  "notification.blocked": "Notifications are blocked in your browser.\nClick the lock icon at the left of the address bar → Notifications → Allow.",
 
   // Sidebar Team
   "team.title": "Team",

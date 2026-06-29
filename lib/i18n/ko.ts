@@ -532,6 +532,9 @@ const ko = {
   "notification.assignedYou": "님이 담당자로 배정했습니다.",
   "notification.assignedTask": "님이 태스크를 배정했습니다.",
   "notification.projectSuffix": "프로젝트에",
+  "notification.enable": "알림 켜기",
+  "notification.enableTitle": "새 메시지 브라우저 알림 켜기",
+  "notification.blocked": "브라우저에서 알림이 차단되어 있어요.\n주소창 왼쪽 자물쇠 아이콘 → 알림 → 허용으로 바꿔주세요.",
 
   // Sidebar Team
   "team.title": "팀원",

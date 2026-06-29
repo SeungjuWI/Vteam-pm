@@ -70,7 +70,7 @@ export const RichComposer = forwardRef<RichComposerHandle, {
   placeholder?: string;
   disabled?: boolean;
   onSubmit: () => void;
-  onTextChange?: (hasText: boolean) => void;
+  onTextChange?: (hasText: boolean, text: string) => void;
 }>(function RichComposer(
   { members, placeholder, disabled, onSubmit, onTextChange },
   ref
@@ -90,7 +90,7 @@ export const RichComposer = forwardRef<RichComposerHandle, {
     const txt = editorRef.current?.textContent ?? "";
     const isEmpty = txt.trim().length === 0;
     setEmpty(isEmpty);
-    onTextChange?.(!isEmpty);
+    onTextChange?.(!isEmpty, txt);
   }, [onTextChange]);
 
   useImperativeHandle(
@@ -101,7 +101,7 @@ export const RichComposer = forwardRef<RichComposerHandle, {
         if (editorRef.current) editorRef.current.innerHTML = "";
         setMention(null);
         setEmpty(true);
-        onTextChange?.(false);
+        onTextChange?.(false, "");
       },
       focus: () => editorRef.current?.focus(),
     }),

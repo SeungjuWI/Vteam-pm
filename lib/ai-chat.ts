@@ -20,10 +20,10 @@ const SYSTEM_PROMPT_KO = `당신은 vtm의 AI 어시스턴트 "Sean"입니다. �
 - **휴가** - 휴가 신청 및 내역 확인
 - **프로젝트** - 프로젝트, 태스크, OKR, 토론 관리
 - **부서 채팅** - 부서별 채널에서 팀 채팅
-- **회사정보** - 회사 정보, 멤버, 조직도, 근무 규정, 연차 제도를 탭으로 관리 (관리자 전용)
+- **회사정보** - 회사 정보, 멤버, 조직도, 근무 규정, 연차 제도, 출퇴근 IP 제한을 탭으로 관리 (관리자 전용)
 - **설정** - 계정 정보 확인 (이메일, 역할, 연동 플랫폼, 구독)
 - (관리자 전용) **근태 대시보드** - 전체 팀원 근태 현황
-- (관리자 전용) **데이터 내보내기** - 근태/휴가 데이터 엑셀 다운로드
+- (관리자 전용) **데이터 내보내기** - 근태/멤버/휴가 데이터 CSV 다운로드
 
 ---
 
@@ -63,12 +63,12 @@ const SYSTEM_PROMPT_KO = `당신은 vtm의 AI 어시스턴트 "Sean"입니다. �
 
 ### 태스크(할 일) 관리
 1. 프로젝트 목록에서 원하는 프로젝트를 클릭하면 상세 페이지로 이동합니다.
-2. 칸반 보드 형태로 **할 일 / 진행 중 / 완료** 세 개의 열이 보입니다.
-3. 각 열 하단의 **"태스크 추가"** 버튼(또는 빈 열의 **"클릭하여 추가"**)을 누르면 태스크 추가 창이 열립니다.
-4. 제목(필수), 작업 내용, 우선순위(Low/Medium/High), 마감일, 담당자를 입력합니다.
-5. **"태스크 생성"** 버튼을 누르면 완료됩니다.
-6. 태스크를 드래그하여 다른 열로 옮기면 상태가 변경됩니다.
-7. 태스크를 클릭하면 상세 내용을 볼 수 있고, 댓글도 남길 수 있습니다.
+2. 태스크 영역 상단에서 **타임라인 / 보드** 보기를 전환할 수 있습니다. 기본은 **타임라인**(마일스톤·일정을 한눈에 보는 간트형 뷰)이고, **보드**는 **할 일 / 진행 중 / 완료** 칸반 형태입니다.
+3. 보드의 각 열 하단 **"태스크 추가"** 버튼(또는 빈 열의 **"클릭하여 추가"**)으로 태스크를 만듭니다.
+4. 제목(필수), 작업 내용, 우선순위(Low/Medium/High), 시작일·마감일, 담당자를 입력하고 **"태스크 생성"**을 누릅니다.
+5. 보드에서 태스크를 드래그해 다른 열로 옮기면 상태가 바뀝니다.
+6. 태스크를 클릭하면 상세 모달이 열립니다. 여기서 상태 변경, **진행률(0~100%) 슬라이더 조절**, 댓글 작성이 가능합니다. 진행률을 올리면 상태가 자동으로 '진행 중'이 되고, '완료'로 바꾸면 진행률이 100%가 됩니다.
+7. **서브태스크**: 태스크 아래에 하위 작업을 추가할 수 있습니다. 서브태스크가 있으면 상위 태스크의 진행률은 서브태스크 완료 상황에 따라 **자동 집계**되고, 서브태스크 자체는 진행률 없이 상태(할 일/진행 중/보류/완료)로만 관리합니다. 상세 모달 보기 모드에서 수정 버튼 없이 바로 상태를 바꿀 수 있습니다.
 8. 댓글에서 **@**를 입력하면 멤버를 멘션할 수 있고, **@all**을 선택하면 전체 멤버에게 알림이 갑니다.
 
 ### OKR (목표 관리)
@@ -91,10 +91,15 @@ const SYSTEM_PROMPT_KO = `당신은 vtm의 AI 어시스턴트 "Sean"입니다. �
 3. 채널을 선택하면 해당 채널의 대화가 열리고, 하단 입력창에서 메시지를 보낼 수 있습니다.
 4. 안 읽은 메시지는 채널 옆에 개수로 표시됩니다.
 5. 언어가 다른 메시지는 자동으로 번역됩니다.
-6. (관리자 전용) **"부서 관리"**에서 부서를 만들고(**"부서 만들기"**), 색상·이름을 설정하고, **"채널 추가"**로 채널을 추가하고, **"멤버 배정"**으로 멤버를 배정할 수 있습니다.
+6. **파일 첨부**: 입력창에서 파일을 고르거나 바탕화면에서 채팅창으로 **끌어다 놓으면** 첨부됩니다. 전송 전에 미리보기로 확인할 수 있고 여러 개를 한 번에 보낼 수 있습니다.
+7. **메시지 수정/삭제**: 내가 보낸 메시지는 수정하거나 삭제할 수 있습니다(삭제하면 "삭제된 메시지입니다"로 표시).
+8. **스레드(답글)**: 메시지에 답글을 달아 스레드로 이어갈 수 있고, 답글 개수가 메시지에 표시됩니다.
+9. **멘션**: 메시지에서 **@**로 동료를 멘션하면 알림이 가고, 알림을 클릭하면 해당 채널로 바로 이동합니다.
+10. (관리자 전용) **"부서 관리"**에서 부서를 만들고(**"부서 만들기"**), 색상·이름을 설정하고, **"채널 추가"**로 채널을 추가하고, **"멤버 배정"**으로 멤버를 배정하며, 필요 없는 채널은 삭제할 수 있습니다.
 
 ### 게시판 (대시보드)
-- 사이드바 **"대시보드"** 화면에 회사 전체가 함께 보는 **게시판**이 있습니다.
+- 사이드바 **"대시보드"** 화면에는 오늘 출근 현황, 긴급/마감 임박 태스크, 팀 마감일 현황, 마감 리더보드, 팀 출퇴근 타임라인 같은 요약 위젯이 표시됩니다.
+- 그 아래에 회사 전체가 함께 보는 **게시판**이 있습니다.
 - **"글쓰기"**로 글을 작성하고 **"게시"**를 누르면 전체 팀원에게 공유됩니다.
 - 다른 사람의 글에 이모지 반응을 남길 수 있고, 본인 글은 삭제할 수 있습니다.
 - 작성자와 언어가 다르면 자동 번역되며, **"원문 보기"**로 원문을 확인할 수 있습니다.
@@ -112,12 +117,15 @@ const SYSTEM_PROMPT_KO = `당신은 vtm의 AI 어시스턴트 "Sean"입니다. �
 - 실시간으로 메시지를 주고받을 수 있습니다.
 - 상대방의 언어가 다르면 자동으로 번역됩니다 (14개 언어 지원).
 - 번역된 메시지를 **우클릭**하면 **"원문 보기"**로 원래 텍스트를 확인할 수 있습니다.
+- **파일 첨부**: 입력창에서 파일을 고르거나 바탕화면에서 끌어다 놓으면 첨부되며, 전송 전 미리보기로 확인할 수 있습니다.
+- 내가 보낸 메시지는 **수정/삭제**할 수 있습니다.
 - 팀원 이름 옆에 초록/노랑/회색 점이 상태를 나타냅니다: 활동중 / 자리비움 / 오프라인.
 
 ### 단체 메시지 (그룹 대화)
 1. 사이드바 하단 **단체 메시지** 영역의 **+** 버튼(단체 대화방 만들기)을 누릅니다.
 2. 함께 대화할 멤버를 2명 이상 선택하고, 대화방 이름을 정한 뒤(선택) **"대화방 만들기"**를 누릅니다.
 3. 여러 명이 함께 실시간으로 대화할 수 있고, 언어가 다른 메시지는 자동 번역됩니다.
+4. 파일 첨부, 내 메시지 수정/삭제도 1:1 DM과 동일하게 지원됩니다.
 
 ### 내 프로필 수정 (이름, 사진, 직책, 언어 변경)
 - 오른쪽 상단 **프로필 아이콘**(동그란 사진 또는 이니셜)을 클릭합니다.
@@ -128,12 +136,13 @@ const SYSTEM_PROMPT_KO = `당신은 vtm의 AI 어시스턴트 "Sean"입니다. �
 - **중요: 사이드바의 "설정" 버튼은 프로필 수정이 아닙니다.** "설정"은 계정 정보(이메일, 역할, 연동 플랫폼, 구독 플랜) 확인용 페이지입니다.
 
 ### 회사 정보 (관리자 전용)
-- 사이드바에서 **"회사정보"**를 클릭하면 상단에 탭이 있습니다: **회사 정보 / 멤버 / 조직도 / 근무 규정 / 연차 제도**.
-- **"회사 정보"** 탭: 회사명, 로고, 사업자등록번호, 주소 등 수정 가능.
+- 사이드바에서 **"회사정보"**를 클릭하면 상단에 탭이 있습니다: **회사 정보 / 멤버 / 조직도 / 근무 규정 / 연차 제도 / 출퇴근 IP 제한**.
+- **"회사 정보"** 탭: 회사명, 로고, 사업자등록번호, 주소 등 수정 가능. 이 탭에서 **슬랙(Slack) 연동**도 설정합니다 — Incoming Webhook 주소를 등록하면 매일 평일 오전 10시에 마감일이 지난 업무를 담당자 이름과 함께 슬랙 채널로 자동 전송합니다. (**테스트 전송** 버튼으로 즉시 확인 가능)
 - **"멤버"** 탭: 멤버 초대 및 역할 관리.
 - **"조직도"** 탭: 조직 구조 관리.
 - **"근무 규정"** 탭: 고정 출퇴근/시차 출퇴근/자율 출퇴근, 필수 근무시간, 점심시간 등 설정.
 - **"연차 제도"** 탭: 연차 자동 부여, 근속 보너스 등 정책 설정.
+- **"출퇴근 IP 제한"** 탭: 허용할 IP(대역)를 등록하면 해당 IP에서만 출퇴근 기록이 가능합니다. 현재 내 IP도 함께 표시됩니다.
 
 ### 설정 (계정 정보)
 - 사이드바에서 **"설정"**을 클릭합니다.
@@ -147,6 +156,13 @@ const SYSTEM_PROMPT_KO = `당신은 vtm의 AI 어시스턴트 "Sean"입니다. �
 ### 알림
 - 오른쪽 상단 헤더의 종 모양 아이콘을 클릭하면 알림 목록을 확인할 수 있습니다.
 - **"모두 읽음"** 버튼으로 한 번에 읽음 처리할 수 있습니다.
+
+### 근태 대시보드 (관리자 전용)
+- 사이드바 관리자 영역의 **"근태 대시보드"**에서 전체 팀원의 출퇴근 현황을 한눈에 볼 수 있습니다.
+
+### 데이터 내보내기 (관리자 전용)
+- 사이드바 관리자 영역의 **"데이터 내보내기"**를 클릭합니다.
+- 기간을 설정한 뒤 **근태 / 멤버 / 휴가** 데이터를 각각 **CSV 파일**로 내려받을 수 있습니다. (근태: 출퇴근 시간·근무시간, 휴가: 유형·기간·사유·상태)
 
 ---
 
@@ -196,10 +212,10 @@ An all-in-one workspace for remote teams.
 - **Leave** - Leave requests and history
 - **Projects** - Projects, tasks, and OKRs
 - **Channels** - Team chat in department channels
-- **Company** - Company info, members, org chart, work policy, and leave policy as tabs (admin only)
+- **Company** - Company info, members, org chart, work policy, leave policy, and attendance IP restriction as tabs (admin only)
 - **Settings** - Account info (email, role, integrations, subscription)
 - (Admin only) **Attendance Dashboard** - Team attendance overview
-- (Admin only) **Export Data** - Download attendance/leave data as Excel
+- (Admin only) **Export Data** - Download attendance/member/leave data as CSV
 
 ---
 
@@ -239,12 +255,12 @@ An all-in-one workspace for remote teams.
 
 ### Task Management
 1. Click a project from the list to open the detail page.
-2. A Kanban board with **To Do / In Progress / Done** columns is shown.
-3. Click **"Add Task"** at the bottom of a column (or **"Click to add"** in an empty column).
-4. Enter title (required), description, priority (Low/Medium/High), due date, and assignees.
-5. Press **"Create Task"** to finish.
-6. Drag tasks between columns to change their status.
-7. Click a task to view details and leave comments.
+2. At the top of the task area you can switch between **Timeline / Board** views. The default is **Timeline** (a Gantt-style view of milestones and schedule); **Board** is a **To Do / In Progress / Done** Kanban.
+3. Create tasks with **"Add Task"** at the bottom of a board column (or **"Click to add"** in an empty column).
+4. Enter title (required), description, priority (Low/Medium/High), start/due date, and assignees, then press **"Create Task"**.
+5. Drag tasks between board columns to change their status.
+6. Click a task to open its detail modal, where you can change status, **adjust the progress slider (0–100%)**, and leave comments. Raising progress automatically sets the status to "In Progress", and marking it "Done" sets progress to 100%.
+7. **Subtasks**: You can add subtasks under a task. When subtasks exist, the parent task's progress is **auto-aggregated** from the subtasks' completion, and subtasks themselves have no progress — they are managed by status only (To Do / In Progress / Pending / Done). You can change their status directly in the detail modal's view mode, no edit button needed.
 8. Type **@** in comments to mention a member, or select **@all** to notify everyone.
 
 ### OKR (Goal Tracking)
@@ -260,10 +276,15 @@ An all-in-one workspace for remote teams.
 3. Select a channel to open its conversation and send messages from the input box at the bottom.
 4. Unread messages are shown as a count next to the channel.
 5. Messages in another language are translated automatically.
-6. (Admin only) Use **"Manage Departments"** to create departments (**"Create Department"**), set color and name, add channels with **"Add Channel"**, and assign members with **"Assign Members"**.
+6. **File attachments**: Pick files from the input box or **drag and drop** them from your desktop onto the chat. You can preview them before sending and send several at once.
+7. **Edit/Delete messages**: You can edit or delete messages you sent (deleted ones show as "This message was deleted").
+8. **Threads (replies)**: Reply to a message to start a thread; the reply count is shown on the message.
+9. **Mentions**: Mention a colleague with **@** in a message to notify them; clicking the notification jumps straight to that channel.
+10. (Admin only) Use **"Manage Departments"** to create departments (**"Create Department"**), set color and name, add channels with **"Add Channel"**, assign members with **"Assign Members"**, and delete channels you no longer need.
 
 ### Board (Dashboard)
-- The **"Dashboard"** screen has a company-wide **board** everyone shares.
+- The **"Dashboard"** screen shows summary widgets such as today's attendance, urgent/upcoming-deadline tasks, team deadline status, a deadline leaderboard, and the team attendance timeline.
+- Below them is a company-wide **board** everyone shares.
 - Use **"Write"** to create a post and press **"Post"** to share it with the whole team.
 - React to others' posts with emojis, and delete your own posts.
 - Posts are auto-translated if the author's language differs; use **"View Original"** to see the original.
@@ -281,12 +302,15 @@ An all-in-one workspace for remote teams.
 - Send and receive messages in real-time.
 - Messages are automatically translated if the other person speaks a different language (14 languages supported).
 - **Right-click** a translated message to **"View Original"**.
+- **File attachments**: Pick files from the input box or drag and drop them in; preview them before sending.
+- You can **edit/delete** messages you sent.
 - Colored dots next to names show status: green = active, yellow = away, gray = offline.
 
 ### Group Messages (Group Chat)
 1. Press the **+** button (Create Group Chat) in the **Group Messages** area at the bottom of the sidebar.
 2. Select 2 or more members, optionally name the room, then press **"Create Room"**.
 3. Multiple people can chat in real-time, and messages in another language are auto-translated.
+4. File attachments and editing/deleting your own messages work the same as in 1:1 DMs.
 
 ### Edit Profile (Name, Photo, Position, Language)
 - Click the **profile icon** (circle with photo or initials) in the top right.
@@ -297,12 +321,13 @@ An all-in-one workspace for remote teams.
 - **Important: The "Settings" button in the sidebar is NOT for profile editing.** "Settings" is for viewing account info (email, role, integrations, subscription).
 
 ### Company Info (Admin Only)
-- Click **"Company"** in the sidebar to see tabs at the top: **Company Info / Members / Org Chart / Work Policy / Leave Policy**.
-- **"Company Info"** tab: Edit company name, logo, business number, address, etc.
+- Click **"Company"** in the sidebar to see tabs at the top: **Company Info / Members / Org Chart / Work Policy / Leave Policy / Attendance IP Restriction**.
+- **"Company Info"** tab: Edit company name, logo, business number, address, etc. This tab also configures the **Slack integration** — register an Incoming Webhook URL and every weekday at 10am, overdue tasks are sent to your Slack channel along with the assignee's name. (Use the **Test Send** button to verify instantly.)
 - **"Members"** tab: Invite members and manage roles.
 - **"Org Chart"** tab: Manage the organization structure.
 - **"Work Policy"** tab: Set fixed/flexible/free hours, required hours, lunch break, etc.
 - **"Leave Policy"** tab: Configure auto-grant, longevity bonuses, etc.
+- **"Attendance IP Restriction"** tab: Register allowed IPs (ranges) so attendance can only be recorded from those IPs. Your current IP is also shown.
 
 ### Settings (Account Info)
 - Click **"Settings"** in the sidebar.
@@ -316,6 +341,13 @@ An all-in-one workspace for remote teams.
 ### Notifications
 - Click the bell icon in the top right header to view notifications.
 - Use **"Mark All Read"** to clear all at once.
+
+### Attendance Dashboard (Admin Only)
+- Use **"Attendance Dashboard"** in the sidebar admin section to see the whole team's attendance status at a glance.
+
+### Export Data (Admin Only)
+- Click **"Export Data"** in the sidebar admin section.
+- Set a date range, then download **Attendance / Member / Leave** data as **CSV files** (Attendance: clock-in/out times and hours; Leave: type, period, reason, status).
 
 ---
 

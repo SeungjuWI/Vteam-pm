@@ -15,6 +15,8 @@ import {
   uploadChatAttachment,
 } from "@/app/(dashboard)/chat-message-actions";
 import { createClient } from "@/lib/supabase/client";
+import { ComposeLinkPreview } from "@/components/compose-link-preview";
+import { MessageLinkPreviews } from "@/components/link-preview-card";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
 import { setChatActive } from "@/lib/active-chat";
@@ -614,6 +616,9 @@ export default function DmChat({
                         )}
                       </div>
                     )}
+                    {!member.is_bot && (
+                      <MessageLinkPreviews content={msg.content} align={isMine ? "right" : "left"} />
+                    )}
                   </div>
                 </div>
               )}
@@ -796,6 +801,7 @@ export default function DmChat({
           size="sm"
           onRemove={(i) => setPending((prev) => prev.filter((_, idx) => idx !== i))}
         />
+        {!member.is_bot && <ComposeLinkPreview text={input} />}
         <form
           onSubmit={(e) => {
             e.preventDefault();

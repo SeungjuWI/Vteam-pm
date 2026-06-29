@@ -4,6 +4,8 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Avatar from "@/components/avatar";
 import { createClient } from "@/lib/supabase/client";
+import { ComposeLinkPreview } from "@/components/compose-link-preview";
+import { MessageLinkPreviews } from "@/components/link-preview-card";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
 import { setChatActive } from "@/lib/active-chat";
@@ -416,6 +418,7 @@ function ChannelChat({
     { kind: "members" } | { kind: "profile"; userId: string } | null
   >(null);
   const [composerHasText, setComposerHasText] = useState(false);
+  const [composerText, setComposerText] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
@@ -430,6 +433,7 @@ function ChannelChat({
   const [threadReplies, setThreadReplies] = useState<ChannelMessage[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadHasText, setThreadHasText] = useState(false);
+  const [threadText, setThreadText] = useState("");
   const [threadSending, setThreadSending] = useState(false);
   const [threadUploading, setThreadUploading] = useState(false);
   const [threadEditingId, setThreadEditingId] = useState<string | null>(null);
@@ -1192,6 +1196,7 @@ function ChannelChat({
                         <p className="text-xs text-gray-600">{msg.content}</p>
                       </div>
                     )}
+                    <MessageLinkPreviews content={msg.content} />
                   </div>
                 )}
 
@@ -1343,6 +1348,7 @@ function ChannelChat({
                   <p className="text-xs text-gray-600">{msg.content}</p>
                 </div>
               )}
+              <MessageLinkPreviews content={msg.content} />
             </div>
           )}
         </div>
@@ -1433,6 +1439,7 @@ function ChannelChat({
           items={pending}
           onRemove={(i) => setPending((prev) => prev.filter((_, idx) => idx !== i))}
         />
+        <ComposeLinkPreview text={composerText} />
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -1449,7 +1456,7 @@ function ChannelChat({
             // 전송 중에는 비활성화하지 않음 → contentEditable이 꺼지며 포커스가 풀리는 것 방지
             disabled={uploading}
             onSubmit={handleSend}
-            onTextChange={setComposerHasText}
+            onTextChange={(has, text) => { setComposerHasText(has); setComposerText(text); }}
             placeholder={
               uploading
                 ? "업로드 중..."
@@ -1536,6 +1543,7 @@ function ChannelChat({
                 setThreadPending((prev) => prev.filter((_, idx) => idx !== i))
               }
             />
+            <ComposeLinkPreview text={threadText} />
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -1555,7 +1563,7 @@ function ChannelChat({
                 // 전송 중에는 비활성화하지 않음 → 포커스 유지
                 disabled={threadUploading}
                 onSubmit={handleThreadSend}
-                onTextChange={setThreadHasText}
+                onTextChange={(has, text) => { setThreadHasText(has); setThreadText(text); }}
                 placeholder={threadUploading ? "업로드 중..." : "답글 남기기..."}
               />
               <button

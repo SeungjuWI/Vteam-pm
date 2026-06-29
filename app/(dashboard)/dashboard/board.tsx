@@ -6,6 +6,8 @@ import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
 import Avatar from "@/components/avatar";
 import { getPosts, createPost, deletePost, toggleReaction, translateSinglePost } from "../board/actions";
+import { ComposeLinkPreview } from "@/components/compose-link-preview";
+import { MessageLinkPreviews } from "@/components/link-preview-card";
 
 interface Post {
   id: string;
@@ -184,6 +186,9 @@ export default function Board({ currentUserId, companyId }: { currentUserId: str
             rows={3}
             className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
           />
+          <div className="mt-2">
+            <ComposeLinkPreview text={input} />
+          </div>
           <div className="flex justify-end gap-2 mt-2">
             <button
               onClick={() => { setIsWriting(false); setInput(""); }}
@@ -242,6 +247,7 @@ export default function Board({ currentUserId, companyId }: { currentUserId: str
                   </div>
                 </div>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{displayContent}</p>
+                <MessageLinkPreviews content={post.content} />
                 <div className="flex items-center gap-3 mt-2.5">
                   <button
                     onClick={() => handleReaction(post.id)}

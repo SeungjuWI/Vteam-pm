@@ -130,6 +130,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   }, [searchParams, mainTasks]);
   // 태스크 추가 모달: null=닫힘, parentId=null이면 메인 / 값이 있으면 그 메인의 서브
   const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftParentId, setDraftParentId] = useState<string | null>(null); // 새 draft가 서브태스크인지 판정용(아직 order에 없을 수 있어 별도 추적)
 
   // '추가' = 빈 태스크를 즉시 만들고 동일한 상세 편집기를 연다 (생성/편집 UI 통일)
   async function handleAddTask(parentId: string | null) {
@@ -137,6 +138,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     if ("error" in r) { alert(r.error); return; }
     if (parentId) setOpen((p) => new Set(p).add(parentId));
     setDraftId(r.task.id);
+    setDraftParentId(parentId);
     setSelected(r.task);
   }
   const [showDone, setShowDone] = useState(false);
@@ -801,7 +803,7 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
       )}
 
       {selected && (
-        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} isDraft={selected.id === draftId} subtasks={order.find((m) => m.id === selected.id)?.subtasks ?? []} onClose={() => { setSelected(null); setDraftId(null); }} />
+        <TaskDetailModal task={selected} projectId={projectId} allMembers={allMembers} projectMembers={members} currentUserId={currentUserId} isDraft={selected.id === draftId} isSubtask={selected.id === draftId ? draftParentId !== null : order.some((m) => m.subtasks.some((s) => s.id === selected.id))} subtasks={order.find((m) => m.id === selected.id)?.subtasks ?? []} onClose={() => { setSelected(null); setDraftId(null); setDraftParentId(null); }} />
       )}
 
       {/* 메인 완료 확인 모달 (미완료 서브가 남아 있을 때) */}

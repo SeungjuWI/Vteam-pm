@@ -359,8 +359,8 @@ function PropRow({ icon, label, children }: { icon: React.ReactNode; label: stri
 }
 
 /* ── 태스크 상세/수정 모달 ── */
-export default function TaskDetailModal({ task, projectId, allMembers, projectMembers, currentUserId, onClose, isDraft = false, subtasks = [] }: {
-  task: Task; projectId: string; allMembers: Member[]; projectMembers: Member[]; currentUserId: string; onClose: () => void; isDraft?: boolean; subtasks?: Task[];
+export default function TaskDetailModal({ task, projectId, allMembers, projectMembers, currentUserId, onClose, isDraft = false, isSubtask = false, subtasks = [] }: {
+  task: Task; projectId: string; allMembers: Member[]; projectMembers: Member[]; currentUserId: string; onClose: () => void; isDraft?: boolean; isSubtask?: boolean; subtasks?: Task[];
 }) {
   const t = useT();
   const router = useRouter();
@@ -568,6 +568,8 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
               <div className="px-6 pb-5 pt-5">
                 <h2 className="break-words text-[22px] font-bold leading-snug tracking-[-0.015em] text-gray-900">{title || t("tasks.taskTitle")}</h2>
 
+                {/* 서브태스크는 진행도 개념 없이 상태(완료/진행중 등)로만 관리 → 진행률 카드 숨김 */}
+                {!isSubtask && (
                 <div className="mt-4 rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
                   <div className="mb-2 flex items-end justify-between">
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
@@ -595,6 +597,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                     </div>
                   )}
                 </div>
+                )}
 
                 <div className="mt-4 flex flex-col divide-y divide-gray-50">
                   <PropRow icon={<IcCalendar className="h-4 w-4" />} label={t("tasks.schedule")}>
@@ -653,7 +656,8 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
               className="-mx-3 w-[calc(100%+1.5rem)] rounded-xl px-3 py-1.5 text-[22px] font-bold tracking-[-0.015em] text-gray-900 transition-colors placeholder:text-gray-300 hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-50" />
           </div>
 
-          {/* 진행률 */}
+          {/* 진행률 — 서브태스크는 상태로만 관리하므로 진행도 입력 자체를 숨김 */}
+          {!isSubtask && (
           <div className="px-6 pt-5">
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500">{t("tasks.progress")}</span>
@@ -670,6 +674,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
               <input type="range" min={0} max={100} step={5} value={progress} onChange={(e) => { const v = Number(e.target.value); setProgress(v); dirty.current = true; }} onMouseUp={commitProgress} onTouchEnd={commitProgress} className="h-1.5 w-full accent-blue-500" />
             )}
           </div>
+          )}
 
           {/* 일정 */}
           <div className="px-6 pt-5">

@@ -599,6 +599,20 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
                 </div>
                 )}
 
+                {/* 서브태스크: 진행상태를 보기 모드에서 바로 변경 (수정 버튼 불필요) — 저장된 태스크면 즉시 반영 */}
+                {isSubtask && (
+                <div className="mt-4">
+                  <p className="mb-1.5 text-xs font-semibold text-gray-500">{t("tasks.status")}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {statusOrder.map((s) => (
+                      <button key={s} type="button" onClick={() => changeStatus(s)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all active:scale-[0.97] ${status === s ? `${statusMeta[s].pill} shadow-soft-xs` : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600"}`}>
+                        {statusLabels[s]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                )}
+
                 <div className="mt-4 flex flex-col divide-y divide-gray-50">
                   <PropRow icon={<IcCalendar className="h-4 w-4" />} label={t("tasks.schedule")}>
                     {startDate || dueDate ? (

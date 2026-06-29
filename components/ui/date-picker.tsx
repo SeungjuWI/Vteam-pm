@@ -12,6 +12,7 @@
  * never clips inside scrollable modals.
  */
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -241,7 +242,7 @@ export function DatePicker({
         <span className={cn("tabular-nums", !p && "text-gray-400")}>{display}</span>
         <CalendarIcon />
       </button>
-      {open && rect && (
+      {open && rect && createPortal(
         <div
           ref={popRef}
           style={{
@@ -260,7 +261,8 @@ export function DatePicker({
               setOpen(false);
             }}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
@@ -317,7 +319,7 @@ export function DateTimePicker({
         <span className={cn("tabular-nums", !p && "text-gray-400")}>{display}</span>
         <CalendarIcon />
       </button>
-      {open && rect && (
+      {open && rect && createPortal(
         <div
           ref={popRef}
           style={{
@@ -334,7 +336,8 @@ export function DateTimePicker({
             <span className="text-gray-400">:</span>
             <TimeSpinner value={min} max={59} onChange={(nm) => commit(date, h, nm)} />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

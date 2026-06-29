@@ -11,6 +11,7 @@
  * resize, or Escape. Full keyboard nav (↑/↓/Home/End/Enter/Esc).
  */
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 
 export interface SelectOption {
@@ -167,7 +168,7 @@ export function Select({
         </svg>
       </button>
 
-      {open && rect && (
+      {open && rect && createPortal(
         <div
           ref={menuRef}
           role="listbox"
@@ -215,7 +216,8 @@ export function Select({
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

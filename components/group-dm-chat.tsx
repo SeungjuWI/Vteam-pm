@@ -16,6 +16,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { ComposeLinkPreview } from "@/components/compose-link-preview";
 import { MessageLinkPreviews } from "@/components/link-preview-card";
+import { LinkHighlightInput } from "@/components/link-highlight-input";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
 import { setChatActive } from "@/lib/active-chat";
@@ -793,17 +794,18 @@ export default function GroupDmChat({
           className="flex items-center gap-2"
         >
           <AttachmentButton onPicked={handleAttach} disabled={uploading || sending} />
-          <input
-            ref={inputRef}
-            type="text"
+          <LinkHighlightInput
+            inputRef={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={setInput}
             // 한글 등 IME 조합 중 Enter는 조합 확정용 → 폼 전송 막아 마지막 글자 중복 방지
             onKeyDown={(e) => {
-              if (e.key === "Enter" && e.nativeEvent.isComposing) e.preventDefault();
+              if (e.key === "Enter" && (e.nativeEvent as KeyboardEvent).isComposing) e.preventDefault();
             }}
             placeholder={uploading ? "업로드 중..." : t("dm.typeMessage")}
-            className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
+            wrapperClassName="flex-1 min-w-0"
+            boxClassName="rounded-full border border-gray-200 bg-gray-50 focus-within:border-blue-300 focus-within:bg-white"
+            fieldClassName="px-4 py-2 text-sm"
           />
           <button
             type="submit"

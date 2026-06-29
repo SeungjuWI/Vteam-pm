@@ -9,6 +9,125 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import Avatar from "@/components/avatar";
+import { splitByUrls } from "@/lib/link-preview";
+
+const LINK_COLOR = "#3182f6";
+
+// ── contentEditable 안에서 URL/이메일을 파랗게 칠하기 ───────────────
+// 캐럿 위치(문자 오프셋) 저장/복원. 멘션 칩은 통째로 한 단위로 셈.
+function getCaretOffset(root: HTMLElement): number | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0);
+  if (!root.contains(range.startContainer)) return null;
+  const pre = range.cloneRange();
+  pre.selectNodeContents(root);
+  pre.setEnd(range.startContainer, range.startOffset);
+  return pre.toString().length;
+}
+
+function setCaretOffset(root: HTMLElement, offset: number) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  let remaining = offset;
+  let placed = false;
+
+  const walk = (node: Node): boolean => {
+    if (placed) return true;
+    if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).dataset?.uid) {
+      const len = node.textContent?.length ?? 0;
+      if (remaining <= len) {
+        range.setStartAfter(node);
+        range.collapse(true);
+        placed = true;
+        return true;
+      }
+      remaining -= len;
+      return false;
+    }
+    if (node.nodeType === Node.TEXT_NODE) {
+      const len = node.nodeValue?.length ?? 0;
+      if (remaining <= len) {
+        range.setStart(node, remaining);
+        range.collapse(true);
+        placed = true;
+        return true;
+      }
+      remaining -= len;
+      return false;
+    }
+    for (const child of Array.from(node.childNodes)) {
+      if (walk(child)) return true;
+    }
+    return false;
+  };
+
+  walk(root);
+  if (!placed) {
+    range.selectNodeContents(root);
+    range.collapse(false);
+  }
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function isPureLink(text: string): boolean {
+  const segs = splitByUrls(text);
+  return segs.length === 1 && segs[0].kind !== "text";
+}
+
+// DOM 재구성이 필요한지(새 링크 생겼거나 기존 링크 깨졌는지) 검사
+function needsLinkReflow(root: HTMLElement): boolean {
+  const spans = root.querySelectorAll<HTMLElement>("[data-link]");
+  for (const s of spans) {
+    if (!isPureLink(s.textContent ?? "")) return true;
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    const parent = (n as Text).parentElement;
+    if (parent?.closest("[data-uid]")) continue;
+    if (parent?.hasAttribute("data-link")) continue;
+    if (splitByUrls(n.nodeValue ?? "").some((s) => s.kind !== "text")) return true;
+  }
+  return false;
+}
+
+// 기존 링크 span을 펼친 뒤 텍스트 노드를 다시 토큰화해 링크만 span으로 감싼다
+function reflowLinks(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>("[data-link]").forEach((s) => {
+    s.replaceWith(document.createTextNode(s.textContent ?? ""));
+  });
+  root.normalize();
+
+  const texts: Text[] = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    const parent = (n as Text).parentElement;
+    if (parent?.closest("[data-uid]")) continue;
+    texts.push(n as Text);
+  }
+
+  for (const tn of texts) {
+    const segs = splitByUrls(tn.nodeValue ?? "");
+    if (!segs.some((s) => s.kind !== "text")) continue;
+    const frag = document.createDocumentFragment();
+    for (const seg of segs) {
+      if (seg.kind === "text") {
+        frag.appendChild(document.createTextNode(seg.text));
+      } else {
+        const span = document.createElement("span");
+        span.setAttribute("data-link", "1");
+        span.style.color = LINK_COLOR;
+        span.textContent = seg.text;
+        frag.appendChild(span);
+      }
+    }
+    tn.replaceWith(frag);
+  }
+}
 
 export interface RichComposerHandle {
   getText: () => string;
@@ -76,7 +195,22 @@ export const RichComposer = forwardRef<RichComposerHandle, {
   ref
 ) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const composingRef = useRef(false);
   const [empty, setEmpty] = useState(true);
+
+  // URL/이메일을 파랗게 칠함. 실패해도 입력은 절대 깨지지 않도록 try/catch.
+  const linkifyNow = useCallback(() => {
+    const root = editorRef.current;
+    if (!root || composingRef.current) return;
+    try {
+      if (!needsLinkReflow(root)) return;
+      const offset = getCaretOffset(root);
+      reflowLinks(root);
+      if (offset != null) setCaretOffset(root, offset);
+    } catch {
+      /* 색칠 실패 무시 */
+    }
+  }, []);
   // 멘션 드롭다운 상태
   const [mention, setMention] = useState<{
     items: MentionMember[];
@@ -281,6 +415,14 @@ export const RichComposer = forwardRef<RichComposerHandle, {
         onInput={() => {
           syncEmpty();
           refreshMention();
+          linkifyNow();
+        }}
+        onCompositionStart={() => {
+          composingRef.current = true;
+        }}
+        onCompositionEnd={() => {
+          composingRef.current = false;
+          linkifyNow();
         }}
         onKeyUp={(e) => {
           // 방향키/클릭으로 캐럿 이동 시에도 멘션 상태 갱신

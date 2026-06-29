@@ -8,6 +8,7 @@ import Avatar from "@/components/avatar";
 import { getPosts, createPost, deletePost, toggleReaction, translateSinglePost } from "../board/actions";
 import { ComposeLinkPreview } from "@/components/compose-link-preview";
 import { MessageLinkPreviews } from "@/components/link-preview-card";
+import { LinkHighlightInput } from "@/components/link-highlight-input";
 
 interface Post {
   id: string;
@@ -177,14 +178,17 @@ export default function Board({ currentUserId, companyId }: { currentUserId: str
       {/* Input */}
       {isWriting && (
         <div className="mb-4">
-          <textarea
-            ref={textareaRef}
+          <LinkHighlightInput
+            multiline
+            inputRef={textareaRef}
             value={input}
-            onChange={(e) => { setInput(e.target.value); autoResize(e.target); }}
+            onChange={(v) => { setInput(v); if (textareaRef.current) autoResize(textareaRef.current); }}
             onKeyDown={handleKeyDown}
             placeholder={t("board.placeholder")}
             rows={3}
-            className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
+            wrapperClassName="w-full"
+            boxClassName="rounded-lg border border-gray-200 bg-gray-50 focus-within:border-blue-300 focus-within:bg-white"
+            fieldClassName="px-3 py-2.5 text-sm"
           />
           <div className="mt-2">
             <ComposeLinkPreview text={input} />

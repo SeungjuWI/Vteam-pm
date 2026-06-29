@@ -46,6 +46,50 @@ export function firstUrl(text: string | null | undefined): string | null {
   return extractUrls(text)[0] ?? null;
 }
 
+// URL 또는 이메일 매칭 (입력창/메시지 하이라이트용)
+const EMAIL_RE_SRC = "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}";
+const LINK_RE = new RegExp(`(https?:\\/\\/[^\\s<]+)|(${EMAIL_RE_SRC})`, "gi");
+
+export type LinkSegment = { text: string; kind: "text" | "url" | "email" };
+
+// 텍스트를 URL/이메일 조각과 일반 조각으로 분리
+export function splitByUrls(text: string): LinkSegment[] {
+  if (!text) return [{ text: "", kind: "text" }];
+  const out: LinkSegment[] = [];
+  let last = 0;
+  LINK_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = LINK_RE.exec(text)) !== null) {
+    const start = m.index;
+    const rawEnd = start + m[0].length;
+    const isEmail = !!m[2];
+    const trimmed = trimTrailing(m[0]);
+
+    let ok = false;
+    if (isEmail) {
+      ok = trimmed.length > 0 && /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(trimmed);
+    } else {
+      try {
+        const u = new URL(trimmed);
+        ok = u.protocol === "http:" || u.protocol === "https:";
+      } catch {
+        ok = false;
+      }
+    }
+
+    if (start > last) out.push({ text: text.slice(last, start), kind: "text" });
+    if (ok) {
+      out.push({ text: trimmed, kind: isEmail ? "email" : "url" });
+      last = start + trimmed.length; // 잘려나간 끝 문장부호는 다음 일반 조각으로
+    } else {
+      out.push({ text: m[0], kind: "text" });
+      last = rawEnd;
+    }
+  }
+  if (last < text.length) out.push({ text: text.slice(last), kind: "text" });
+  return out.length > 0 ? out : [{ text, kind: "text" }];
+}
+
 // 같은 URL을 여러 카드가 동시에 요청해도 한 번만 fetch (탭 세션 동안 메모리 캐시)
 const cache = new Map<string, Promise<LinkPreview | null>>();
 

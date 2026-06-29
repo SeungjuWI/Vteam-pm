@@ -39,6 +39,25 @@ const CHANNEL_MSG_COLUMNS =
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawChannelMsg = any;
 
+// 번역 시 참고할 직전 대화 맥락(최근 8개)을 "발신자이름/나: 내용" 형태로 구성
+function buildChannelHistory(
+  rows: RawChannelMsg[],
+  currentId: string,
+  myId: string,
+  senderMap: Map<string, { name?: string | null }>
+): string[] {
+  const idx = rows.findIndex((m) => m.id === currentId);
+  if (idx <= 0) return [];
+  return rows
+    .slice(0, idx)
+    .filter((m) => m.content && !m.deleted_at)
+    .slice(-8)
+    .map((m) => {
+      const who = m.sender_id === myId ? "나" : senderMap.get(m.sender_id)?.name ?? "상대";
+      return `${who}: ${m.content}`;
+    });
+}
+
 // 메시지 행에 발신자 정보 + 번역(캐시 우선)을 합성한다. 본문/스레드 답글 공용.
 async function hydrateChannelMessages(
   adminClient: ReturnType<typeof createAdminClient>,
@@ -86,7 +105,8 @@ async function hydrateChannelMessages(
           translated_content: await translateText(
             m.content,
             m.sender_language!,
-            myLang
+            myLang,
+            { history: buildChannelHistory(rows, m.id, userId, senderMap) }
           ),
         }))
       );

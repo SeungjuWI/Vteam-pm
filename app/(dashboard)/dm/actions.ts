@@ -7,6 +7,21 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { translateText } from "@/lib/translate";
 import { generateBotResponse } from "@/lib/ai-chat";
 
+// 번역 시 참고할 직전 대화 맥락(최근 8개)을 "나/상대: 내용" 형태로 구성
+function buildHistory(
+  msgs: { id: string; sender_id: string; content: string | null; deleted_at: string | null }[],
+  currentId: string,
+  myId: string
+): string[] {
+  const idx = msgs.findIndex((m) => m.id === currentId);
+  if (idx <= 0) return [];
+  return msgs
+    .slice(0, idx)
+    .filter((m) => m.content && !m.deleted_at)
+    .slice(-8)
+    .map((m) => `${m.sender_id === myId ? "나" : "상대"}: ${m.content}`);
+}
+
 // Sean 봇을 회사에 등록 (없으면 생성)
 export async function ensureBotExists(companyId: string) {
   const adminClient = createAdminClient();
@@ -167,7 +182,10 @@ export async function getMessages(otherUserId: string) {
   if (uncached.length > 0) {
     const translations = await Promise.all(
       uncached.map(async (m) => {
-        const translated = await translateText(m.content, m.sender_language!, myLang);
+        const history = buildHistory(data, m.id, user.id);
+        const translated = await translateText(m.content, m.sender_language!, myLang, {
+          history,
+        });
         return { message_id: m.id, target_language: myLang, translated_content: translated };
       })
     );

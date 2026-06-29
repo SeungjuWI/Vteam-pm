@@ -5,6 +5,25 @@ import { getClaimsUser } from "@/lib/supabase/auth-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { translateText } from "@/lib/translate";
 
+// 번역 시 참고할 직전 대화 맥락(최근 8개)을 "발신자이름/나: 내용" 형태로 구성
+function buildGroupHistory(
+  msgs: { id: string; sender_id: string; content: string | null; deleted_at: string | null }[],
+  currentId: string,
+  myId: string,
+  senderMap: Map<string, { name?: string | null }>
+): string[] {
+  const idx = msgs.findIndex((m) => m.id === currentId);
+  if (idx <= 0) return [];
+  return msgs
+    .slice(0, idx)
+    .filter((m) => m.content && !m.deleted_at)
+    .slice(-8)
+    .map((m) => {
+      const who = m.sender_id === myId ? "나" : senderMap.get(m.sender_id)?.name ?? "상대";
+      return `${who}: ${m.content}`;
+    });
+}
+
 // 내가 이 방의 멤버인지 검증 (멀티테넌트 격리)
 async function inGroupRoom(adminClient: ReturnType<typeof createAdminClient>, roomId: string, userId: string): Promise<boolean> {
   const { data } = await adminClient.from("group_dm_members").select("id").eq("room_id", roomId).eq("user_id", userId).maybeSingle();
@@ -224,7 +243,10 @@ export async function getGroupDmMessages(roomId: string) {
     if (uncached.length > 0) {
       const translations = await Promise.all(
         uncached.map(async (m) => {
-          const translated = await translateText(m.content, m.sender_language!, myLang);
+          const history = buildGroupHistory(data, m.id, user.id, senderMap);
+          const translated = await translateText(m.content, m.sender_language!, myLang, {
+            history,
+          });
           return { message_id: m.id, target_language: myLang, translated_content: translated };
         })
       );

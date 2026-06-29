@@ -37,17 +37,25 @@ export default function TimelineRangePicker({ value, todayStr, dataStart, dataEn
   const wrap = useRef<HTMLDivElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
-  // 팝오버를 body로 portal해 뜨우므로(부모 overflow-hidden에 안 잘림) 버튼 위치를 fixed 좌표로 잡는다.
+  // 팝오버를 body로 portal해 띄우므로(부모 overflow-hidden에 안 잘림) 버튼 위치를 fixed 좌표로 잡는다.
   // 아래 공간이 모자라면 버튼 위로 flip. (right=뷰포트 우측 기준, 버튼 오른쪽 정렬 유지)
-  const [pos, setPos] = useState<{ right: number; top?: number; bottom?: number }>({ right: 0, top: 0 });
+  // maxH = 띄운 방향으로 쓸 수 있는 최대 높이 → 패널이 뷰포트 밖으로 잘리지 않고 내부 스크롤된다.
+  const [pos, setPos] = useState<{ right: number; top?: number; bottom?: number; maxH: number }>({ right: 0, top: 0, maxH: 9999 });
   const PANEL_H = 380; // 패널 대략 높이(아래/위 판단용)
+  const GAP = 8;
+  const MARGIN = 12; // 뷰포트 가장자리 여백
   const place = () => {
     const r = btn.current?.getBoundingClientRect();
     if (!r) return;
     const right = window.innerWidth - r.right;
-    const below = window.innerHeight - r.bottom;
-    if (below < PANEL_H && r.top > below) setPos({ right, bottom: window.innerHeight - r.top + 8 });
-    else setPos({ right, top: r.bottom + 8 });
+    const spaceBelow = window.innerHeight - r.bottom - GAP - MARGIN;
+    const spaceAbove = r.top - GAP - MARGIN;
+    // 아래가 패널보다 좁고 위가 더 넓으면 위로 띄운다
+    if (spaceBelow < PANEL_H && spaceAbove > spaceBelow) {
+      setPos({ right, bottom: window.innerHeight - r.top + GAP, maxH: spaceAbove });
+    } else {
+      setPos({ right, top: r.bottom + GAP, maxH: spaceBelow });
+    }
   };
 
   // 열릴 때 위치 계산 + 스크롤/리사이즈 시 따라가기. 바깥 클릭(버튼·패널 밖) 시 닫기.
@@ -103,8 +111,8 @@ export default function TimelineRangePicker({ value, todayStr, dataStart, dataEn
       </button>
 
       {open && createPortal(
-        <div ref={panel} style={{ position: "fixed", right: pos.right, top: pos.top, bottom: pos.bottom }}
-          className="z-[60] w-[340px] rounded-2xl border border-gray-200 bg-white p-3 shadow-soft-lg">
+        <div ref={panel} style={{ position: "fixed", right: pos.right, top: pos.top, bottom: pos.bottom, maxHeight: pos.maxH, overflowY: "auto" }}
+          className="z-[200] w-[340px] rounded-2xl border border-gray-200 bg-white p-3 shadow-soft-lg">
           {/* 탭 */}
           <div className="mb-3 flex gap-0.5 rounded-xl bg-gray-100 p-0.5">
             {([["preset", "사전설정"], ["custom", "기간"]] as const).map(([k, ko]) => (

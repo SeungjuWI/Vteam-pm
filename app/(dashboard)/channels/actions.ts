@@ -34,7 +34,7 @@ async function channelInCompany(adminClient: ReturnType<typeof createAdminClient
 
 // 채널 메시지 select 컬럼 (본문/답글 공통)
 const CHANNEL_MSG_COLUMNS =
-  "id, channel_id, sender_id, content, sender_language, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name, attachments, thread_root_id";
+  "id, channel_id, sender_id, content, sender_language, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name, attachments, thread_root_id, message_type";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawChannelMsg = any;
@@ -289,6 +289,15 @@ export async function addDepartmentMembers(
   if (!dept || dept.company_id !== profile.company_id)
     return { error: "권한이 없습니다" };
 
+  // 이미 멤버인 사람 제외 → 실제 신규 입장자만 추림 (시스템 메시지 중복 방지)
+  const { data: existing } = await adminClient
+    .from("department_members")
+    .select("user_id")
+    .eq("department_id", departmentId)
+    .in("user_id", userIds);
+  const existingSet = new Set((existing ?? []).map((e) => e.user_id));
+  const newUserIds = userIds.filter((uid) => !existingSet.has(uid));
+
   const rows = userIds.map((uid) => ({
     department_id: departmentId,
     user_id: uid,
@@ -298,6 +307,29 @@ export async function addDepartmentMembers(
     .upsert(rows, { onConflict: "department_id,user_id", ignoreDuplicates: true });
 
   if (error) return { error: "멤버 추가에 실패했습니다" };
+
+  // 신규 입장자 안내 시스템 메시지를 부서 내 모든 채널에 추가 (슬랙식 "OO님이 들어왔어요")
+  if (newUserIds.length > 0) {
+    const { data: channels } = await adminClient
+      .from("dept_channels")
+      .select("id")
+      .eq("department_id", departmentId);
+    if (channels && channels.length > 0) {
+      const sysRows = channels.flatMap((ch) =>
+        newUserIds.map((uid) => ({
+          channel_id: ch.id,
+          sender_id: uid,
+          content: "",
+          message_type: "member_joined",
+          sender_language: "ko",
+        }))
+      );
+      if (sysRows.length > 0) {
+        await adminClient.from("dept_channel_messages").insert(sysRows);
+      }
+    }
+  }
+
   return { success: true };
 }
 
@@ -372,6 +404,7 @@ export async function getMyChannels() {
         .from("dept_channel_messages")
         .select("id", { count: "exact", head: true })
         .eq("channel_id", channelId)
+        .eq("message_type", "message")
         .neq("sender_id", userId);
       if (lastRead) query = query.gt("created_at", lastRead);
       const { count } = await query;
@@ -449,10 +482,28 @@ export async function getChannelMembers(channelId: string) {
 
   const { data: profiles } = await adminClient
     .from("profiles")
-    .select("id, name, avatar_url, presence, language")
+    .select("id, name, avatar_url, presence, language, position, role, email")
     .in("id", userIds);
 
   return profiles ?? [];
+}
+
+// 채널 삭제 (admin 전용) — 메시지/번역/읽음기록은 FK on delete cascade로 함께 제거
+export async function deleteChannel(channelId: string) {
+  const me = await getMe();
+  if (!me) return { error: "로그인이 필요합니다" };
+  const { profile, adminClient } = me;
+  if (profile.role !== "admin") return { error: "권한이 없습니다" };
+  if (!(await channelInCompany(adminClient, channelId, profile.company_id)))
+    return { error: "권한이 없습니다" };
+
+  const { error } = await adminClient
+    .from("dept_channels")
+    .delete()
+    .eq("id", channelId);
+
+  if (error) return { error: "채널 삭제에 실패했습니다" };
+  return { success: true };
 }
 
 // 채널 메시지 조회 (번역 포함)

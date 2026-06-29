@@ -14,9 +14,16 @@ import {
   translateSingleChannelMessage,
   getChannelMembers,
   createChannel,
+  deleteChannel,
   getMyChannels,
   getThreadReplies,
 } from "./actions";
+import {
+  MemberTrigger,
+  MemberProfilePanel,
+  MembersListPanel,
+  type ChatMember,
+} from "@/components/chat/member-profile";
 import {
   editChannelMessage,
   deleteChannelMessage,
@@ -81,6 +88,7 @@ interface ChannelMessage {
   thread_root_id?: string | null;
   reply_count?: number;
   last_reply_at?: string | null;
+  message_type?: string | null;
 }
 
 interface ChannelMember {
@@ -89,6 +97,9 @@ interface ChannelMember {
   avatar_url: string | null;
   presence?: string | null;
   language?: string | null;
+  position?: string | null;
+  role?: string | null;
+  email?: string | null;
 }
 
 export default function ChannelsView({
@@ -169,6 +180,20 @@ export default function ChannelsView({
     }
   };
 
+  const handleDeleteChannel = async (channelId: string, name: string) => {
+    if (
+      !confirm(`#${name} 채널을 삭제할까요?\n채널의 모든 메시지가 함께 사라지며 되돌릴 수 없어요.`)
+    )
+      return;
+    const result = await deleteChannel(channelId);
+    if (result?.error) {
+      alert(result.error);
+      return;
+    }
+    if (selectedChannelId === channelId) setSelectedChannelId(null);
+    await refreshDepartments();
+  };
+
   return (
     <div className="flex h-[calc(100vh-7rem)] overflow-hidden rounded-xl border border-gray-200 bg-white">
       {/* 좌측 레일 */}
@@ -225,25 +250,44 @@ export default function ChannelsView({
                 {dept.channels.map((channel) => {
                   const isActive = channel.id === selectedChannelId;
                   return (
-                    <button
-                      key={channel.id}
-                      onClick={() => handleSelectChannel(channel.id)}
-                      className={`mb-0.5 flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                        isActive
-                          ? "bg-blue-50 font-medium text-blue-500"
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      <span className="flex items-center gap-1.5 truncate">
-                        <span className="text-gray-400">#</span>
-                        {channel.name}
-                      </span>
-                      {channel.unreadCount > 0 && !isActive && (
-                        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-medium text-white">
-                          {channel.unreadCount}
+                    <div key={channel.id} className="group relative mb-0.5">
+                      <button
+                        onClick={() => handleSelectChannel(channel.id)}
+                        className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                          isActive
+                            ? "bg-blue-50 font-medium text-blue-500"
+                            : "text-gray-600 hover:bg-gray-100"
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5 truncate">
+                          <span className="text-gray-400">#</span>
+                          {channel.name}
                         </span>
+                        {channel.unreadCount > 0 && !isActive && (
+                          <span
+                            className={`flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-medium text-white ${
+                              isAdmin ? "group-hover:hidden" : ""
+                            }`}
+                          >
+                            {channel.unreadCount}
+                          </span>
+                        )}
+                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteChannel(channel.id, channel.name);
+                          }}
+                          title="채널 삭제"
+                          className="absolute right-1.5 top-1/2 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 group-hover:flex"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                        </button>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
 
@@ -362,6 +406,10 @@ function ChannelChat({
   const t = useT();
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [members, setMembers] = useState<ChannelMember[]>([]);
+  // 우측 보조 패널: 멤버 목록 / 개별 프로필 (스레드 패널과 상호 배타)
+  const [sidePanel, setSidePanel] = useState<
+    { kind: "members" } | { kind: "profile"; userId: string } | null
+  >(null);
   const [composerHasText, setComposerHasText] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -437,7 +485,33 @@ function ChannelChat({
             sender_language: string;
             created_at: string;
             thread_root_id: string | null;
+            message_type?: string | null;
           };
+
+          // ── 시스템 메시지(멤버 입장 등) ───────────────────
+          if (msg.message_type && msg.message_type !== "message") {
+            // 새 입장자가 members에 없을 수 있어 목록을 새로 받아 이름/아바타 확보
+            const fresh = (await getChannelMembers(
+              channelId
+            )) as ChannelMember[];
+            setMembers(fresh);
+            const joiner = fresh.find((m) => m.id === msg.sender_id);
+            setMessages((prev) =>
+              prev.some((m) => m.id === msg.id)
+                ? prev
+                : [
+                    ...prev,
+                    {
+                      ...msg,
+                      sender_name: joiner?.name ?? "새 멤버",
+                      sender_avatar_url: joiner?.avatar_url ?? null,
+                      translated_content: null,
+                    },
+                  ]
+            );
+            setTimeout(scrollToBottom, 50);
+            return;
+          }
 
           // ── 스레드 답글 처리 ──────────────────────────────
           if (msg.thread_root_id) {
@@ -734,8 +808,26 @@ function ChannelChat({
     }
   }, []);
 
+  // 멤버 정보 빠른 조회 (호버 카드 / 프로필 패널용)
+  const memberMap = useMemo(
+    () => new Map(members.map((m) => [m.id, m])),
+    [members]
+  );
+
+  // 우측 프로필/멤버 패널 열기 → 스레드 패널과 상호 배타
+  const openProfile = useCallback((userId: string) => {
+    setThreadRootId(null);
+    setSidePanel({ kind: "profile", userId });
+  }, []);
+
+  const openMembers = useCallback(() => {
+    setThreadRootId(null);
+    setSidePanel((prev) => (prev?.kind === "members" ? null : { kind: "members" }));
+  }, []);
+
   const openThread = useCallback(
     async (rootId: string) => {
+      setSidePanel(null);
       setThreadRootId(rootId);
       setThreadReplies([]);
       threadComposerRef.current?.clear();
@@ -920,6 +1012,37 @@ function ChannelChat({
   const messageList = useMemo(
     () =>
       messages.map((msg, idx) => {
+        // 시스템 메시지(멤버 입장 등) → 가운데 안내 라인 (그룹화/액션 없음)
+        if (msg.message_type && msg.message_type !== "message") {
+          const prev = idx > 0 ? messages[idx - 1] : null;
+          const showDivider =
+            !prev || dayKey(prev.created_at) !== dayKey(msg.created_at);
+          return (
+            <div key={msg.id}>
+              {showDivider && (
+                <div className="my-3 flex items-center gap-3 px-2">
+                  <div className="h-px flex-1 bg-gray-100" />
+                  <span className="rounded-full border border-gray-200 bg-white px-3 py-0.5 text-[11px] font-medium text-gray-500">
+                    {formatDateDivider(msg.created_at)}
+                  </span>
+                  <div className="h-px flex-1 bg-gray-100" />
+                </div>
+              )}
+              <div className="my-1 flex items-center justify-center gap-1.5 px-2 py-0.5 text-[11px] text-gray-400">
+                <svg className="h-3.5 w-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
+                </svg>
+                <span>
+                  <span className="font-medium text-gray-500">
+                    {msg.sender_name}
+                  </span>
+                  님이 채널에 들어왔어요
+                </span>
+              </div>
+            </div>
+          );
+        }
+
         const isMine = msg.sender_id === currentUserId;
         const isDeleted = !!msg.deleted_at;
         const atts = isDeleted ? [] : normalizeAttachments(msg);
@@ -968,11 +1091,23 @@ function ChannelChat({
               {/* 좌측: 아바타(헤더) 또는 hover 시 시간 */}
               <div className="w-9 shrink-0">
                 {showHeader ? (
-                  <Avatar
-                    url={msg.sender_avatar_url}
-                    name={msg.sender_name}
-                    size={36}
-                  />
+                  <MemberTrigger
+                    member={
+                      memberMap.get(msg.sender_id) ?? {
+                        id: msg.sender_id,
+                        name: msg.sender_name,
+                        avatar_url: msg.sender_avatar_url,
+                      }
+                    }
+                    onOpen={openProfile}
+                    className="rounded-full transition-opacity hover:opacity-80"
+                  >
+                    <Avatar
+                      url={msg.sender_avatar_url}
+                      name={msg.sender_name}
+                      size={36}
+                    />
+                  </MemberTrigger>
                 ) : (
                   <span className="mt-0.5 hidden text-right text-[10px] leading-5 text-gray-300 group-hover:block">
                     {time}
@@ -984,9 +1119,19 @@ function ChannelChat({
               <div className="min-w-0 flex-1">
                 {showHeader && (
                   <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-semibold text-gray-900">
+                    <MemberTrigger
+                      member={
+                        memberMap.get(msg.sender_id) ?? {
+                          id: msg.sender_id,
+                          name: msg.sender_name,
+                          avatar_url: msg.sender_avatar_url,
+                        }
+                      }
+                      onOpen={openProfile}
+                      className="text-sm font-semibold text-gray-900 hover:underline"
+                    >
                       {msg.sender_name}
-                    </span>
+                    </MemberTrigger>
                     <span className="text-[11px] text-gray-400">{time}</span>
                   </div>
                 )}
@@ -1106,6 +1251,8 @@ function ChannelChat({
       handleDelete,
       openThread,
       threadRootId,
+      openProfile,
+      memberMap,
     ]
   );
 
@@ -1219,9 +1366,21 @@ function ChannelChat({
             {channelName}
           </span>
           <span className="text-xs text-gray-600">{deptName}</span>
-          <span className="flex h-4 items-center rounded-full bg-gray-100 px-1.5 text-[10px] font-medium text-gray-500">
+          <button
+            type="button"
+            onClick={openMembers}
+            title="멤버 보기"
+            className={`flex h-5 items-center gap-1 rounded-full px-1.5 text-[10px] font-medium transition-colors ${
+              sidePanel?.kind === "members"
+                ? "bg-blue-50 text-blue-600"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            }`}
+          >
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+            </svg>
             {members.length}
-          </span>
+          </button>
         </div>
         {hasMultiLang && (
           <span className="flex items-center gap-1 text-[11px] text-gray-600">
@@ -1411,6 +1570,35 @@ function ChannelChat({
           </div>
         </div>
       )}
+
+      {/* 멤버 목록 패널 */}
+      {sidePanel?.kind === "members" && (
+        <MembersListPanel
+          members={members as ChatMember[]}
+          onClose={() => setSidePanel(null)}
+          onOpenMember={openProfile}
+        />
+      )}
+
+      {/* 개별 프로필 패널 */}
+      {sidePanel?.kind === "profile" &&
+        (() => {
+          const found = memberMap.get(sidePanel.userId);
+          const fallbackMsg = messages.find(
+            (m) => m.sender_id === sidePanel.userId
+          );
+          const member: ChatMember = found ?? {
+            id: sidePanel.userId,
+            name: fallbackMsg?.sender_name ?? "알 수 없음",
+            avatar_url: fallbackMsg?.sender_avatar_url ?? null,
+          };
+          return (
+            <MemberProfilePanel
+              member={member}
+              onClose={() => setSidePanel(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

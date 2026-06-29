@@ -202,6 +202,8 @@ export const RichComposer = forwardRef<RichComposerHandle, {
         return;
       }
       if (e.key === "Enter" || e.key === "Tab") {
+        // IME 조합 중 Enter는 조합 확정용 → 멘션 선택/전송에 쓰지 않음
+        if (e.key === "Enter" && e.nativeEvent.isComposing) return;
         e.preventDefault();
         insertMention(mention.items[mention.index]);
         return;
@@ -229,8 +231,9 @@ export const RichComposer = forwardRef<RichComposerHandle, {
       return;
     }
 
-    // 전송: Enter
+    // 전송: Enter (단, 한글 등 IME 조합 중에는 전송하지 않음 → 마지막 글자 중복 방지)
     if (e.key === "Enter") {
+      if (e.nativeEvent.isComposing) return;
       e.preventDefault();
       onSubmit();
     }

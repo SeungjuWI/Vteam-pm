@@ -792,6 +792,10 @@ export default function GroupDmChat({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            // 한글 등 IME 조합 중 Enter는 조합 확정용 → 폼 전송 막아 마지막 글자 중복 방지
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.nativeEvent.isComposing) e.preventDefault();
+            }}
             placeholder={uploading ? "업로드 중..." : t("dm.typeMessage")}
             className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none"
           />

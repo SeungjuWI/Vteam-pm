@@ -809,6 +809,10 @@ export default function DmChat({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            // 한글 등 IME 조합 중 Enter는 조합 확정용 → 폼 전송 막아 마지막 글자 중복 방지
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.nativeEvent.isComposing) e.preventDefault();
+            }}
             placeholder={
               uploading
                 ? "업로드 중..."

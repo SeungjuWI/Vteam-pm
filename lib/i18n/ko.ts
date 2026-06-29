@@ -550,7 +550,7 @@ const ko = {
   "dm.translated": "번역됨",
   "dm.viewOriginal": "원문 보기",
   "dm.original": "원문",
-  "dm.askAnything": "Vteam에 대해 무엇이든 물어보세요!",
+  "dm.askAnything": "vtm에 대해 무엇이든 물어보세요!",
   "dm.startChat": "님과의 대화를 시작하세요",
   "dm.askSean": "Sean에게 질문하세요...",
   "dm.typeMessage": "메시지를 입력하세요...",

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/cn";
 
-/** Soft-elevated surface — salarymap parity on Vteam's neutral palette. */
+/** Soft-elevated surface — salarymap parity on vtm's neutral palette. */
 export const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & { interactive?: boolean }

@@ -552,7 +552,7 @@ const en: Record<TranslationKey, string> = {
   "dm.translated": "Translated",
   "dm.viewOriginal": "View original",
   "dm.original": "Original",
-  "dm.askAnything": "Ask anything about Vteam!",
+  "dm.askAnything": "Ask anything about vtm!",
   "dm.startChat": "Start a conversation",
   "dm.askSean": "Ask Sean...",
   "dm.typeMessage": "Type a message...",

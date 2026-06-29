@@ -98,7 +98,7 @@ export default async function AdminPage() {
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">가입현황</h1>
           <p className="mt-1 text-sm text-gray-500">
-            운영자 전용 — Vteam을 도입한 기업 현황 ({operator.email})
+            운영자 전용 — vtm을 도입한 기업 현황 ({operator.email})
           </p>
         </div>
 

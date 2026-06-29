@@ -65,8 +65,8 @@ export default function LoginPage() {
         </div>
 
         <div className="mb-8 flex flex-col items-center gap-2">
-          <Image src="/logo.png" alt="Vteam" width={36} height={36} />
-          <h1 className="text-xl font-bold text-gray-900">Vteam</h1>
+          <Image src="/logo.png" alt="vtm" width={36} height={36} />
+          <h1 className="text-xl font-bold text-gray-900">vtm</h1>
           <p className="text-sm text-gray-500">{t("login.subtitle")}</p>
         </div>
         <form action={loginWithGoogle}>

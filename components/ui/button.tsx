@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/cn";
 
 /**
- * Shared button — salarymap sizing/weight/motion ported onto Vteam's Toss
+ * Shared button — salarymap sizing/weight/motion ported onto vtm's Toss
  * blue palette. Bold label, fixed heights, soft shadow, spring press.
  */
 type Variant = "primary" | "secondary" | "outline" | "ghost" | "destructive" | "soft";

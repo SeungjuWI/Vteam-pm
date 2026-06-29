@@ -6,7 +6,7 @@ export default function PendingPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 text-center">
         <div className="mb-6 flex flex-col items-center gap-2">
-          <Image src="/logo.png" alt="Vteam" width={36} height={36} />
+          <Image src="/logo.png" alt="vtm" width={36} height={36} />
           <h1 className="text-xl font-bold text-gray-900">승인 대기 중</h1>
         </div>
         <p className="text-sm text-gray-500">

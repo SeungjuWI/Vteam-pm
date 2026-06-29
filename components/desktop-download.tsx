@@ -89,7 +89,7 @@ export default function DesktopDownload({ variant = "full" }: { variant?: "full"
           <div className="flex items-center gap-3">
             <MonitorIcon className="h-5 w-5 text-gray-600" />
             <div>
-              <p className="text-sm font-medium text-gray-900">Vteam for {recommended.label}</p>
+              <p className="text-sm font-medium text-gray-900">vtm for {recommended.label}</p>
               <p className="text-xs text-gray-500">{recommended.desc}</p>
             </div>
           </div>

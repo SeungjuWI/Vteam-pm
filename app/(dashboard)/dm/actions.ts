@@ -125,7 +125,7 @@ export async function getMessages(otherUserId: string) {
   const { data } = await adminClient
     .from("direct_messages")
     .select(
-      "id, sender_id, receiver_id, content, sender_language, is_read, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name"
+      "id, sender_id, receiver_id, content, sender_language, is_read, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name, attachments"
     )
     .or(
       `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
@@ -202,14 +202,15 @@ export interface Attachment {
 export async function sendMessage(
   receiverId: string,
   content: string,
-  attachment?: Attachment | null
+  attachments?: Attachment[] | null
 ) {
   const supabase = await createClient();
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const text = content.trim();
-  if (!text && !attachment) return { error: "내용을 입력해주세요" };
+  const atts = attachments ?? [];
+  if (!text && atts.length === 0) return { error: "내용을 입력해주세요" };
 
   const adminClient = createAdminClient();
   const { data: profile } = await adminClient
@@ -238,9 +239,11 @@ export async function sendMessage(
       receiver_id: receiverId,
       content: text,
       sender_language: profile.language ?? "ko",
-      attachment_url: attachment?.url ?? null,
-      attachment_type: attachment?.type ?? null,
-      attachment_name: attachment?.name ?? null,
+      // 레거시 단일 컬럼엔 첫 번째 첨부만 (하위호환), 전체는 attachments 배열에 저장
+      attachment_url: atts[0]?.url ?? null,
+      attachment_type: atts[0]?.type ?? null,
+      attachment_name: atts[0]?.name ?? null,
+      attachments: atts,
     })
     .select("id")
     .single();

@@ -34,7 +34,7 @@ async function channelInCompany(adminClient: ReturnType<typeof createAdminClient
 
 // 채널 메시지 select 컬럼 (본문/답글 공통)
 const CHANNEL_MSG_COLUMNS =
-  "id, channel_id, sender_id, content, sender_language, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name, thread_root_id";
+  "id, channel_id, sender_id, content, sender_language, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name, attachments, thread_root_id";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawChannelMsg = any;
@@ -537,7 +537,7 @@ export async function getThreadReplies(rootId: string) {
 export async function sendChannelMessage(
   channelId: string,
   content: string,
-  attachment?: { url: string; type: "image" | "video" | "file"; name: string } | null,
+  attachments?: { url: string; type: "image" | "video" | "file"; name: string }[] | null,
   threadRootId?: string | null
 ) {
   const me = await getMe();
@@ -546,7 +546,8 @@ export async function sendChannelMessage(
   if (!(await channelInCompany(adminClient, channelId, profile.company_id))) return { error: "권한이 없습니다" };
 
   const text = content.trim();
-  if (!text && !attachment) return { error: "내용을 입력해주세요" };
+  const atts = attachments ?? [];
+  if (!text && atts.length === 0) return { error: "내용을 입력해주세요" };
 
   const { data, error } = await adminClient
     .from("dept_channel_messages")
@@ -555,9 +556,10 @@ export async function sendChannelMessage(
       sender_id: userId,
       content: text,
       sender_language: profile.language ?? "ko",
-      attachment_url: attachment?.url ?? null,
-      attachment_type: attachment?.type ?? null,
-      attachment_name: attachment?.name ?? null,
+      attachment_url: atts[0]?.url ?? null,
+      attachment_type: atts[0]?.type ?? null,
+      attachment_name: atts[0]?.name ?? null,
+      attachments: atts,
       thread_root_id: threadRootId ?? null,
     })
     .select("id")

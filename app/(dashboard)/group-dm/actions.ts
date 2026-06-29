@@ -179,7 +179,7 @@ export async function getGroupDmMessages(roomId: string) {
   const { data } = await adminClient
     .from("group_dm_messages")
     .select(
-      "id, room_id, sender_id, content, sender_language, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name"
+      "id, room_id, sender_id, content, sender_language, created_at, edited_at, deleted_at, attachment_url, attachment_type, attachment_name, attachments"
     )
     .eq("room_id", roomId)
     .order("created_at", { ascending: true })
@@ -259,14 +259,15 @@ export async function getGroupDmMessages(roomId: string) {
 export async function sendGroupDmMessage(
   roomId: string,
   content: string,
-  attachment?: { url: string; type: "image" | "video" | "file"; name: string } | null
+  attachments?: { url: string; type: "image" | "video" | "file"; name: string }[] | null
 ) {
   const supabase = await createClient();
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
   const text = content.trim();
-  if (!text && !attachment) return { error: "내용을 입력해주세요" };
+  const atts = attachments ?? [];
+  if (!text && atts.length === 0) return { error: "내용을 입력해주세요" };
 
   const adminClient = createAdminClient();
   if (!(await inGroupRoom(adminClient, roomId, user.id))) return { error: "이 방의 멤버가 아닙니다" };
@@ -283,9 +284,10 @@ export async function sendGroupDmMessage(
       sender_id: user.id,
       content: text,
       sender_language: profile?.language ?? "ko",
-      attachment_url: attachment?.url ?? null,
-      attachment_type: attachment?.type ?? null,
-      attachment_name: attachment?.name ?? null,
+      attachment_url: atts[0]?.url ?? null,
+      attachment_type: atts[0]?.type ?? null,
+      attachment_name: atts[0]?.name ?? null,
+      attachments: atts,
     })
     .select("id")
     .single();

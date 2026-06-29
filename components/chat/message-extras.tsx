@@ -5,6 +5,33 @@ import { createPortal } from "react-dom";
 
 export type AttachmentType = "image" | "video" | "file";
 
+export interface Attachment {
+  url: string;
+  type: AttachmentType;
+  name: string;
+}
+
+// 메시지의 첨부를 배열로 정규화한다.
+// 신규 메시지는 attachments(배열)를, 레거시 메시지는 단일 attachment_* 컬럼을 사용한다.
+export function normalizeAttachments(msg: {
+  attachments?: Attachment[] | null;
+  attachment_url?: string | null;
+  attachment_type?: AttachmentType | null;
+  attachment_name?: string | null;
+}): Attachment[] {
+  if (msg.attachments && msg.attachments.length > 0) return msg.attachments;
+  if (msg.attachment_url) {
+    return [
+      {
+        url: msg.attachment_url,
+        type: msg.attachment_type ?? "file",
+        name: msg.attachment_name ?? "파일",
+      },
+    ];
+  }
+  return [];
+}
+
 // ===== 메시지 본문 렌더 (멘션 @[이름](uid) + 굵게 **텍스트**) =====
 const MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
 
@@ -147,11 +174,14 @@ export function AttachmentView({
   type,
   name,
   isMine,
+  grid,
 }: {
   url: string;
   type: AttachmentType | null;
   name: string | null;
   isMine: boolean;
+  // 여러 이미지를 격자로 보여줄 때 정사각 썸네일로 렌더 (슬랙식)
+  grid?: boolean;
 }) {
   const [zoomed, setZoomed] = useState(false);
 
@@ -163,7 +193,11 @@ export function AttachmentView({
           src={url}
           alt={name ?? "image"}
           onClick={() => setZoomed(true)}
-          className="max-h-60 max-w-full cursor-zoom-in rounded-xl object-cover transition-opacity hover:opacity-90"
+          className={
+            grid
+              ? "h-32 w-full cursor-zoom-in rounded-xl object-cover transition-opacity hover:opacity-90"
+              : "max-h-60 max-w-full cursor-zoom-in rounded-xl object-cover transition-opacity hover:opacity-90"
+          }
         />
         {zoomed && (
           <ImageLightbox url={url} name={name} onClose={() => setZoomed(false)} />
@@ -201,6 +235,107 @@ export function AttachmentView({
       </svg>
       <span className="max-w-40 truncate">{name ?? "파일"}</span>
     </a>
+  );
+}
+
+// ===== 다중 첨부 렌더링 (이미지는 격자, 영상/파일은 세로 나열) =====
+export function AttachmentList({
+  attachments,
+  isMine,
+}: {
+  attachments: Attachment[];
+  isMine: boolean;
+}) {
+  if (attachments.length === 0) return null;
+
+  const images = attachments.filter((a) => a.type === "image");
+  const others = attachments.filter((a) => a.type !== "image");
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {images.length > 0 && (
+        <div
+          className={`grid w-full max-w-xs gap-1 ${
+            images.length === 1 ? "grid-cols-1" : "grid-cols-2"
+          }`}
+        >
+          {images.map((a, i) => (
+            <AttachmentView
+              key={`img-${i}-${a.url}`}
+              url={a.url}
+              type={a.type}
+              name={a.name}
+              isMine={isMine}
+              grid={images.length > 1}
+            />
+          ))}
+        </div>
+      )}
+      {others.map((a, i) => (
+        <AttachmentView
+          key={`file-${i}-${a.url}`}
+          url={a.url}
+          type={a.type}
+          name={a.name}
+          isMine={isMine}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ===== 전송 전 대기 중인 첨부 미리보기 (썸네일 + 개별 제거) =====
+export function PendingAttachments({
+  items,
+  onRemove,
+  size = "md",
+}: {
+  items: Attachment[];
+  onRemove: (index: number) => void;
+  size?: "sm" | "md";
+}) {
+  if (items.length === 0) return null;
+  const box = size === "sm" ? "h-12 w-12" : "h-14 w-14";
+
+  return (
+    <div className="mb-2 flex flex-wrap gap-2">
+      {items.map((item, i) => (
+        <div
+          key={`${i}-${item.url}`}
+          className="group/att relative overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
+        >
+          {item.type === "image" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.url}
+              alt={item.name}
+              className={`${box} object-cover`}
+            />
+          ) : (
+            <span
+              className={`${box} flex flex-col items-center justify-center gap-0.5 p-1 text-gray-500`}
+            >
+              <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+              <span className="w-full truncate text-center text-[9px] leading-tight">
+                {item.name}
+              </span>
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => onRemove(i)}
+            className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/75 group-hover/att:opacity-100"
+            title="첨부 제거"
+          >
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -309,7 +444,7 @@ export function AttachmentButton({
   onPicked,
   disabled,
 }: {
-  onPicked: (file: File) => void;
+  onPicked: (files: File[]) => void;
   disabled?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -320,10 +455,11 @@ export function AttachmentButton({
         ref={inputRef}
         type="file"
         accept="image/*,video/*"
+        multiple
         className="hidden"
         onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) onPicked(file);
+          const files = Array.from(e.target.files ?? []);
+          if (files.length > 0) onPicked(files);
           e.target.value = ""; // 같은 파일 다시 선택 가능하게 초기화
         }}
       />

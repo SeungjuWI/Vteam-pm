@@ -62,6 +62,7 @@ async function deleteIn(table: Table, messageId: string) {
       attachment_url: null,
       attachment_type: null,
       attachment_name: null,
+      attachments: [],
     })
     .eq("id", messageId);
   if (error) return { error: "삭제에 실패했습니다" };

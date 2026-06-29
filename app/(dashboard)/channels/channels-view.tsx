@@ -23,12 +23,15 @@ import {
   uploadChatAttachment,
 } from "@/app/(dashboard)/chat-message-actions";
 import {
-  AttachmentView,
+  AttachmentList,
   AttachmentButton,
+  PendingAttachments,
+  normalizeAttachments,
   MessageActions,
   MessageContent,
   EditBox,
   type AttachmentType,
+  type Attachment,
 } from "@/components/chat/message-extras";
 import {
   RichComposer,
@@ -72,6 +75,7 @@ interface ChannelMessage {
   attachment_url?: string | null;
   attachment_type?: AttachmentType | null;
   attachment_name?: string | null;
+  attachments?: Attachment[] | null;
   thread_root_id?: string | null;
   reply_count?: number;
   last_reply_at?: string | null;
@@ -362,11 +366,7 @@ function ChannelChat({
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [pending, setPending] = useState<{
-    url: string;
-    type: AttachmentType;
-    name: string;
-  } | null>(null);
+  const [pending, setPending] = useState<Attachment[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<RichComposerHandle>(null);
 
@@ -378,11 +378,7 @@ function ChannelChat({
   const [threadSending, setThreadSending] = useState(false);
   const [threadUploading, setThreadUploading] = useState(false);
   const [threadEditingId, setThreadEditingId] = useState<string | null>(null);
-  const [threadPending, setThreadPending] = useState<{
-    url: string;
-    type: AttachmentType;
-    name: string;
-  } | null>(null);
+  const [threadPending, setThreadPending] = useState<Attachment[]>([]);
   // 실시간 핸들러가 재구독 없이 현재 열린 스레드를 참조하도록 ref로 동기화
   const threadRootIdRef = useRef<string | null>(null);
   const threadScrollRef = useRef<HTMLDivElement>(null);
@@ -628,11 +624,11 @@ function ChannelChat({
   const handleSend = async () => {
     const text = (composerRef.current?.getText() ?? "").trim();
     // 글이나 첨부 둘 중 하나는 있어야 전송
-    if ((!text && !pending) || sending || uploading) return;
-    const attachment = pending;
+    if ((!text && pending.length === 0) || sending || uploading) return;
+    const attachments = pending;
     composerRef.current?.clear();
     setComposerHasText(false);
-    setPending(null);
+    setPending([]);
     setSending(true);
 
     const me = members.find((m) => m.id === currentUserId);
@@ -647,9 +643,7 @@ function ChannelChat({
       sender_avatar_url: me?.avatar_url ?? null,
       translated_content: null,
       created_at: new Date().toISOString(),
-      attachment_url: attachment?.url ?? null,
-      attachment_type: attachment?.type ?? null,
-      attachment_name: attachment?.name ?? null,
+      attachments,
     };
     setMessages((prev) => [...prev, optimistic]);
     setTimeout(scrollToBottom, 50);
@@ -657,9 +651,7 @@ function ChannelChat({
     const result = await sendChannelMessage(
       channelId,
       text,
-      attachment
-        ? { url: attachment.url, type: attachment.type, name: attachment.name }
-        : null
+      attachments.length > 0 ? attachments : null
     );
     setSending(false);
     if (result.error) {
@@ -673,18 +665,26 @@ function ChannelChat({
   };
 
   // 첨부 파일 선택 → 업로드만 해두고 미리보기로 대기 (전송은 보내기 버튼으로)
-  const handleAttach = async (file: File) => {
+  const handleAttach = async (files: File[]) => {
     if (uploading || sending) return;
     setUploading(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    const up = await uploadChatAttachment(fd);
+    const results = await Promise.all(
+      files.map(async (file) => {
+        const fd = new FormData();
+        fd.append("file", file);
+        return uploadChatAttachment(fd);
+      })
+    );
     setUploading(false);
-    if (up.error || !up.url || !up.type) {
-      alert(up.error ?? "업로드 실패");
-      return;
+    const ok: Attachment[] = [];
+    for (const up of results) {
+      if (up.error || !up.url || !up.type) {
+        alert(up.error ?? "업로드 실패");
+        continue;
+      }
+      ok.push({ url: up.url, type: up.type, name: up.name ?? "파일" });
     }
-    setPending({ url: up.url, type: up.type, name: up.name ?? "파일" });
+    if (ok.length > 0) setPending((prev) => [...prev, ...ok]);
     composerRef.current?.focus();
   };
 
@@ -713,6 +713,7 @@ function ChannelChat({
               content: "",
               translated_content: null,
               attachment_url: null,
+              attachments: [],
             }
           : m
       )
@@ -733,7 +734,7 @@ function ChannelChat({
       setThreadReplies([]);
       threadComposerRef.current?.clear();
       setThreadHasText(false);
-      setThreadPending(null);
+      setThreadPending([]);
       setThreadEditingId(null);
       setThreadLoading(true);
       const { replies } = await getThreadReplies(rootId);
@@ -750,19 +751,20 @@ function ChannelChat({
   const closeThread = useCallback(() => {
     setThreadRootId(null);
     setThreadReplies([]);
-    setThreadPending(null);
+    setThreadPending([]);
     setThreadEditingId(null);
   }, []);
 
   const handleThreadSend = async () => {
     if (!threadRootId) return;
     const text = (threadComposerRef.current?.getText() ?? "").trim();
-    if ((!text && !threadPending) || threadSending || threadUploading) return;
-    const attachment = threadPending;
+    if ((!text && threadPending.length === 0) || threadSending || threadUploading)
+      return;
+    const attachments = threadPending;
     const rootId = threadRootId;
     threadComposerRef.current?.clear();
     setThreadHasText(false);
-    setThreadPending(null);
+    setThreadPending([]);
     setThreadSending(true);
 
     const me = members.find((m) => m.id === currentUserId);
@@ -778,9 +780,7 @@ function ChannelChat({
       translated_content: null,
       created_at: new Date().toISOString(),
       thread_root_id: rootId,
-      attachment_url: attachment?.url ?? null,
-      attachment_type: attachment?.type ?? null,
-      attachment_name: attachment?.name ?? null,
+      attachments,
     };
     setThreadReplies((prev) => [...prev, optimistic]);
     // 본문 루트의 답글 수 낙관적 증가
@@ -800,9 +800,7 @@ function ChannelChat({
     const result = await sendChannelMessage(
       channelId,
       text,
-      attachment
-        ? { url: attachment.url, type: attachment.type, name: attachment.name }
-        : null,
+      attachments.length > 0 ? attachments : null,
       rootId
     );
     setThreadSending(false);
@@ -822,18 +820,26 @@ function ChannelChat({
     }
   };
 
-  const handleThreadAttach = async (file: File) => {
+  const handleThreadAttach = async (files: File[]) => {
     if (threadUploading || threadSending) return;
     setThreadUploading(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    const up = await uploadChatAttachment(fd);
+    const results = await Promise.all(
+      files.map(async (file) => {
+        const fd = new FormData();
+        fd.append("file", file);
+        return uploadChatAttachment(fd);
+      })
+    );
     setThreadUploading(false);
-    if (up.error || !up.url || !up.type) {
-      alert(up.error ?? "업로드 실패");
-      return;
+    const ok: Attachment[] = [];
+    for (const up of results) {
+      if (up.error || !up.url || !up.type) {
+        alert(up.error ?? "업로드 실패");
+        continue;
+      }
+      ok.push({ url: up.url, type: up.type, name: up.name ?? "파일" });
     }
-    setThreadPending({ url: up.url, type: up.type, name: up.name ?? "파일" });
+    if (ok.length > 0) setThreadPending((prev) => [...prev, ...ok]);
     threadComposerRef.current?.focus();
   };
 
@@ -863,6 +869,7 @@ function ChannelChat({
               content: "",
               translated_content: null,
               attachment_url: null,
+              attachments: [],
             }
           : m
       )
@@ -890,7 +897,8 @@ function ChannelChat({
       messages.map((msg, idx) => {
         const isMine = msg.sender_id === currentUserId;
         const isDeleted = !!msg.deleted_at;
-        const hasAttachment = !!msg.attachment_url && !isDeleted;
+        const atts = isDeleted ? [] : normalizeAttachments(msg);
+        const hasAttachment = atts.length > 0;
         const hasTranslation = !!msg.translated_content && !isDeleted;
         const displayText = hasTranslation
           ? msg.translated_content!
@@ -973,12 +981,7 @@ function ChannelChat({
                 ) : (
                   <div className="flex flex-col gap-1">
                     {hasAttachment && (
-                      <AttachmentView
-                        url={msg.attachment_url!}
-                        type={msg.attachment_type ?? null}
-                        name={msg.attachment_name ?? null}
-                        isMine={isMine}
-                      />
+                      <AttachmentList attachments={atts} isMine={isMine} />
                     )}
                     {displayText && (
                       <p
@@ -1085,7 +1088,8 @@ function ChannelChat({
   const renderThreadRow = (msg: ChannelMessage, isRoot: boolean) => {
     const isMine = msg.sender_id === currentUserId;
     const isDeleted = !!msg.deleted_at;
-    const hasAttachment = !!msg.attachment_url && !isDeleted;
+    const atts = isDeleted ? [] : normalizeAttachments(msg);
+    const hasAttachment = atts.length > 0;
     const hasTranslation = !!msg.translated_content && !isDeleted;
     const displayText = hasTranslation ? msg.translated_content! : msg.content;
     const isShowingOriginal = showOriginal.has(msg.id);
@@ -1132,12 +1136,7 @@ function ChannelChat({
           ) : (
             <div className="flex flex-col gap-1">
               {hasAttachment && (
-                <AttachmentView
-                  url={msg.attachment_url!}
-                  type={msg.attachment_type ?? null}
-                  name={msg.attachment_name ?? null}
-                  isMine={isMine}
-                />
+                <AttachmentList attachments={atts} isMine={isMine} />
               )}
               {displayText && (
                 <p
@@ -1240,37 +1239,10 @@ function ChannelChat({
       {/* 입력 영역 */}
       <div className="border-t border-gray-100 px-4 py-3">
         {/* 첨부 미리보기 (전송 전 대기) */}
-        {pending && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2">
-            {pending.type === "image" ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={pending.url}
-                alt={pending.name}
-                className="h-12 w-12 rounded-md object-cover"
-              />
-            ) : (
-              <span className="flex h-12 w-12 items-center justify-center rounded-md bg-gray-200 text-gray-500">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-              </span>
-            )}
-            <span className="min-w-0 flex-1 truncate text-xs text-gray-600">
-              {pending.name}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPending(null)}
-              className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
-              title="첨부 취소"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        )}
+        <PendingAttachments
+          items={pending}
+          onRemove={(i) => setPending((prev) => prev.filter((_, idx) => idx !== i))}
+        />
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -1295,7 +1267,7 @@ function ChannelChat({
           />
           <button
             type="submit"
-            disabled={(!composerHasText && !pending) || sending || uploading}
+            disabled={(!composerHasText && pending.length === 0) || sending || uploading}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white transition-all duration-200 ease-spring shadow-soft-sm hover:bg-blue-600 hover:shadow-brand active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400 mb-0.5"
           >
             <svg
@@ -1362,37 +1334,13 @@ function ChannelChat({
 
           {/* 답글 입력 */}
           <div className="border-t border-gray-100 px-3 py-3">
-            {threadPending && (
-              <div className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1.5">
-                {threadPending.type === "image" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={threadPending.url}
-                    alt={threadPending.name}
-                    className="h-10 w-10 rounded-md object-cover"
-                  />
-                ) : (
-                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-200 text-gray-500">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                    </svg>
-                  </span>
-                )}
-                <span className="min-w-0 flex-1 truncate text-xs text-gray-600">
-                  {threadPending.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setThreadPending(null)}
-                  className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
-                  title="첨부 취소"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            )}
+            <PendingAttachments
+              items={threadPending}
+              size="sm"
+              onRemove={(i) =>
+                setThreadPending((prev) => prev.filter((_, idx) => idx !== i))
+              }
+            />
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -1417,7 +1365,7 @@ function ChannelChat({
               <button
                 type="submit"
                 disabled={
-                  (!threadHasText && !threadPending) ||
+                  (!threadHasText && threadPending.length === 0) ||
                   threadSending ||
                   threadUploading
                 }

@@ -15,7 +15,7 @@ import {
 } from "@/app/(dashboard)/chat-message-actions";
 import { createClient } from "@/lib/supabase/client";
 import { ComposeLinkPreview } from "@/components/compose-link-preview";
-import { MessageLinkPreviews } from "@/components/link-preview-card";
+import { MessageLinkPreviews, LinkifiedText } from "@/components/link-preview-card";
 import { LinkHighlightInput } from "@/components/link-highlight-input";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
@@ -560,13 +560,13 @@ export default function GroupDmChat({
                       {displayText && (
                         <div
                           onContextMenu={(e) => handleContextMenu(e, msg)}
-                          className={`select-text rounded-2xl px-3 py-2 text-sm ${
+                          className={`select-text whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm ${
                             isMine
                               ? "bg-blue-500 text-white"
                               : "bg-gray-100 text-gray-900"
                           } ${hasTranslation ? "cursor-context-menu" : ""}`}
                         >
-                          {displayText}
+                          <LinkifiedText text={displayText} isMine={isMine} />
                         </div>
                       )}
                       <MessageLinkPreviews content={msg.content} align={isMine ? "right" : "left"} />

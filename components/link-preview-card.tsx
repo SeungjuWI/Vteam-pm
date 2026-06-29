@@ -1,7 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchLinkPreview, extractUrls, type LinkPreview } from "@/lib/link-preview";
+import { fetchLinkPreview, extractUrls, splitByUrls, type LinkPreview } from "@/lib/link-preview";
+
+/**
+ * 메시지 본문 텍스트에서 URL/이메일만 클릭 가능한 링크로 렌더한다.
+ * 줄바꿈(\n) 등 일반 텍스트는 그대로 두므로, 링크는 줄이 바뀌면 자연히 끊기고
+ * 다음 줄은 다시 일반(검정) 텍스트로 나온다. (splitByUrls가 \n에서 끊어줌)
+ * - isMine: 파란 말풍선(흰 글씨) 안에서는 파란 링크가 안 보이므로 흰색 밑줄로 표시.
+ */
+export function LinkifiedText({ text, isMine = false }: { text: string; isMine?: boolean }) {
+  const segs = splitByUrls(text);
+  return (
+    <>
+      {segs.map((s, i) => {
+        if (s.kind === "text") return <span key={i}>{s.text}</span>;
+        const href = s.kind === "email" ? `mailto:${s.text}` : s.text;
+        return (
+          <a
+            key={i}
+            href={href}
+            {...(s.kind === "url" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+            onClick={(e) => e.stopPropagation()}
+            className={`break-all underline underline-offset-2 ${
+              isMine ? "text-white hover:opacity-80" : "text-blue-600 hover:text-blue-700"
+            }`}
+          >
+            {s.text}
+          </a>
+        );
+      })}
+    </>
+  );
+}
 
 function hostOf(url: string): string {
   try {

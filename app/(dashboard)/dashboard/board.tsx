@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import Avatar from "@/components/avatar";
 import { getPosts, createPost, deletePost, toggleReaction, translateSinglePost } from "../board/actions";
 import { ComposeLinkPreview } from "@/components/compose-link-preview";
-import { MessageLinkPreviews } from "@/components/link-preview-card";
+import { MessageLinkPreviews, LinkifiedText } from "@/components/link-preview-card";
 import { LinkHighlightInput } from "@/components/link-highlight-input";
 
 interface Post {
@@ -250,7 +250,7 @@ export default function Board({ currentUserId, companyId }: { currentUserId: str
                     )}
                   </div>
                 </div>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{displayContent}</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed"><LinkifiedText text={displayContent} /></p>
                 <MessageLinkPreviews content={post.content} />
                 <div className="flex items-center gap-3 mt-2.5">
                   <button

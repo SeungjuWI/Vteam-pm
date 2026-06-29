@@ -129,6 +129,23 @@ function reflowLinks(root: HTMLElement) {
   }
 }
 
+// 미리보기/URL 감지용 평문. contentEditable의 textContent는 <br>·<div> 줄바꿈을
+// 누락해 "https://a.com" + 다음 줄이 붙어버린다(→ 잘못된 URL로 미리보기 실패).
+// 여기서는 줄바꿈을 \n으로 보존하고 멘션 칩은 이름 그대로 둔다.
+function editorPlainText(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.nodeValue ?? "";
+  if (node.nodeType !== Node.ELEMENT_NODE) return "";
+  const el = node as HTMLElement;
+  if (el.dataset.uid) return el.textContent ?? ""; // 멘션 칩은 통째로
+  if (el.tagName === "BR") return "\n";
+  let inner = "";
+  el.childNodes.forEach((c) => {
+    inner += editorPlainText(c);
+  });
+  if (el.tagName === "DIV" && inner) return `\n${inner}`;
+  return inner;
+}
+
 export interface RichComposerHandle {
   getText: () => string;
   clear: () => void;
@@ -221,7 +238,8 @@ export const RichComposer = forwardRef<RichComposerHandle, {
   } | null>(null);
 
   const syncEmpty = useCallback(() => {
-    const txt = editorRef.current?.textContent ?? "";
+    const root = editorRef.current;
+    const txt = root ? editorPlainText(root).replace(/^\n+/, "") : "";
     const isEmpty = txt.trim().length === 0;
     setEmpty(isEmpty);
     onTextChange?.(!isEmpty, txt);

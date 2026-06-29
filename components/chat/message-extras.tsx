@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { splitByUrls } from "@/lib/link-preview";
 
 export type AttachmentType = "image" | "video" | "file";
 
@@ -41,6 +42,27 @@ export function normalizeAttachments(msg: {
 // ===== 메시지 본문 렌더 (멘션 @[이름](uid) + 굵게 **텍스트**) =====
 const MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
 
+// 일반 텍스트 안의 URL/이메일을 클릭 가능한 링크로. 줄바꿈(\n)에서 끊겨 다음 줄은 일반 텍스트.
+function linkify(text: string, keyPrefix: string): ReactNode[] {
+  const segs = splitByUrls(text);
+  if (segs.length === 1 && segs[0].kind === "text") return [text];
+  return segs.map((s, i) => {
+    if (s.kind === "text") return s.text;
+    const href = s.kind === "email" ? `mailto:${s.text}` : s.text;
+    return (
+      <a
+        key={`${keyPrefix}-l${i}`}
+        href={href}
+        {...(s.kind === "url" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        onClick={(e) => e.stopPropagation()}
+        className="break-all text-blue-600 underline underline-offset-2 hover:text-blue-700"
+      >
+        {s.text}
+      </a>
+    );
+  });
+}
+
 function renderInline(
   text: string,
   currentUserId: string | undefined,
@@ -52,7 +74,7 @@ function renderInline(
   MENTION_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = MENTION_RE.exec(text))) {
-    if (m.index > last) nodes.push(text.slice(last, m.index));
+    if (m.index > last) nodes.push(...linkify(text.slice(last, m.index), `${keyPrefix}-p${i}`));
     const name = m[1];
     const uid = m[2];
     const isMe = !!currentUserId && uid === currentUserId;
@@ -70,7 +92,7 @@ function renderInline(
     );
     last = m.index + m[0].length;
   }
-  if (last < text.length) nodes.push(text.slice(last));
+  if (last < text.length) nodes.push(...linkify(text.slice(last), `${keyPrefix}-e`));
   return nodes;
 }
 

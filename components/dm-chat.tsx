@@ -16,7 +16,7 @@ import {
 } from "@/app/(dashboard)/chat-message-actions";
 import { createClient } from "@/lib/supabase/client";
 import { ComposeLinkPreview } from "@/components/compose-link-preview";
-import { MessageLinkPreviews } from "@/components/link-preview-card";
+import { MessageLinkPreviews, LinkifiedText } from "@/components/link-preview-card";
 import { LinkHighlightInput } from "@/components/link-highlight-input";
 import { LANGUAGES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
@@ -605,6 +605,8 @@ export default function DmChat({
                       <div
                         onContextMenu={(e) => handleContextMenu(e, msg)}
                         className={`select-text rounded-2xl px-3 py-2 text-sm ${
+                          !isMine && member.is_bot ? "" : "whitespace-pre-wrap break-words"
+                        } ${
                           isMine
                             ? "bg-blue-500 text-white"
                             : "bg-gray-100 text-gray-900"
@@ -613,7 +615,7 @@ export default function DmChat({
                         {!isMine && member.is_bot ? (
                           <ChatMarkdown text={displayText} isMine={isMine} />
                         ) : (
-                          displayText
+                          <LinkifiedText text={displayText} isMine={isMine} />
                         )}
                       </div>
                     )}

@@ -3,33 +3,71 @@
 import { useEffect, useState } from "react";
 import { fetchLinkPreview, extractUrls, splitByUrls, type LinkPreview } from "@/lib/link-preview";
 
+// 인라인 링크 앞의 작은 체인 아이콘 (슬랙 스타일)
+function LinkGlyph() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      className="mr-0.5 inline-block h-3.5 w-3.5 shrink-0 align-[-2px]"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M13.828 10.172a4 4 0 010 5.657l-3 3a4 4 0 01-5.657-5.657l1.5-1.5M10.172 13.828a4 4 0 010-5.657l3-3a4 4 0 015.657 5.657l-1.5 1.5"
+      />
+    </svg>
+  );
+}
+
+/**
+ * 슬랙풍 인라인 링크. URL은 체인 아이콘 + 파란색, 평소엔 밑줄 없이 hover 때만 밑줄.
+ * 이메일은 mailto. isMine(파란 말풍선)일 땐 흰색으로.
+ */
+export function InlineLink({
+  kind,
+  text,
+  isMine = false,
+}: {
+  kind: "url" | "email";
+  text: string;
+  isMine?: boolean;
+}) {
+  const href = kind === "email" ? `mailto:${text}` : text;
+  return (
+    <a
+      href={href}
+      {...(kind === "url" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      onClick={(e) => e.stopPropagation()}
+      className={`break-all font-medium underline-offset-2 hover:underline ${
+        isMine ? "text-white/95" : "text-blue-500"
+      }`}
+    >
+      {kind === "url" && <LinkGlyph />}
+      {text}
+    </a>
+  );
+}
+
 /**
  * 메시지 본문 텍스트에서 URL/이메일만 클릭 가능한 링크로 렌더한다.
  * 줄바꿈(\n) 등 일반 텍스트는 그대로 두므로, 링크는 줄이 바뀌면 자연히 끊기고
  * 다음 줄은 다시 일반(검정) 텍스트로 나온다. (splitByUrls가 \n에서 끊어줌)
- * - isMine: 파란 말풍선(흰 글씨) 안에서는 파란 링크가 안 보이므로 흰색 밑줄로 표시.
  */
 export function LinkifiedText({ text, isMine = false }: { text: string; isMine?: boolean }) {
   const segs = splitByUrls(text);
   return (
     <>
-      {segs.map((s, i) => {
-        if (s.kind === "text") return <span key={i}>{s.text}</span>;
-        const href = s.kind === "email" ? `mailto:${s.text}` : s.text;
-        return (
-          <a
-            key={i}
-            href={href}
-            {...(s.kind === "url" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-            onClick={(e) => e.stopPropagation()}
-            className={`break-all underline underline-offset-2 ${
-              isMine ? "text-white hover:opacity-80" : "text-blue-600 hover:text-blue-700"
-            }`}
-          >
-            {s.text}
-          </a>
-        );
-      })}
+      {segs.map((s, i) =>
+        s.kind === "text" ? (
+          <span key={i}>{s.text}</span>
+        ) : (
+          <InlineLink key={i} kind={s.kind} text={s.text} isMine={isMine} />
+        )
+      )}
     </>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { splitByUrls } from "@/lib/link-preview";
+import { InlineLink } from "@/components/link-preview-card";
 
 export type AttachmentType = "image" | "video" | "file";
 
@@ -46,21 +47,13 @@ const MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
 function linkify(text: string, keyPrefix: string): ReactNode[] {
   const segs = splitByUrls(text);
   if (segs.length === 1 && segs[0].kind === "text") return [text];
-  return segs.map((s, i) => {
-    if (s.kind === "text") return s.text;
-    const href = s.kind === "email" ? `mailto:${s.text}` : s.text;
-    return (
-      <a
-        key={`${keyPrefix}-l${i}`}
-        href={href}
-        {...(s.kind === "url" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-        onClick={(e) => e.stopPropagation()}
-        className="break-all text-blue-600 underline underline-offset-2 hover:text-blue-700"
-      >
-        {s.text}
-      </a>
-    );
-  });
+  return segs.map((s, i) =>
+    s.kind === "text" ? (
+      s.text
+    ) : (
+      <InlineLink key={`${keyPrefix}-l${i}`} kind={s.kind} text={s.text} />
+    )
+  );
 }
 
 function renderInline(

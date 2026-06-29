@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import DmChat from "@/components/dm-chat";
 import GroupDmChat from "@/components/group-dm-chat";
 import SidebarTeamList from "@/components/sidebar-team-list";
 import { usePresence } from "@/hooks/use-presence";
 import { useGlobalChatNotifications } from "@/hooks/use-global-chat-notifications";
+import { createClient } from "@/lib/supabase/client";
 
 interface ChatMember {
   id: string;
@@ -58,6 +59,24 @@ export default function DmChatManager({
   currentUserLang: string;
 }) {
   const [chats, setChats] = useState<AnyChat[]>([]);
+
+  // Realtime(postgres_changes)는 RLS를 강제하므로, 소켓에 현재 사용자의
+  // 액세스 토큰을 명시적으로 물려준다. 토큰이 없으면 anon으로 평가되어
+  // RLS가 모든 변경 이벤트를 막아 실시간 메시지/배지가 오지 않는다.
+  // 싱글톤 클라이언트라 한 번 setAuth하면 모든 채널에 전파된다.
+  useEffect(() => {
+    const supabase = createClient();
+    const apply = (token?: string) => {
+      if (token) supabase.realtime.setAuth(token);
+    };
+    supabase.auth.getSession().then(({ data }) => {
+      apply(data.session?.access_token);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      apply(session?.access_token);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   usePresence();
   // 어느 페이지에 있든(채팅창을 안 열어둬도) 전역으로 메시지를 듣고

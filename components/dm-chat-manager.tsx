@@ -7,6 +7,7 @@ import SidebarTeamList from "@/components/sidebar-team-list";
 import { usePresence } from "@/hooks/use-presence";
 import { useGlobalChatNotifications } from "@/hooks/use-global-chat-notifications";
 import { createClient } from "@/lib/supabase/client";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 interface ChatMember {
   id: string;
@@ -69,12 +70,14 @@ export default function DmChatManager({
     const apply = (token?: string) => {
       if (token) supabase.realtime.setAuth(token);
     };
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
       apply(data.session?.access_token);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      apply(session?.access_token);
-    });
+    const { data: sub } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        apply(session?.access_token);
+      }
+    );
     return () => sub.subscription.unsubscribe();
   }, []);
 

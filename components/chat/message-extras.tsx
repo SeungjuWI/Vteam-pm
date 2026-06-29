@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent as ReactDragEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 
 export type AttachmentType = "image" | "video" | "file";
@@ -235,6 +241,66 @@ export function AttachmentView({
       </svg>
       <span className="max-w-40 truncate">{name ?? "파일"}</span>
     </a>
+  );
+}
+
+// ===== 파일 드래그 앤 드롭 첨부 =====
+// 바탕화면/파일에서 끌어다 놓으면 onFiles(files)로 넘긴다. 컨테이너에 dropHandlers를 spread.
+export function useFileDrop(
+  onFiles: (files: File[]) => void,
+  disabled?: boolean
+) {
+  const [dragging, setDragging] = useState(false);
+  const depth = useRef(0);
+
+  const hasFiles = (e: ReactDragEvent) =>
+    Array.from(e.dataTransfer?.types ?? []).includes("Files");
+
+  const dropHandlers = {
+    onDragEnter: (e: ReactDragEvent) => {
+      if (disabled || !hasFiles(e)) return;
+      e.preventDefault();
+      depth.current += 1;
+      setDragging(true);
+    },
+    onDragOver: (e: ReactDragEvent) => {
+      if (disabled || !hasFiles(e)) return;
+      e.preventDefault();
+    },
+    onDragLeave: (e: ReactDragEvent) => {
+      if (disabled) return;
+      e.preventDefault();
+      depth.current -= 1;
+      if (depth.current <= 0) {
+        depth.current = 0;
+        setDragging(false);
+      }
+    },
+    onDrop: (e: ReactDragEvent) => {
+      if (disabled) return;
+      e.preventDefault();
+      depth.current = 0;
+      setDragging(false);
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      if (files.length > 0) onFiles(files);
+    },
+  };
+
+  return { dragging, dropHandlers };
+}
+
+// 드래그 중 표시되는 첨부 안내 오버레이 (컨테이너는 relative여야 함)
+export function DropOverlay({ visible }: { visible: boolean }) {
+  if (!visible) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-blue-400 bg-blue-50/85">
+      <div className="flex flex-col items-center gap-1.5 text-blue-600">
+        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 7.5L12 3m0 0L7.5 7.5M12 3v13.5" />
+        </svg>
+        <span className="text-sm font-medium">여기에 놓아 첨부</span>
+      </div>
+    </div>
   );
 }
 

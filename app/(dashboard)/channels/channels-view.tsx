@@ -26,6 +26,8 @@ import {
   AttachmentList,
   AttachmentButton,
   PendingAttachments,
+  DropOverlay,
+  useFileDrop,
   normalizeAttachments,
   MessageActions,
   MessageContent,
@@ -630,6 +632,8 @@ function ChannelChat({
     setComposerHasText(false);
     setPending([]);
     setSending(true);
+    // 전송 후에도 입력창에 포커스를 유지 → 연속 입력 시 다시 클릭할 필요 없음
+    composerRef.current?.focus();
 
     const me = members.find((m) => m.id === currentUserId);
     const tempId = `temp-${Date.now()}`;
@@ -654,6 +658,8 @@ function ChannelChat({
       attachments.length > 0 ? attachments : null
     );
     setSending(false);
+    // 전송 중 비활성화로 풀렸던 포커스를 다시 입력창으로 복귀
+    setTimeout(() => composerRef.current?.focus(), 0);
     if (result.error) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } else if (result.id) {
@@ -766,6 +772,8 @@ function ChannelChat({
     setThreadHasText(false);
     setThreadPending([]);
     setThreadSending(true);
+    // 전송 후에도 답글 입력창에 포커스를 유지
+    threadComposerRef.current?.focus();
 
     const me = members.find((m) => m.id === currentUserId);
     const tempId = `temp-${Date.now()}`;
@@ -804,6 +812,8 @@ function ChannelChat({
       rootId
     );
     setThreadSending(false);
+    // 전송 중 비활성화로 풀렸던 포커스를 다시 답글 입력창으로 복귀
+    setTimeout(() => threadComposerRef.current?.focus(), 0);
     if (result.error) {
       setThreadReplies((prev) => prev.filter((m) => m.id !== tempId));
       setMessages((prev) =>
@@ -842,6 +852,21 @@ function ChannelChat({
     if (ok.length > 0) setThreadPending((prev) => [...prev, ...ok]);
     threadComposerRef.current?.focus();
   };
+
+  // 바탕화면/파일에서 끌어다 놓으면 첨부 (본문 / 스레드 각각)
+  const { dragging, dropHandlers } = useFileDrop(
+    handleAttach,
+    uploading || sending
+  );
+  const { dragging: threadDragging, dropHandlers: threadDropHandlers } =
+    useFileDrop(handleThreadAttach, threadUploading || threadSending);
+
+  // 스레드 패널이 열리면 답글 입력창에 자동 포커스 (렌더 후)
+  useEffect(() => {
+    if (!threadRootId) return;
+    const id = setTimeout(() => threadComposerRef.current?.focus(), 80);
+    return () => clearTimeout(id);
+  }, [threadRootId]);
 
   const handleThreadSaveEdit = useCallback(
     async (msgId: string, value: string) => {
@@ -1184,7 +1209,8 @@ function ChannelChat({
 
   return (
     <div className="flex h-full min-h-0 w-full">
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col" {...dropHandlers}>
+      <DropOverlay visible={dragging} />
       {/* 헤더 */}
       <div className="flex h-12 items-center justify-between border-b border-gray-100 px-5">
         <div className="flex items-center gap-2">
@@ -1256,7 +1282,8 @@ function ChannelChat({
           <RichComposer
             ref={composerRef}
             members={members}
-            disabled={uploading || sending}
+            // 전송 중에는 비활성화하지 않음 → contentEditable이 꺼지며 포커스가 풀리는 것 방지
+            disabled={uploading}
             onSubmit={handleSend}
             onTextChange={setComposerHasText}
             placeholder={
@@ -1290,7 +1317,11 @@ function ChannelChat({
 
       {/* 스레드 패널 */}
       {threadRootId && (
-        <div className="flex h-full w-[400px] shrink-0 flex-col border-l border-gray-200 bg-white">
+        <div
+          className="relative flex h-full w-[400px] shrink-0 flex-col border-l border-gray-200 bg-white"
+          {...threadDropHandlers}
+        >
+          <DropOverlay visible={threadDragging} />
           {/* 스레드 헤더 */}
           <div className="flex h-12 items-center justify-between border-b border-gray-100 px-4">
             <div className="flex items-center gap-2">
@@ -1357,7 +1388,8 @@ function ChannelChat({
               <RichComposer
                 ref={threadComposerRef}
                 members={members}
-                disabled={threadUploading || threadSending}
+                // 전송 중에는 비활성화하지 않음 → 포커스 유지
+                disabled={threadUploading}
                 onSubmit={handleThreadSend}
                 onTextChange={setThreadHasText}
                 placeholder={threadUploading ? "업로드 중..." : "답글 남기기..."}

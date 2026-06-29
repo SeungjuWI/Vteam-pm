@@ -21,6 +21,8 @@ import {
   AttachmentList,
   AttachmentButton,
   PendingAttachments,
+  DropOverlay,
+  useFileDrop,
   normalizeAttachments,
   MessageActions,
   EditBox,
@@ -366,6 +368,8 @@ export default function GroupDmChat({
     setInput("");
     setPending([]);
     setSending(true);
+    // 전송 후에도 입력창에 포커스를 유지 → 연속 입력 시 다시 클릭할 필요 없음
+    inputRef.current?.focus();
 
     // 내 프로필 정보
     const myProfile = room.members.find((m) => m.id === currentUserId);
@@ -425,6 +429,12 @@ export default function GroupDmChat({
     if (ok.length > 0) setPending((prev) => [...prev, ...ok]);
     inputRef.current?.focus();
   };
+
+  // 바탕화면/파일에서 끌어다 놓으면 첨부
+  const { dragging, dropHandlers } = useFileDrop(
+    handleAttach,
+    uploading || sending
+  );
 
   // 내 메시지 수정 저장
   const handleSaveEdit = useCallback(async (msgId: string, value: string) => {
@@ -629,7 +639,9 @@ export default function GroupDmChat({
     <div
       className="relative flex flex-col overflow-hidden rounded-t-xl border border-b-0 border-gray-200 bg-white"
       style={{ width: size.w, height: size.h, ...style }}
+      {...dropHandlers}
     >
+      <DropOverlay visible={dragging} />
       {/* 리사이즈 핸들 */}
       <div
         onMouseDown={handleResizeStart}

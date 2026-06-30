@@ -111,6 +111,16 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* 본문 텍스트·링크를 드래그 선택하고 우클릭으로 복사할 수 있게 사이트 전체 허용 */
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* 버튼·아이콘 등 UI 크롬은 드래그 선택 대상에서 제외해 깔끔하게 유지 */
+button,
+[role="button"],
+svg,
+.select-none {
   -webkit-user-select: none;
   user-select: none;
 }

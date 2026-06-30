@@ -524,9 +524,13 @@ export function EditBox({
 export function AttachmentButton({
   onPicked,
   disabled,
+  accept = "image/*,video/*",
+  title = "이미지/영상 첨부",
 }: {
   onPicked: (files: File[]) => void;
   disabled?: boolean;
+  accept?: string;
+  title?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -535,7 +539,7 @@ export function AttachmentButton({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,video/*"
+        accept={accept}
         multiple
         className="hidden"
         onChange={(e) => {
@@ -548,7 +552,7 @@ export function AttachmentButton({
         type="button"
         disabled={disabled}
         onClick={() => inputRef.current?.click()}
-        title="이미지/영상 첨부"
+        title={title}
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 active:scale-[0.95] disabled:opacity-40"
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

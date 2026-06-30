@@ -631,6 +631,12 @@ export async function deleteTask(taskId: string, projectId: string) {
   return { success: true };
 }
 
+export interface CommentAttachment {
+  url: string;
+  type: "image" | "video" | "file";
+  name: string;
+}
+
 export async function getTaskComments(taskId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -641,7 +647,7 @@ export async function getTaskComments(taskId: string) {
 
   const { data } = await adminClient
     .from("task_comments")
-    .select("id, content, created_at, author_id")
+    .select("id, content, attachments, created_at, author_id")
     .eq("task_id", taskId)
     .order("created_at", { ascending: true });
 
@@ -660,6 +666,7 @@ export async function getTaskComments(taskId: string) {
     return {
       id: c.id,
       content: c.content,
+      attachments: Array.isArray(c.attachments) ? (c.attachments as CommentAttachment[]) : [],
       authorName: author?.name ?? "알 수 없음",
       authorAvatarUrl: author?.avatar_url ?? null,
       createdAt: c.created_at,
@@ -673,6 +680,7 @@ export async function createTaskComment(
   content: string,
   mentionedIds: string[],
   isAll: boolean,
+  attachments: CommentAttachment[] = [],
 ) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -680,7 +688,11 @@ export async function createTaskComment(
   const user = await getClaimsUser(supabase);
   if (!user) return { error: "로그인이 필요합니다" };
 
-  if (!content.trim()) return { error: "내용을 입력해주세요" };
+  // 이미지만 올리고 본문이 비어도 허용 (첨부가 하나도 없을 때만 막는다)
+  const safeAttachments = (Array.isArray(attachments) ? attachments : []).filter(
+    (a) => a && typeof a.url === "string" && a.url.length > 0,
+  );
+  if (!content.trim() && safeAttachments.length === 0) return { error: "내용을 입력해주세요" };
 
   const { data: profile } = await adminClient
     .from("profiles")
@@ -697,6 +709,7 @@ export async function createTaskComment(
     task_id: taskId,
     author_id: user.id,
     content: content.trim(),
+    attachments: safeAttachments,
   });
 
   if (error) return { error: "댓글 작성에 실패했습니다" };
@@ -731,7 +744,7 @@ export async function createTaskComment(
         company_id: profile.company_id,
         type: "general" as const,
         title: `"${taskTitle}"에 새 댓글`,
-        message: `${profile.name}: ${content.trim().slice(0, 80)}`,
+        message: `${profile.name}: ${content.trim().slice(0, 80) || (safeAttachments.some((a) => a.type === "image") ? "(이미지)" : "(첨부파일)")}`,
         link: `/projects/${projectId}`,
       }))
     );

@@ -181,5 +181,6 @@ create table task_comments (
   task_id uuid references tasks(id) on delete cascade not null,
   author_id uuid references profiles(id) not null,
   content text not null,
+  attachments jsonb not null default '[]'::jsonb,
   created_at timestamptz default now()
 );

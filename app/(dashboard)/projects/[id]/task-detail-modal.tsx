@@ -4,10 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { updateTask, updateTaskStatus, deleteTask, getTaskComments, createTaskComment, updateTaskComment, deleteTaskComment } from "../actions";
+import { uploadChatAttachment } from "../../chat-message-actions";
 import { useT, type TFunction } from "@/lib/i18n";
 import { toast } from "@/components/ui/toast";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePicker } from "@/components/ui/date-picker";
+import { LinkifiedText } from "@/components/link-preview-card";
+import {
+  AttachmentButton,
+  AttachmentList,
+  PendingAttachments,
+  useFileDrop,
+  DropOverlay,
+  type Attachment,
+} from "@/components/chat/message-extras";
 import type { Member, Task } from "./project-types";
 import { taskProgress, effectiveStatus } from "./project-types";
 
@@ -19,6 +29,7 @@ function errOf(r: unknown): string | undefined {
 interface Comment {
   id: string;
   content: string;
+  attachments: Attachment[];
   authorName: string;
   authorAvatarUrl: string | null;
   createdAt: string;
@@ -34,9 +45,12 @@ function timeAgo(dateStr: string, t: TFunction) {
   return `${Math.floor(hr / 24)}${t("comments.daysAgo")}`;
 }
 
+// 댓글 본문: @멘션은 파란 강조, 그 외 텍스트 속 URL/이메일은 클릭 가능한 하이퍼링크로.
 function renderContent(content: string) {
   return content.split(/(@\S+)/g).map((part, i) =>
-    part.startsWith("@") ? <span key={i} className="font-medium text-blue-500">{part}</span> : part
+    part.startsWith("@")
+      ? <span key={i} className="font-medium text-blue-500">{part}</span>
+      : <LinkifiedText key={i} text={part} />
   );
 }
 
@@ -142,7 +156,16 @@ function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
                       </div>
                     </div>
                   ) : (
-                    <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{renderContent(c.content)}</p>
+                    <>
+                      {c.content.trim() && (
+                        <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700">{renderContent(c.content)}</p>
+                      )}
+                      {c.attachments.length > 0 && (
+                        <div className="mt-1.5">
+                          <AttachmentList attachments={c.attachments} isMine={false} />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -162,11 +185,14 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
   const t = useT();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [pending, setPending] = useState<Attachment[]>([]); // 업로드 완료, 전송 대기 중인 첨부
+  const [uploading, setUploading] = useState(0);             // 업로드 진행 중인 파일 수
   const [showMention, setShowMention] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionIndex, setMentionIndex] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const { dragging, dropHandlers } = useFileDrop((files) => handleFiles(files), sending);
 
   // @all을 맨 앞에 포함한 멘션 목록
   const filteredMembers = mentionQuery
@@ -209,18 +235,40 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
+  // 이미지/영상 파일 업로드 → 완료된 것만 pending에 누적 (채팅과 동일한 chat-attachments 버킷 재사용)
+  async function handleFiles(files: File[]) {
+    const media = files.filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
+    if (media.length === 0) return;
+    setUploading((n) => n + media.length);
+    for (const file of media) {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await uploadChatAttachment(fd);
+      if (res.error || !res.url) { toast.error(res.error || "업로드에 실패했습니다"); }
+      else { setPending((prev) => [...prev, { url: res.url!, type: res.type ?? "file", name: res.name ?? "파일" }]); }
+      setUploading((n) => Math.max(0, n - 1));
+    }
+  }
+
+  // 클립보드에 이미지가 있으면 붙여넣기로 바로 첨부
+  function handlePaste(e: React.ClipboardEvent) {
+    const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+    if (files.length > 0) { e.preventDefault(); handleFiles(files); }
+  }
+
   async function handleSend() {
-    if (!input.trim() || sending) return;
+    if ((!input.trim() && pending.length === 0) || sending || uploading > 0) return;
     setSending(true);
     const mentions = input.match(/@(\S+)/g) || [];
     const isAll = mentions.some((m) => m === "@all");
     const mentionedNames = mentions.map((m) => m.slice(1)).filter((n) => n !== "all");
     const mentionedIds = projectMembers.filter((m) => mentionedNames.includes(m.name)).map((m) => m.id);
 
-    const result = await createTaskComment(taskId, projectId, input, mentionedIds, isAll);
+    const result = await createTaskComment(taskId, projectId, input, mentionedIds, isAll, pending);
     if (errOf(result)) { toast.error(errOf(result)!); }
     else {
       setInput("");
+      setPending([]);
       window.dispatchEvent(new Event(`comment-refresh-${taskId}`));
     }
     setSending(false);
@@ -275,7 +323,8 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
   }
 
   return (
-    <div className="relative shrink-0 border-t border-gray-100 px-6 py-4">
+    <div className="relative shrink-0 border-t border-gray-100 px-6 py-4" {...dropHandlers}>
+      <DropOverlay visible={dragging} />
       {showMention && mentionOptions.length > 0 && (
         <div ref={listRef} className="absolute bottom-full left-6 right-6 z-10 mb-1 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1">
           {mentionOptions.map((opt, i) => {
@@ -312,7 +361,19 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
           })}
         </div>
       )}
-      <div className="flex gap-2">
+      {/* 전송 대기 중인 이미지 미리보기 */}
+      {(pending.length > 0 || uploading > 0) && (
+        <div className="flex items-end gap-2">
+          <PendingAttachments items={pending} onRemove={(i) => setPending((prev) => prev.filter((_, idx) => idx !== i))} size="sm" />
+          {uploading > 0 && (
+            <span className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg border border-dashed border-gray-200 text-[10px] text-gray-400">
+              업로드<br />중…
+            </span>
+          )}
+        </div>
+      )}
+      <div className="flex items-end gap-1.5">
+        <AttachmentButton onPicked={handleFiles} disabled={sending} accept="image/*" title="이미지 첨부" />
         <div className="relative flex-1">
           {/* 하이라이트 오버레이 */}
           <div
@@ -330,6 +391,7 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={t("comments.placeholder")}
             rows={1}
             className="relative w-full resize-none rounded-lg border border-gray-200 bg-transparent px-3.5 py-2.5 pr-4 text-sm text-transparent caret-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
@@ -656,7 +718,7 @@ export default function TaskDetailModal({ task, projectId, allMembers, projectMe
               <div className="border-t border-gray-100 px-6 py-5">
                 <p className="mb-3 flex items-center gap-2 text-xs font-semibold text-gray-500"><IcText className="h-4 w-4 text-gray-400" />{t("tasks.content")}</p>
                 {description.trim() ? (
-                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700">{description}</p>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700"><LinkifiedText text={description} /></p>
                 ) : (
                   <p className="text-sm text-gray-400">{t("tasks.noContent")}</p>
                 )}

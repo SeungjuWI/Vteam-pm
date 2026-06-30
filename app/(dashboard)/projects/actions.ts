@@ -667,6 +667,7 @@ export async function getTaskComments(taskId: string) {
       id: c.id,
       content: c.content,
       attachments: Array.isArray(c.attachments) ? (c.attachments as CommentAttachment[]) : [],
+      authorId: c.author_id,
       authorName: author?.name ?? "알 수 없음",
       authorAvatarUrl: author?.avatar_url ?? null,
       createdAt: c.created_at,

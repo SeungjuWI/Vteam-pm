@@ -9,7 +9,9 @@ import { useT, type TFunction } from "@/lib/i18n";
 import { toast } from "@/components/ui/toast";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePicker } from "@/components/ui/date-picker";
-import { LinkifiedText } from "@/components/link-preview-card";
+import { LinkifiedText, InlineLink } from "@/components/link-preview-card";
+import { splitByUrls } from "@/lib/link-preview";
+import Avatar from "@/components/avatar";
 import {
   AttachmentButton,
   AttachmentList,
@@ -30,6 +32,7 @@ interface Comment {
   id: string;
   content: string;
   attachments: Attachment[];
+  authorId: string;
   authorName: string;
   authorAvatarUrl: string | null;
   createdAt: string;
@@ -45,12 +48,79 @@ function timeAgo(dateStr: string, t: TFunction) {
   return `${Math.floor(hr / 24)}${t("comments.daysAgo")}`;
 }
 
-// 댓글 본문: @멘션은 파란 강조, 그 외 텍스트 속 URL/이메일은 클릭 가능한 하이퍼링크로.
-function renderContent(content: string) {
-  return content.split(/(@\S+)/g).map((part, i) =>
-    part.startsWith("@")
-      ? <span key={i} className="font-medium text-blue-500">{part}</span>
-      : <LinkifiedText key={i} text={part} />
+// 아바타·멘션 위에 마우스를 대거나 클릭하면 뜨는 프로필 미니 카드 (공용).
+function ProfileHoverCard({ name, avatarUrl, subtitle, className, align = "left", children }: {
+  name: string; avatarUrl: string | null; subtitle?: string | null;
+  className?: string; align?: "left" | "right"; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      className={`relative inline-flex ${className ?? ""}`}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button type="button" onClick={() => setOpen((v) => !v)} className="inline-flex cursor-pointer items-center">
+        {children}
+      </button>
+      {open && (
+        <span
+          className={`absolute bottom-full z-30 mb-1.5 flex w-max max-w-[240px] items-center gap-2.5 rounded-xl border border-gray-100 bg-white p-2.5 shadow-soft-lg ${align === "right" ? "right-0" : "left-0"}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Avatar url={avatarUrl} name={name} size={36} />
+          <span className="min-w-0 text-left">
+            <span className="block truncate text-sm font-semibold text-gray-900">{name}</span>
+            {subtitle && <span className="block truncate text-[11px] text-gray-500">{subtitle}</span>}
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}
+
+// 멘션(@이름) — 멤버와 매칭되면 프로필 카드, 아니면(예: @all) 그냥 파란 텍스트.
+function MentionTag({ display, member }: { display: string; member: Member | null }) {
+  if (!member) return <span className="font-medium text-blue-500">@{display}</span>;
+  return (
+    <ProfileHoverCard name={member.name} avatarUrl={member.avatarUrl} subtitle={member.position || member.email}>
+      <span className="font-medium text-blue-500 hover:underline">@{display}</span>
+    </ProfileHoverCard>
+  );
+}
+
+// 일반 텍스트를 (줄 시작·공백 뒤) @멘션 기준으로만 쪼갠다.
+// wsj@likelion 처럼 앞에 글자가 붙은 @는 멘션이 아니다 → 이메일 입력 중 오인 방지.
+// 반환 조각들을 이어붙이면 원본과 정확히 같다(입력창 오버레이 정렬 유지에 필수).
+function splitMentions(text: string): { mention: boolean; text: string }[] {
+  const out: { mention: boolean; text: string }[] = [];
+  const re = /(^|\s)(@\S+)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const at = m.index + m[1].length; // 앞 공백을 뺀 @ 위치
+    if (at > last) out.push({ mention: false, text: text.slice(last, at) });
+    out.push({ mention: true, text: m[2] });
+    last = at + m[2].length;
+  }
+  if (last < text.length) out.push({ mention: false, text: text.slice(last) });
+  return out;
+}
+
+// 댓글 본문: URL/이메일을 먼저 링크로 분리한 뒤, 남은 일반 텍스트에서만 @멘션을 강조한다.
+// (이메일의 @ 가 멘션으로 오인되지 않도록 — 예: wsj@likelion.net 은 통째로 메일 링크)
+function renderContent(content: string, members: Member[]) {
+  return splitByUrls(content).map((seg, i) =>
+    seg.kind !== "text" ? (
+      <InlineLink key={i} kind={seg.kind} text={seg.text} />
+    ) : (
+      splitMentions(seg.text).map((p, j) => {
+        if (!p.mention) return <span key={`${i}-${j}`}>{p.text}</span>;
+        const nm = p.text.slice(1);
+        const member = nm === "all" ? null : (members.find((m) => m.name === nm) ?? null);
+        return <MentionTag key={`${i}-${j}`} display={nm} member={member} />;
+      })
+    )
   );
 }
 
@@ -102,24 +172,25 @@ function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
 
   return (
     <div className="border-t border-gray-100 px-6 py-4">
-      <p className="mb-3 text-xs font-medium text-gray-600">{t("comments.title")} {comments.length > 0 && comments.length}</p>
+      <p className="mb-3 text-sm font-semibold text-gray-700">{t("comments.title")} {comments.length > 0 && comments.length}</p>
       {!loaded ? (
         <p className="py-4 text-center text-xs text-gray-300">{t("common.loading")}</p>
       ) : comments.length === 0 ? (
         <p className="py-4 text-center text-xs text-gray-300">{t("comments.empty")}</p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {comments.map((c) => {
-            const isMine = projectMembers.some((m) => m.name === c.authorName && m.id === currentUserId);
+            const isMine = c.authorId === currentUserId;
+            const author = projectMembers.find((m) => m.id === c.authorId) ?? null;
             return (
               <div key={c.id} className="group flex gap-2.5">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[10px] font-medium text-gray-600">
-                  {c.authorAvatarUrl ? <Image src={c.authorAvatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : c.authorName[0]}
-                </div>
+                <ProfileHoverCard name={c.authorName} avatarUrl={c.authorAvatarUrl} subtitle={author?.position || author?.email} className="shrink-0 self-start">
+                  <Avatar url={c.authorAvatarUrl} name={c.authorName} size={34} />
+                </ProfileHoverCard>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-gray-900">{c.authorName}</span>
-                    <span className="text-[11px] text-gray-600">{timeAgo(c.createdAt, t)}</span>
+                    <span className="text-sm font-semibold text-gray-900">{c.authorName}</span>
+                    <span className="text-xs text-gray-500">{timeAgo(c.createdAt, t)}</span>
                     {isMine && editingId !== c.id && (
                       <div className="relative ml-auto">
                         <button onClick={() => setMenuFor((v) => (v === c.id ? null : c.id))} title={t("common.more")} className={`flex h-6 w-6 items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-gray-100 hover:text-gray-600 ${menuFor === c.id ? "bg-gray-100 text-gray-600" : "opacity-0 group-hover:opacity-100"}`}>
@@ -148,7 +219,7 @@ function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
                           else if (e.key === "Escape") { e.preventDefault(); setEditingId(null); }
                         }}
                         rows={2}
-                        className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-50"
+                        className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-[15px] leading-relaxed text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-50"
                       />
                       <div className="mt-1.5 flex items-center gap-1.5">
                         <button onClick={() => saveEdit(c.id)} className="rounded-lg bg-blue-500 px-3 py-1 text-[11px] font-bold text-white transition-colors hover:bg-blue-600">{t("common.save")}</button>
@@ -158,7 +229,7 @@ function TaskCommentList({ taskId, projectMembers, currentUserId, projectId }: {
                   ) : (
                     <>
                       {c.content.trim() && (
-                        <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700">{renderContent(c.content)}</p>
+                        <div className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-gray-800">{renderContent(c.content, projectMembers)}</div>
                       )}
                       {c.attachments.length > 0 && (
                         <div className="mt-1.5">
@@ -213,7 +284,8 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
     setInput(val);
     const cursor = e.target.selectionStart;
     const textBefore = val.slice(0, cursor);
-    const atMatch = textBefore.match(/@(\S*)$/);
+    // 줄 시작이나 공백 뒤의 @만 멘션으로 인식 (wsj@... 같은 이메일은 제외)
+    const atMatch = textBefore.match(/(?:^|\s)@(\S*)$/);
     if (atMatch) {
       setShowMention(true);
       setMentionQuery(atMatch[1]);
@@ -259,7 +331,7 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
   async function handleSend() {
     if ((!input.trim() && pending.length === 0) || sending || uploading > 0) return;
     setSending(true);
-    const mentions = input.match(/@(\S+)/g) || [];
+    const mentions = (input.match(/(?:^|\s)@\S+/g) || []).map((m) => m.trim());
     const isAll = mentions.some((m) => m === "@all");
     const mentionedNames = mentions.map((m) => m.slice(1)).filter((n) => n !== "all");
     const mentionedIds = projectMembers.filter((m) => mentionedNames.includes(m.name)).map((m) => m.id);
@@ -372,32 +444,40 @@ function TaskCommentInput({ taskId, projectId, projectMembers }: {
           )}
         </div>
       )}
-      <div className="flex items-end gap-1.5">
-        <AttachmentButton onPicked={handleFiles} disabled={sending} accept="image/*" title="이미지 첨부" />
-        <div className="relative flex-1">
-          {/* 하이라이트 오버레이 */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 whitespace-pre-wrap break-words rounded-lg px-3.5 py-2.5 text-sm leading-[1.5] text-gray-900"
-          >
-            {input.split(/(@\S+)/g).map((part, i) =>
-              part.startsWith("@")
-                ? <span key={i} className="rounded bg-blue-50 font-medium text-blue-500">{part}</span>
-                : <span key={i}>{part}</span>
-            )}
-          </div>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder={t("comments.placeholder")}
-            rows={1}
-            className="relative w-full resize-none rounded-lg border border-gray-200 bg-transparent px-3.5 py-2.5 pr-4 text-sm text-transparent caret-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
-          />
-          {sending && <span className="pointer-events-none absolute bottom-2 right-3 text-[10px] text-gray-300">···</span>}
+      <div className="relative">
+        {/* 하이라이트 오버레이 — 이메일/URL은 멘션으로 칠하지 않고 그대로 둔다. (padding은 textarea와 동일해야 정렬 유지) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 whitespace-pre-wrap break-words rounded-lg py-2.5 pl-3.5 pr-11 text-[15px] leading-[1.5] text-gray-900"
+        >
+          {splitByUrls(input).map((seg, i) =>
+            seg.kind !== "text" ? (
+              // 이메일/URL은 우리 링크 색(파란색)만 — 밑줄 없음(폭도 안 바뀌어 정렬 유지)
+              <span key={i} className="text-blue-500">{seg.text}</span>
+            ) : (
+              splitMentions(seg.text).map((p, j) =>
+                p.mention
+                  ? <span key={`${i}-${j}`} className="rounded bg-blue-50 font-medium text-blue-500">{p.text}</span>
+                  : <span key={`${i}-${j}`}>{p.text}</span>
+              )
+            )
+          )}
         </div>
+        <textarea
+          ref={inputRef}
+          value={input}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          placeholder={t("comments.placeholder")}
+          rows={1}
+          className="relative w-full resize-none rounded-lg border border-gray-200 bg-transparent py-2.5 pl-3.5 pr-11 text-[15px] leading-[1.5] text-transparent caret-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+        />
+        {/* 첨부(클립) 버튼 — 입력창 안쪽 우측에 세로 가운데 정렬 */}
+        <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+          <AttachmentButton onPicked={handleFiles} disabled={sending} accept="image/*" title="이미지 첨부" />
+        </div>
+        {sending && <span className="pointer-events-none absolute bottom-2 right-11 text-[10px] text-gray-300">···</span>}
       </div>
     </div>
   );

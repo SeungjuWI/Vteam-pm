@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSuperAdmin } from "@/lib/auth/super-admin";
+import AdminTabs from "./admin-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,8 @@ export default async function AdminPage() {
             운영자 전용 — vtm을 도입한 기업 현황 ({operator.email})
           </p>
         </div>
+
+        <AdminTabs active="signup" />
 
         {/* 상단 요약 */}
         <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">

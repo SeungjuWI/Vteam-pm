@@ -89,9 +89,8 @@ export default async function InsightsPage() {
   // 회사별 집계
   const byCompany = externalCompanies
     .map((c) => {
-      const members = profiles.filter(
-        (p) => p.company_id === c.id && !p.is_bot && p.status === "active"
-      ).length;
+      // 가입현황 탭과 동일 정의: 봇 제외 전원 (status 무관)
+      const members = profiles.filter((p) => p.company_id === c.id && !p.is_bot).length;
       const projCount = projects.filter((p) => p.company_id === c.id).length;
       const ct = extTasks.filter((t) => taskCompany.get(t.id) === c.id);
       const count = (s: string) => ct.filter((t) => t.status === s).length;

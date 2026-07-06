@@ -431,7 +431,7 @@ const en: Record<TranslationKey, string> = {
   "dashboard.noTasks": "No tasks assigned",
   "dashboard.leaderboard": "Deadline Leaderboard",
   "dashboard.noOverdueYet": "No one's behind on a deadline yet 🎉",
-  "dashboard.leaderboardHint": "by avg days overdue · hang in there!",
+  "dashboard.leaderboardHint": "by total days overdue · hang in there!",
   "dashboard.avgPrefix": "avg ",
   "dashboard.sumPrefix": "sum ",
   "dashboard.dayUnit": "d",

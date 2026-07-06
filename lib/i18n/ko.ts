@@ -429,7 +429,7 @@ const ko = {
   "dashboard.noTasks": "할당된 태스크가 없습니다",
   "dashboard.leaderboard": "마감 리더보드",
   "dashboard.noOverdueYet": "아직 마감 넘긴 사람이 없어요 🎉",
-  "dashboard.leaderboardHint": "평균 지연일 순 · 분발해요!",
+  "dashboard.leaderboardHint": "총 지연일 순 · 분발해요!",
   "dashboard.avgPrefix": "평균 ",
   "dashboard.sumPrefix": "합 ",
   "dashboard.dayUnit": "일",

@@ -185,7 +185,8 @@ export default async function DashboardPage() {
   }
   const leaderboard = [...lbMap.values()]
     .map((e) => ({ ...e, avg: e.days / e.count }))
-    .sort((a, b) => b.avg - a.avg || b.count - a.count);
+    // 총 지연일(합) 순 — 합이 같으면 건수 많은 순 → 그다음 평균
+    .sort((a, b) => b.days - a.days || b.count - a.count || b.avg - a.avg);
 
   type TeamRecord = { id: string; employee_id: string; clock_in: string; clock_out: string | null; profiles: { name: string; email: string; avatar_url: string | null; position: string | null } };
   const teamToday = ((teamTodayRaw || []) as unknown as TeamRecord[]);

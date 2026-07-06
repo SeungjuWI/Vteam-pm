@@ -261,7 +261,7 @@ export default async function DashboardPage() {
                 </span>
                 <span className={`flex-1 truncate text-sm ${i === 0 ? "font-semibold text-gray-900" : "text-gray-700"}`}>{e.name}</span>
                 <span className="shrink-0 text-xs text-gray-600">{e.count}{t("dashboard.cases")}</span>
-                <span className="w-24 shrink-0 text-right text-xs font-semibold text-red-500 tabular-nums">{t("dashboard.avgPrefix")}{Math.round(e.avg)}{t("dashboard.daysOverdueTotal")}</span>
+                <span className="shrink-0 whitespace-nowrap text-right text-xs font-semibold text-red-500 tabular-nums">{t("dashboard.avgPrefix")}{Math.round(e.avg)}{t("dashboard.dayUnit")} · {t("dashboard.sumPrefix")}{e.days}{t("dashboard.dayUnit")}</span>
               </div>
             ))}
           </div>

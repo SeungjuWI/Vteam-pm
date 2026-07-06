@@ -431,6 +431,8 @@ const ko = {
   "dashboard.noOverdueYet": "아직 마감 넘긴 사람이 없어요 🎉",
   "dashboard.leaderboardHint": "평균 지연일 순 · 분발해요!",
   "dashboard.avgPrefix": "평균 ",
+  "dashboard.sumPrefix": "합 ",
+  "dashboard.dayUnit": "일",
   "dashboard.daysOverdueTotal": "일 지연",
   "dashboard.urgentTasks": "마감 임박·지연",
   "dashboard.urgentOwners": "담당자",

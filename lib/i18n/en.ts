@@ -433,6 +433,8 @@ const en: Record<TranslationKey, string> = {
   "dashboard.noOverdueYet": "No one's behind on a deadline yet 🎉",
   "dashboard.leaderboardHint": "by avg days overdue · hang in there!",
   "dashboard.avgPrefix": "avg ",
+  "dashboard.sumPrefix": "sum ",
+  "dashboard.dayUnit": "d",
   "dashboard.daysOverdueTotal": "d overdue",
   "dashboard.urgentTasks": "Overdue · Due Soon",
   "dashboard.urgentOwners": "Owners",

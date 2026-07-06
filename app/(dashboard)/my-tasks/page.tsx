@@ -56,7 +56,7 @@ export default async function MyTasksPage() {
   const stats = {
     total: allTasks.length,
     dueToday: activeTasks.filter((t) => t.due_date === today).length,
-    overdue: activeTasks.filter((t) => t.due_date && t.due_date < today).length,
+    overdue: activeTasks.filter((t) => t.status !== "pending" && t.due_date && t.due_date < today).length,
     done: doneTasks.length,
   };
 

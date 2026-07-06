@@ -70,7 +70,8 @@ export default async function DashboardPage() {
       .from("tasks")
       .select(taskCols)
       .in("project_id", projIds)
-      .neq("status", "done")
+      // done(완료)·pending(펜딩=보류)은 마감 추적 제외 — 펜딩은 지연으로 잡지 않음
+      .not("status", "in", "(done,pending)")
       .not("due_date", "is", null)
       .order("due_date", { ascending: true });
 

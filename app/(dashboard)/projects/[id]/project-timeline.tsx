@@ -246,21 +246,28 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
   }, [open, storeKey]);
   function toggleDone(task: Task) {
     const next = task.status === "done" ? "todo" : "done";
-    // 낙관적 업데이트: 서버 왕복/refresh 전에 화면(order)을 즉시 바꿔 체크가 바로 반영되게 한다.
-    // 이후 router.refresh()로 들어온 새 props가 useEffect([mainTasks])에서 order를 서버 진실로 되돌려 동기화.
+    // 낙관적 업데이트: 화면(order)을 즉시 바꿔 체크가 바로 반영되게 한다.
+    // 성공 시 router.refresh()를 호출하지 않는다 — 전체 재조회(+AI 재번역)의 '갱신 전 중간 데이터'가
+    // 먼저 들어오면 체크가 잠깐 되돌아갔다 다시 켜지는 깜빡임이 생기기 때문. order가 이미 진실이다.
     setOrder((prev) => prev.map((row) => {
       if (row.id === task.id) return { ...row, status: next };
       if (row.subtasks.some((s) => s.id === task.id))
         return { ...row, subtasks: row.subtasks.map((s) => (s.id === task.id ? { ...s, status: next } : s)) };
       return row;
     }));
-    startTx(async () => { await updateTaskStatus(task.id, next, projectId); router.refresh(); });
+    startTx(async () => {
+      const r = await updateTaskStatus(task.id, next, projectId);
+      if ((r as { error?: string })?.error) { toast.error((r as { error?: string }).error!); router.refresh(); }  // 실패 시에만 서버 상태로 복구
+    });
   }
 
-  // 모든 서브태스크를 한 번에 next 상태로 (낙관적 반영 후 서버 동기화)
+  // 모든 서브태스크를 한 번에 next 상태로 (낙관적 반영, 성공 시 refresh 없음)
   function applyAllSubs(row: MainTask, next: "done" | "todo") {
     setOrder((prev) => prev.map((r) => (r.id === row.id ? { ...r, subtasks: r.subtasks.map((s) => ({ ...s, status: next })) } : r)));
-    startTx(async () => { await Promise.all(row.subtasks.map((s) => updateTaskStatus(s.id, next, projectId))); router.refresh(); });
+    startTx(async () => {
+      const results = await Promise.all(row.subtasks.map((s) => updateTaskStatus(s.id, next, projectId)));
+      if (results.some((r) => (r as { error?: string })?.error)) { toast.error("일부 항목 저장에 실패했어요"); router.refresh(); }
+    });
   }
 
   // 메인 체크: 서브 없으면 그 자체 토글. 서브 있으면 미완료가 남아 있을 때만 확인 모달 후 일괄 완료.

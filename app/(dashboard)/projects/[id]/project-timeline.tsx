@@ -173,8 +173,20 @@ export default function ProjectTimeline({ projectId, mainTasks, members, allMemb
     try { localStorage.setItem(storeKey, JSON.stringify([...open])); } catch {}
   }, [open, storeKey]);
   function toggleDone(task: Task) {
-    const next = task.status === "done" ? "todo" : "done";
-    startTx(async () => { await updateTaskStatus(task.id, next, projectId); router.refresh(); });
+    const next: Task["status"] = task.status === "done" ? "todo" : "done";
+    // 낙관적 업데이트: 클릭 즉시 체크 반영 (서버 + 전체 재조회를 기다리지 않음 → 멈춘 듯한 반응 제거)
+    setOrder((prev) =>
+      prev.map((m) =>
+        m.id === task.id
+          ? { ...m, status: next }
+          : { ...m, subtasks: m.subtasks.map((s) => (s.id === task.id ? { ...s, status: next } : s)) },
+      ),
+    );
+    startTx(async () => {
+      const r = await updateTaskStatus(task.id, next, projectId);
+      // 성공 시 새로고침하지 않음(낙관적 상태 유지). 실패 시에만 서버 상태로 되돌림.
+      if ((r as { error?: string })?.error) { alert((r as { error?: string }).error); router.refresh(); }
+    });
   }
 
   // ── 시간축 (주/월/연 전환) ──

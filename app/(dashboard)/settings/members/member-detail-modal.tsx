@@ -265,9 +265,9 @@ export default function MemberDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-2xl bg-white">
+      <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl bg-white">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 className="text-sm font-medium text-gray-900">{t("members.detail")}</h2>
@@ -283,7 +283,7 @@ export default function MemberDetailModal({
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
           </div>
         ) : data ? (
-          <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             {/* 프로필 */}
             <div className="mb-5 flex items-center gap-3">
               <Avatar url={data.avatarUrl} name={data.name} size={48} />

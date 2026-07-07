@@ -67,9 +67,10 @@ export default function MyTasksView({ activeTasks, doneTasks, projects, stats, t
   const statusColor = (s: string) =>
     s === "done" ? "bg-green-500" : s === "in_progress" ? "bg-blue-500" : "bg-gray-300";
 
-  const dueBadge = (dueDate: string | null) => {
+  const dueBadge = (dueDate: string | null, status?: string) => {
     if (!dueDate) return null;
-    if (dueDate < today) return <span className="text-xs px-1.5 py-0.5 rounded bg-red-50 text-red-600">{t("myTasks.overdue")}</span>;
+    // 펜딩(보류)은 지연으로 표시하지 않음
+    if (dueDate < today && status !== "pending") return <span className="text-xs px-1.5 py-0.5 rounded bg-red-50 text-red-600">{t("myTasks.overdue")}</span>;
     if (dueDate === today) return <span className="text-xs px-1.5 py-0.5 rounded bg-orange-50 text-orange-600">{t("myTasks.dueToday")}</span>;
     const dDay = Math.ceil((new Date(dueDate).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24));
     return <span className="text-xs text-gray-600">D-{dDay}</span>;
@@ -191,7 +192,7 @@ export default function MyTasksView({ activeTasks, doneTasks, projects, stats, t
                   <span className={`text-xs px-2 py-0.5 rounded-full ${priorityColor(task.priority)}`}>
                     {priorityLabel(task.priority)}
                   </span>
-                  {task.status === "done" ? null : task.due_date ? dueBadge(task.due_date) : (
+                  {task.status === "done" ? null : task.due_date ? dueBadge(task.due_date, task.status) : (
                     <span className="text-xs text-gray-300">{t("myTasks.noDue")}</span>
                   )}
                 </div>

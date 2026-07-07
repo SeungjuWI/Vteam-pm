@@ -27,12 +27,12 @@ export async function getCompanyOverdue(
   if (projects.length === 0) return [];
   const projName = new Map(projects.map((p) => [p.id, p.name as string]));
 
-  // 미완료 + 마감일이 오늘 이전인 태스크 = 지연
+  // 미완료 + 마감일이 오늘 이전인 태스크 = 지연 (done·pending 제외 — 펜딩은 지연 아님)
   const { data: taskRows } = await adminClient
     .from("tasks")
     .select("id, title, due_date, project_id")
     .in("project_id", projects.map((p) => p.id))
-    .neq("status", "done")
+    .not("status", "in", "(done,pending)")
     .not("due_date", "is", null)
     .lt("due_date", today)
     .order("due_date", { ascending: true });

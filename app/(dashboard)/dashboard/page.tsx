@@ -70,7 +70,8 @@ export default async function DashboardPage() {
       .from("tasks")
       .select(taskCols)
       .in("project_id", projIds)
-      .neq("status", "done")
+      // done(완료)·pending(펜딩=보류)은 마감 추적 제외 — 펜딩은 지연으로 잡지 않음
+      .not("status", "in", "(done,pending)")
       .not("due_date", "is", null)
       .order("due_date", { ascending: true });
 
@@ -184,7 +185,8 @@ export default async function DashboardPage() {
   }
   const leaderboard = [...lbMap.values()]
     .map((e) => ({ ...e, avg: e.days / e.count }))
-    .sort((a, b) => b.avg - a.avg || b.count - a.count);
+    // 총 지연일(합) 순 — 합이 같으면 건수 많은 순 → 그다음 평균
+    .sort((a, b) => b.days - a.days || b.count - a.count || b.avg - a.avg);
 
   type TeamRecord = { id: string; employee_id: string; clock_in: string; clock_out: string | null; profiles: { name: string; email: string; avatar_url: string | null; position: string | null } };
   const teamToday = ((teamTodayRaw || []) as unknown as TeamRecord[]);
@@ -260,7 +262,7 @@ export default async function DashboardPage() {
                 </span>
                 <span className={`flex-1 truncate text-sm ${i === 0 ? "font-semibold text-gray-900" : "text-gray-700"}`}>{e.name}</span>
                 <span className="shrink-0 text-xs text-gray-600">{e.count}{t("dashboard.cases")}</span>
-                <span className="w-24 shrink-0 text-right text-xs font-semibold text-red-500 tabular-nums">{t("dashboard.avgPrefix")}{Math.round(e.avg)}{t("dashboard.daysOverdueTotal")}</span>
+                <span className="shrink-0 whitespace-nowrap text-right text-xs font-semibold text-red-500 tabular-nums">{t("dashboard.avgPrefix")}{Math.round(e.avg)}{t("dashboard.dayUnit")} · {t("dashboard.sumPrefix")}{e.days}{t("dashboard.dayUnit")}</span>
               </div>
             ))}
           </div>

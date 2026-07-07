@@ -133,7 +133,9 @@ export default function TeamDeadlines({ groups }: { groups: DeadlineGroup[] }) {
   const items = flatten(groups);
   const urgentCount = items.filter((i) => i.bucket !== "upcoming").length;
 
-  const shown = showAll ? items : items.slice(0, MAX_COLLAPSED);
+  // 지연(overdue) 건은 접힌 상태에서도 무조건 전부 노출 — 나머지(임박·예정)만 MAX_COLLAPSED로 제한
+  const overdueCount = items.filter((i) => i.bucket === "overdue").length;
+  const shown = showAll ? items : items.slice(0, Math.max(MAX_COLLAPSED, overdueCount));
   const hidden = items.length - shown.length;
   // 펼친 상태에서 '예정' 구간 시작 지점에 구분선 1회 삽입
   const firstUpcomingId = items.find((i) => i.bucket === "upcoming")?.taskId;

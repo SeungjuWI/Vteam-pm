@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Select } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { superAdminBulkInvite, type InviteResult } from "./actions";
@@ -10,6 +10,8 @@ interface CompanyOption {
   name: string;
   memberCount: number;
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const OUTCOME_META: Record<
   InviteResult["outcome"],
@@ -24,31 +26,83 @@ const OUTCOME_META: Record<
 
 export default function InvitePanel({ companies }: { companies: CompanyOption[] }) {
   const [companyId, setCompanyId] = useState("");
-  const [emailsText, setEmailsText] = useState("");
+  const [emails, setEmails] = useState<string[]>([]);
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<InviteResult[] | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedCompany = companies.find((c) => c.id === companyId);
 
-  // 콤마/줄바꿈/공백/세미콜론 구분
-  const parsedEmails = emailsText
-    .split(/[\s,;]+/)
-    .map((e) => e.trim())
-    .filter(Boolean);
+  // 토큰(콤마/공백/줄바꿈/세미콜론 구분)을 칩으로 확정. 이미 있는 건 무시.
+  function commitTokens(text: string) {
+    const tokens = text
+      .split(/[\s,;]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    if (tokens.length === 0) return;
+    setEmails((prev) => {
+      const seen = new Set(prev);
+      const next = [...prev];
+      for (const tk of tokens) {
+        if (!seen.has(tk)) {
+          seen.add(tk);
+          next.push(tk);
+        }
+      }
+      return next;
+    });
+    setResults(null);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === "," || e.key === ";" || e.key === " " || e.key === "Tab") {
+      if (input.trim()) {
+        e.preventDefault();
+        commitTokens(input);
+        setInput("");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+      }
+    } else if (e.key === "Backspace" && !input && emails.length > 0) {
+      // 빈 입력에서 Backspace → 마지막 칩 삭제
+      setEmails((prev) => prev.slice(0, -1));
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text");
+    if (/[\s,;]/.test(text)) {
+      e.preventDefault();
+      commitTokens((input ? input + " " : "") + text);
+      setInput("");
+    }
+  }
+
+  function removeAt(i: number) {
+    setEmails((prev) => prev.filter((_, idx) => idx !== i));
+    inputRef.current?.focus();
+  }
 
   async function handleSubmit() {
     if (!companyId) {
       toast.error("워크스페이스를 선택해주세요");
       return;
     }
-    if (parsedEmails.length === 0) {
+    // 아직 확정 안 된 입력값도 포함
+    const pending = input
+      .split(/[\s,;]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const all = Array.from(new Set([...emails, ...pending]));
+    if (all.length === 0) {
       toast.error("이메일을 입력해주세요");
       return;
     }
 
     setLoading(true);
     setResults(null);
-    const res = await superAdminBulkInvite(companyId, parsedEmails);
+    const res = await superAdminBulkInvite(companyId, all);
     setLoading(false);
 
     if (res.error) {
@@ -61,7 +115,8 @@ export default function InvitePanel({ companies }: { companies: CompanyOption[] 
     const added = list.filter((r) => r.outcome === "added").length;
     if (added > 0) {
       toast.success(`${selectedCompany?.name ?? "워크스페이스"}에 ${added}명 추가됨`);
-      setEmailsText("");
+      setEmails([]);
+      setInput("");
     } else {
       toast.info("새로 추가된 이메일이 없습니다");
     }
@@ -93,23 +148,68 @@ export default function InvitePanel({ companies }: { companies: CompanyOption[] 
           />
         </div>
 
-        {/* 이메일 입력 */}
+        {/* 이메일 칩 입력 */}
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-900">
             이메일
-            {parsedEmails.length > 0 && (
-              <span className="ml-1.5 text-xs font-normal text-gray-400">
-                {parsedEmails.length}개
-              </span>
+            {emails.length > 0 && (
+              <span className="ml-1.5 text-xs font-normal text-gray-400">{emails.length}개</span>
             )}
           </label>
-          <textarea
-            value={emailsText}
-            onChange={(e) => setEmailsText(e.target.value)}
-            placeholder={"여러 명은 줄바꿈 또는 콤마로 구분\n예) a@company.com, b@company.com"}
-            rows={5}
-            className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
-          />
+          <div
+            onClick={() => inputRef.current?.focus()}
+            className="flex min-h-[92px] w-full cursor-text flex-wrap content-start gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 text-sm focus-within:border-blue-500"
+          >
+            {emails.map((email, i) => {
+              const valid = EMAIL_RE.test(email);
+              return (
+                <span
+                  key={email}
+                  className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] ${
+                    valid ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"
+                  }`}
+                >
+                  {email}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeAt(i);
+                    }}
+                    className={`ml-0.5 rounded-full p-0.5 transition-colors ${
+                      valid ? "hover:bg-blue-100" : "hover:bg-amber-100"
+                    }`}
+                    aria-label={`${email} 삭제`}
+                  >
+                    <svg viewBox="0 0 14 14" className="h-3 w-3" fill="none">
+                      <path
+                        d="M3.5 3.5l7 7M10.5 3.5l-7 7"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                </span>
+              );
+            })}
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              onBlur={() => {
+                if (input.trim()) {
+                  commitTokens(input);
+                  setInput("");
+                }
+              }}
+              placeholder={emails.length === 0 ? "이메일 입력 후 Enter (여러 개 붙여넣기 가능)" : ""}
+              className="min-w-[180px] flex-1 bg-transparent px-1 py-1 text-gray-900 placeholder:text-gray-400 focus:outline-none"
+            />
+          </div>
           <p className="mt-1.5 text-xs text-gray-500">
             초대 메일은 발송되지 않습니다. 대상자가 처음 로그인하면 이 워크스페이스로 자동
             합류합니다.

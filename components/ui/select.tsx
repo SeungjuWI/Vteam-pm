@@ -81,16 +81,22 @@ export function Select({
         setOpen(false);
       }
     }
-    function onScrollOrResize() {
+    function onScroll(e: Event) {
+      // Scrolling inside the menu itself (overflow-auto list) fires a captured
+      // scroll event too — ignore it so a long list stays open while scrolled.
+      if (menuRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    }
+    function onResize() {
       setOpen(false);
     }
     window.addEventListener("mousedown", onDown);
-    window.addEventListener("scroll", onScrollOrResize, true);
-    window.addEventListener("resize", onScrollOrResize);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("mousedown", onDown);
-      window.removeEventListener("scroll", onScrollOrResize, true);
-      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
     };
   }, [open]);
 
@@ -183,7 +189,7 @@ export function Select({
               : { top: rect.bottom + 6 }),
           }}
           className={cn(
-            "z-[120] max-h-60 overflow-auto rounded-xl border border-gray-100 bg-white p-1 shadow-soft-lg scrollbar-thin",
+            "z-[10000] max-h-60 overflow-auto rounded-xl border border-gray-100 bg-white p-1 shadow-soft-lg scrollbar-thin",
             "animate-[select-pop_0.16s_cubic-bezier(0.16,1,0.3,1)]"
           )}
         >

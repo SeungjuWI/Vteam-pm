@@ -196,13 +196,24 @@ export default function DashboardShell({
                   <Link
                     href="/admin"
                     className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                      pathname.startsWith("/admin")
+                      pathname === "/admin"
                         ? "bg-blue-50 font-medium text-blue-500"
                         : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     }`}
                   >
                     {iconMap["chart"]}
                     가입현황
+                  </Link>
+                  <Link
+                    href="/admin/invite"
+                    className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                      pathname.startsWith("/admin/invite")
+                        ? "bg-blue-50 font-medium text-blue-500"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                  >
+                    {iconMap["users"]}
+                    원격 추가
                   </Link>
                 </>
               )}

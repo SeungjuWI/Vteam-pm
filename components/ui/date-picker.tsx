@@ -250,7 +250,7 @@ export function DatePicker({
             left: Math.min(rect.left, window.innerWidth - 284),
             ...(dropUp ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 }),
           }}
-          className="z-[120] rounded-2xl border border-gray-100 bg-white shadow-soft-lg animate-[select-pop_0.16s_cubic-bezier(0.16,1,0.3,1)]"
+          className="z-[10000] rounded-2xl border border-gray-100 bg-white shadow-soft-lg animate-[select-pop_0.16s_cubic-bezier(0.16,1,0.3,1)]"
         >
           <Calendar
             value={value}
@@ -327,7 +327,7 @@ export function DateTimePicker({
             left: Math.min(rect.left, window.innerWidth - 284),
             ...(dropUp ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 }),
           }}
-          className="z-[120] rounded-2xl border border-gray-100 bg-white shadow-soft-lg animate-[select-pop_0.16s_cubic-bezier(0.16,1,0.3,1)]"
+          className="z-[10000] rounded-2xl border border-gray-100 bg-white shadow-soft-lg animate-[select-pop_0.16s_cubic-bezier(0.16,1,0.3,1)]"
         >
           <Calendar value={date} onPick={(v) => commit(v, h, min)} />
           <div className="flex items-center gap-2 border-t border-gray-100 px-3 py-2.5">
